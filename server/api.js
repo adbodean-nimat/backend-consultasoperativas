@@ -9,7 +9,7 @@ const { request, response } = require('express');
 var  app = express();
 var  router = express.Router();
 
-app.use(bodyParser.urlencoded({ extended:  true }));
+app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 app.use('/', express.static('public'));
 /* app.use('/test', express.static('test')); */
@@ -38,9 +38,25 @@ router.route('/listadeclientes').get((request, response) => {
 // Tabla Depos_A_No_Considerar
 router.route('/deposanoconsiderar').get(Pg.getDeposANoConsiderar)
 router.route('/deposanoconsiderar/:id').get(Pg.getDeposANoConsiderarByCod)
-router.route('/deposanoconsiderar').post(Pg.createDepos)
+router.route('/deposanoconsiderar/').post(Pg.createDepos)
 router.route('/deposanoconsiderar/:id').put(Pg.updateDepos)
 router.route('/deposanoconsiderar/:id').delete(Pg.deleteDepos)
+
+// Tabla NP_a_Considerar
+router.route('/npaconsiderar').get(Pg.getNPaConsiderar)
+router.route('/npaconsiderar/:id').get(Pg.getNPaConsiderarByCod)
+router.route('/npaconsiderar/').post(Pg.createNP)
+router.route('/npaconsiderar/:id').put(Pg.updateNP)
+router.route('/npaconsiderar/:id').delete(Pg.deleteNP)
+
+// Tabla Dimensiones_Contenedores
+router.route('/dimensionescontenedores').get(Pg.getDimensionesCont)
+router.route('/dimensionescontenedores/:id').get(Pg.getDimensionesContById)
+router.route('/dimensionescontenedores/').post(Pg.createDimensionesCont)
+router.route('/dimensionescontenedores/:id').put(Pg.updateDimensionesCont)
+router.route('/dimensionescontenedores/:id').delete(Pg.deleteDimensionesCont)
+
+
 
 var port = 8090;
 app.listen(port);
