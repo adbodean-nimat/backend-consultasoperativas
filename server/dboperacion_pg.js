@@ -2,6 +2,65 @@ var configpg = require('./dbconfig_pg.js');
 const Pool = require('pg').Pool
 const pool = new Pool(configpg);
 
+// Tabla Movimiento de contenedores
+const getMovContenedores = (request, response) => {
+    pool.query('SELECT * FROM movimientos_de_contenedores ORDER BY cod_cant_mov ASC', (error, results) => {
+        if (error){
+            throw error
+        }
+        response.status(200).json(results.rows)
+    })
+}
+
+const getMovContenedoresById = (request, response) => {
+    const id = parseInt(request.params.id)
+
+    pool.query('SELECT * FROM movimientos_de_contenedores WHERE id = $1', [id], (error, results) => {
+        if (error){
+            throw error
+        }
+        response.status(200).json(results.rows)
+    })
+}
+
+const createMovContenedores = (request, response) => {
+    const {cod_cant_mov, nombre_movimiento, cant_mov_nro} = request.body
+
+    pool.query('INSERT INTO movimientos_de_contenedores (cod_cant_mov, nombre_movimiento, cant_mov_nro) VALUES ($1, $2, $3) RETURNING *',
+    [cod_cant_mov, nombre_movimiento, cant_mov_nro], (error, results) => {
+        if (error){
+            throw error
+        }
+        response.status(201).send(`Agregar correctamente id: ${results.rows[0].id}`)
+    })
+}
+
+const updateMovContenedores = (request, response) => {
+    const id = parseInt(request.params.id)
+    const {cod_cant_mov, nombre_movimiento, cant_mov_nro} = request.body
+
+    pool.query(
+        'UPDATE movimientos_de_contenedores SET cod_cant_mov = $1, nombre_movimiento = $2, cant_mov_nro = $3 WHERE id = $4',
+        [cod_cant_mov, nombre_movimiento, cant_mov_nro, id], (error, results) => {
+            if (error){
+                throw error
+            }
+            response.status(200).send(`Modificar correctamente: ${id}`)
+        }
+    )
+}
+
+const deleteMovContenedores = (request, response) => {
+    const id = parseInt(request.params.id)
+
+    pool.query('DELETE FROM movimientos_de_contenedores WHERE id = $1', [id], (error, results) => {
+        if (error){
+            throw error
+        }
+        response.status(200).send(`Eliminar deposito: ${id}`)
+    })
+}
+
 // Tabla Dimensiones_Contenedores
 const getDimensionesCont = (request, response) => {
     pool.query('SELECT * FROM dimensiones_contenedores ORDER BY clas4_clas5 ASC', (error, results) => {
@@ -196,5 +255,10 @@ module.exports = {
     getDimensionesContById,
     createDimensionesCont,
     updateDimensionesCont,
-    deleteDimensionesCont
+    deleteDimensionesCont,
+    getMovContenedores,
+    getMovContenedoresById,
+    createMovContenedores,
+    updateMovContenedores,
+    deleteMovContenedores
 }

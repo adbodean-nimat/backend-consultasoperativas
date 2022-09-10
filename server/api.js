@@ -15,22 +15,38 @@ app.use('/', express.static('public'));
 /* app.use('/test', express.static('test')); */
 app.use(cors());
 app.use('/api', router);
+
 router.use((request, response, next) => {
     console.log('middleware');
     next();
   });
+
 router.route('/control').get((request, response) => {
     Db.getControl().then((data) => {
       response.json(data[0]);
     })
   })
+
 router.route('/control/:id').get((request, response) => {
     Db.getOrder(request.params.id).then((data) => {
       response.json(data[0]);
     })
   })
+
 router.route('/listadeclientes').get((request, response) => {
   Db.getListaClientes().then((data) => {
+    response.json(data[0]);
+  })
+})
+
+router.route('/listacontenedores').get((request, response)=>{
+  Db.getListaContenedores().then((data)=>{
+    response.json(data[0]);
+  })
+})
+
+router.route('/np-pendientes-entrega-contenedores').get((request, response) => {
+  Db.getNPpendienteEntregaContenedores().then((data) => {
     response.json(data[0]);
   })
 })
@@ -56,7 +72,12 @@ router.route('/dimensionescontenedores/').post(Pg.createDimensionesCont)
 router.route('/dimensionescontenedores/:id').put(Pg.updateDimensionesCont)
 router.route('/dimensionescontenedores/:id').delete(Pg.deleteDimensionesCont)
 
-
+// Tabla Movimientos_de_Contenedores
+router.route('/movimientosdecontenedores').get(Pg.getMovContenedores)
+router.route('/movimientosdecontenedores/:id').get(Pg.getMovContenedoresById)
+router.route('/movimientosdecontenedores/').post(Pg.createMovContenedores)
+router.route('/movimientosdecontenedores/:id').put(Pg.updateMovContenedores)
+router.route('/movimientosdecontenedores/:id').delete(Pg.deleteMovContenedores)
 
 var port = 8090;
 app.listen(port);

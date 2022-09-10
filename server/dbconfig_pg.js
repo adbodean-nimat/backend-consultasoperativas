@@ -1,7 +1,7 @@
 const configpg = {
     user: 'postgres',
     password: 'Primicialg301',
-    host: 'localhost',
+    host: '192.168.0.182',
     database: 'dbNode',
     port: 5432,
 }
