@@ -46,7 +46,13 @@ router.route('/listacontenedores').get((request, response)=>{
 })
 
 router.route('/np-pendientes-entrega-contenedores').get((request, response) => {
-  Db.getNPpendienteEntregaContenedores().then((data) => {
+  Db.getNPpendienteEntregaContenedores().then((data)=>{
+    response.json(data[0]);
+  })
+})
+
+router.route('/listapyr').get((request, response) => {
+  Db.getLPPYRStock().then((data)=>{
     response.json(data[0]);
   })
 })

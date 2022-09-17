@@ -1,7 +1,7 @@
 const  config = {
     user:  'sa', // sql user
     password:  'Primicialg301', //sql user password
-    server:  '192.168.0.108', // if it does not work try- localhost
+    server:  'TAPEBICUA', // if it does not work try- localhost
     database:  'dbNimat',
     options: {
       trustServerCertificate: true,
