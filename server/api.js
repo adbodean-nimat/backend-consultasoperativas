@@ -57,6 +57,12 @@ router.route('/listapyr').get((request, response) => {
   })
 })
 
+router.route('/listabreveuso').get((request, response) => {
+  Db.getListaPrecioBreveUsoInterno().then((data)=>{
+    response.json(data[0]);
+  })
+})
+
 // Tabla Depos_A_No_Considerar
 router.route('/deposanoconsiderar').get(Pg.getDeposANoConsiderar)
 router.route('/deposanoconsiderar/:id').get(Pg.getDeposANoConsiderarByCod)
