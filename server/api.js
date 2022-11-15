@@ -1,19 +1,23 @@
-var  Db = require('./dboperacion');
-var  Pg = require('./dboperacion_pg')
-var  Control = require('./control-alta-clientes');
-var  Listadeclientes = require('./lista-de-clientes');
-var  express = require('express');
-var  bodyParser = require('body-parser');
-var  cors = require('cors');
-const { request, response } = require('express');
-var  app = express();
-var  router = express.Router();
-
+var Db = require('./dboperacion');
+var Pg = require('./dboperacion_pg');
+var jConfig = require('./jconfig');
+var express = require('express');
+var bodyParser = require('body-parser');
+var cors = require('cors');
+const { request, response, Router } = require('express');
+var app = express();
+var router = express.Router();
+const https = require('https');
+const fs = require('fs');
+app.use(cors());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
-app.use('/', express.static('public'));
+/* app.use('/', express.static('public')); */
 /* app.use('/test', express.static('test')); */
-app.use(cors());
+const httpsOptions = {
+  key: fs.readFileSync(process.env.SSL_KEY),
+  cert: fs.readFileSync(process.env.SSL_CERT)
+}
 app.use('/api', router);
 
 router.use((request, response, next) => {
@@ -22,7 +26,7 @@ router.use((request, response, next) => {
   });
 
 router.route('/control').get((request, response) => {
-    Db.getControl().then((data) => {
+  Db.getControl().then((data) => {
       response.json(data[0]);
     })
   })
@@ -63,6 +67,45 @@ router.route('/listabreveuso').get((request, response) => {
   })
 })
 
+router.route('/listaconstsecosql').get((request, response) => {
+  Db.getListaConstSecoSQL().then((data)=> {
+    response.json(data[0]);
+  })
+})
+
+router.route('/listabreveusointerno').get((request, response) => {
+  jConfig.getListadePrecioBUI2().then((data)=>{
+    response.json(data);
+  })
+})
+
+router.route('/listaconstsecoconfig').get((request, response) => {
+  jConfig.getConsSecoConfig().then((data)=>{
+    response.json(data);
+  })
+})
+
+router.route('/listaconstseco').get((request, response) => {
+  jConfig.getListaConstSeco().then((data)=>{
+    response.json(data);
+  })
+})
+
+
+//Tablas
+router.route('/tablas').get(Pg.getTablas)
+router.route('/tablas/:id').get(Pg.getTablasById)
+router.route('/tablas').post(Pg.createTablas)
+router.route('/tablas/:id').put(Pg.updateTablas)
+router.route('/tablas/:id').delete(Pg.deleteTablas)
+
+// Tabla Lista de Precio Breve Uso Interno
+router.route('/listadepreciobreveusointerno').get(Pg.getListadePrecioBUI)
+router.route('/listadepreciobreveusointerno/:id').get(Pg.getListadePrecioBUIById)
+router.route('/listadepreciobreveusointerno').post(Pg.createListadePrecioBUI)
+router.route('/listadepreciobreveusointerno/:id').put(Pg.updateListadePrecioBUI)
+router.route('/listadepreciobreveusointerno/:id').delete(Pg.deleteListadePrecioBUI)
+
 // Tabla Depos_A_No_Considerar
 router.route('/deposanoconsiderar').get(Pg.getDeposANoConsiderar)
 router.route('/deposanoconsiderar/:id').get(Pg.getDeposANoConsiderarByCod)
@@ -91,6 +134,19 @@ router.route('/movimientosdecontenedores/').post(Pg.createMovContenedores)
 router.route('/movimientosdecontenedores/:id').put(Pg.updateMovContenedores)
 router.route('/movimientosdecontenedores/:id').delete(Pg.deleteMovContenedores)
 
-var port = 8090;
-app.listen(port);
+// Tabla Const. Seco Armado Config 1
+router.route('/constsecoarmadoconfig1').get(Pg.getConstSecoArmadoConfig1)
+
+// Tabla Const. Seco Armado Config 2
+router.route('/constsecoarmadoconfig2').get(Pg.getConstSecoArmadoConfig2)
+
+// Tabla Const. Seco Nombres Config
+router.route('/constseconombresconfig').get(Pg.getConstSecoNombresConfig)
+
+const port = 8090;
+
+const httpsServer = https.createServer(httpsOptions, app)
+
+httpsServer.listen(port);
+
 console.log('API is runnning at ' + port);

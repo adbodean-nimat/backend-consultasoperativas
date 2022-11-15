@@ -1,6 +1,125 @@
+const { response } = require('express');
 var configpg = require('./dbconfig_pg.js');
 const Pool = require('pg').Pool
 const pool = new Pool(configpg);
+
+//Tabla
+const getTablas = (request, response) => {
+    pool.query('SELECT * FROM tablas ORDER BY id ASC', (error, results) => {
+        if (error){
+            throw error
+        }
+        response.status(200).json(results.rows)
+    })
+}
+
+const getTablasById = (request, response) => {
+    const id = parseInt(request.params.id)
+
+    pool.query('SELECT * FROM tablas WHERE id = $1', [id], (error, results) => {
+        if (error){
+            throw error
+        }
+        response.status(200).json(results.rows)
+    })
+}
+
+const createTablas = (request, response) => {
+    const {nombre_tablas, url_tablas} = request.body
+
+    pool.query('INSERT INTO tablas (nombre_tablas, url_tablas) VALUES ($1, $2) RETURNING *',
+    [nombre_tablas, url_tablas], (error, results) => {
+        if (error){
+            throw error
+        }
+        response.status(201).send(`Agregar correctamente id: ${results.rows[0].id}`)
+    })
+}
+
+const updateTablas = (request, response) => {
+    const id = parseInt(request.params.id)
+    const {nombre_tablas, url_tablas} = request.body
+
+    pool.query(
+        'UPDATE tablas SET nombre_tablas = $1, url_tablas = $2 WHERE id = $3',
+        [nombre_tablas, url_tablas, id], (error, results) => {
+            if (error){
+                throw error
+            }
+            response.status(200).send(`Modificar correctamente: ${id}`)
+        }
+    )
+}
+
+const deleteTablas = (request, response) => {
+    const id = parseInt(request.params.id)
+
+    pool.query('DELETE FROM tablas WHERE id = $1', [id], (error, results) => {
+        if (error){
+            throw error
+        }
+        response.status(200).send(`Eliminar correctamente: ${id}`)
+    })
+}
+
+//Tabla Lista de Precio Breve Uso Interno
+const getListadePrecioBUI = (request, response) => {
+    pool.query('SELECT * FROM lista_de_precios_breve_uso_interno ORDER BY nro_orden_art ASC', (error, results) => {
+        if (error){
+            throw error
+        }
+        response.status(200).json(results.rows)
+    })
+}
+
+const getListadePrecioBUIById = (request, response) => {
+    const id = parseInt(request.params.id)
+
+    pool.query('SELECT * FROM lista_de_precios_breve_uso_interno WHERE id = $1', [id], (error, results) => {
+        if (error){
+            throw error
+        }
+        response.status(200).json(results.rows)
+    })
+}
+
+const createListadePrecioBUI = (request, response) => {
+    const {arts_articulo_emp, arts_nombre, grupo_del_art, comentario, nro_orden_art} = request.body
+
+    pool.query('INSERT INTO lista_de_precios_breve_uso_interno (arts_articulo_emp, arts_nombre, grupo_del_art, comentario, nro_orden_art) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+    [arts_articulo_emp, arts_nombre, grupo_del_art, comentario, nro_orden_art], (error, results) => {
+        if (error){
+            throw error
+        }
+        response.status(201).send(`Agregar correctamente id: ${results.rows[0].id}`)
+    })
+}
+
+const updateListadePrecioBUI = (request, response) => {
+    const id = parseInt(request.params.id)
+    const {arts_articulo_emp, arts_nombre, grupo_del_art, comentario, nro_orden_art} = request.body
+
+    pool.query(
+        'UPDATE lista_de_precios_breve_uso_interno SET arts_articulo_emp = $1, arts_nombre = $2, grupo_del_art = $3, comentario = $4, nro_orden_art = $5 WHERE id = $6',
+        [arts_articulo_emp, arts_nombre, grupo_del_art, comentario, nro_orden_art, id], (error, results) => {
+            if (error){
+                throw error
+            }
+            response.status(200).send(`Modificar correctamente: ${id}`)
+        }
+    )
+}
+
+const deleteListadePrecioBUI = (request, response) => {
+    const id = parseInt(request.params.id)
+
+    pool.query('DELETE FROM lista_de_precios_breve_uso_interno WHERE id = $1', [id], (error, results) => {
+        if (error){
+            throw error
+        }
+        response.status(200).send(`Eliminar correctamente: ${id}`)
+    })
+}
 
 // Tabla Movimiento de contenedores
 const getMovContenedores = (request, response) => {
@@ -240,25 +359,42 @@ const deleteDepos = (request, response) => {
     })
 }
 
+// Tabla Const. Seco Armado Config. 1
+const getConstSecoArmadoConfig1 = (request, response) => {
+    pool.query('SELECT * FROM public.const_seco_armado_config_1 ORDER BY id ASC', (error, results)=> {
+        if (error){
+            throw error
+        }
+        response.status(200).json(results.rows)
+    })
+}
+
+// Tabla Const. Seco Armado Config. 2
+const getConstSecoArmadoConfig2 = (request, response) => {
+    pool.query('SELECT * FROM public.const_seco_armado_config_2', (error, results)=> {
+        if (error){
+            throw error
+        }
+        response.status(200).json(results.rows)
+    })
+}
+
+// Tabla Const. Seco Nombres Config.
+const getConstSecoNombresConfig = (request, response) => {
+    pool.query('SELECT * FROM public.const_seco_nombres_configuraciones', (error, results)=> {
+        if (error){
+            throw error
+        }
+        response.status(200).json(results.rows)
+    })
+}
+
 module.exports = {
-    getDeposANoConsiderar,
-    getDeposANoConsiderarByCod,
-    createDepos,
-    updateDepos,
-    deleteDepos,
-    getNPaConsiderar,
-    getNPaConsiderarByCod,
-    createNP,
-    updateNP,
-    deleteNP,
-    getDimensionesCont,
-    getDimensionesContById,
-    createDimensionesCont,
-    updateDimensionesCont,
-    deleteDimensionesCont,
-    getMovContenedores,
-    getMovContenedoresById,
-    createMovContenedores,
-    updateMovContenedores,
-    deleteMovContenedores
+    getDeposANoConsiderar, getDeposANoConsiderarByCod, createDepos, updateDepos, deleteDepos,
+    getNPaConsiderar, getNPaConsiderarByCod, createNP, updateNP, deleteNP,
+    getDimensionesCont, getDimensionesContById, createDimensionesCont, updateDimensionesCont, deleteDimensionesCont,
+    getMovContenedores, getMovContenedoresById, createMovContenedores, updateMovContenedores, deleteMovContenedores,
+    getListadePrecioBUI, getListadePrecioBUIById, createListadePrecioBUI, updateListadePrecioBUI, deleteListadePrecioBUI,
+    getTablas, getTablasById, createTablas, updateTablas, deleteTablas,
+    getConstSecoArmadoConfig1, getConstSecoArmadoConfig2, getConstSecoNombresConfig
 }

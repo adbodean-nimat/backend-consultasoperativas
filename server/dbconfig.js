@@ -1,15 +1,17 @@
-const  config = {
-    user:  'sa', // sql user
-    password:  'Primicialg301', //sql user password
-    server:  '192.168.0.108', // if it does not work try- localhost
-    database:  'dbNimat',
+require('dotenv').config();
+
+const config = {
+    user:  process.env.SQL_USER, 
+    password:  process.env.SQL_PASSWORD,
+    server:  process.env.SQL_SERVER,
+    database:  process.env.SQL_DATABASE,
     options: {
       trustServerCertificate: true,
       trustedconnection:  true,
       enableArithAbort:  true,
       instancename:  'MSSQLSERVER'  // SQL Server instance name
     },
-    port:  1433
+    port:   parseInt(process.env.SQL_PORT, 10)
   }
   
   module.exports = config;
