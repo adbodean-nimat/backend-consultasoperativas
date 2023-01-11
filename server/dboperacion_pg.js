@@ -1,4 +1,5 @@
-const { response } = require('express');
+const { response, request } = require('express');
+const { takeRightWhile } = require('lodash');
 var configpg = require('./dbconfig_pg.js');
 const Pool = require('pg').Pool
 const pool = new Pool(configpg);
@@ -389,6 +390,36 @@ const getConstSecoNombresConfig = (request, response) => {
     })
 }
 
+// Tabla SETS DE VENTAS
+const getSetsVentas = (request, response) => {
+    pool.query('SELECT * FROM public.sets_de_ventas ORDER BY id ASC', (error, results) =>{
+        if (error){
+            throw error
+        }
+        response.status(200).json(results.rows)
+    })
+}
+
+// Tabla FAMILIA DE ARTICULOS
+const getFamiliaArt = (request, response) => {
+    pool.query('SELECT * FROM public.familias_de_articulos ORDER BY id ASC', (error, results) =>{
+        if (error){
+            throw error
+        }
+        response.status(200).json(results.rows)
+    })
+}
+
+// Tabla Vincular articulos a familia
+const getVincularArtFamilia = (request, response) => {
+    pool.query('SELECT * FROM public.vincular_articulos_a_familia ORDER BY cod ASC', (error, results) =>{
+        if (error){
+            throw error
+        }
+        response.status(200).json(results.rows)
+    })
+}
+
 module.exports = {
     getDeposANoConsiderar, getDeposANoConsiderarByCod, createDepos, updateDepos, deleteDepos,
     getNPaConsiderar, getNPaConsiderarByCod, createNP, updateNP, deleteNP,
@@ -396,5 +427,6 @@ module.exports = {
     getMovContenedores, getMovContenedoresById, createMovContenedores, updateMovContenedores, deleteMovContenedores,
     getListadePrecioBUI, getListadePrecioBUIById, createListadePrecioBUI, updateListadePrecioBUI, deleteListadePrecioBUI,
     getTablas, getTablasById, createTablas, updateTablas, deleteTablas,
-    getConstSecoArmadoConfig1, getConstSecoArmadoConfig2, getConstSecoNombresConfig
+    getConstSecoArmadoConfig1, getConstSecoArmadoConfig2, getConstSecoNombresConfig,
+    getSetsVentas, getFamiliaArt, getVincularArtFamilia
 }

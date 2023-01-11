@@ -73,6 +73,24 @@ router.route('/listaconstsecosql').get((request, response) => {
   })
 })
 
+router.route('/clasificadorclientes').get((request, response)=>{
+  Db.getClasificadorClientes().then((data)=>{
+    response.json(data[0]);
+  })
+})
+
+router.route('/vnsindtofinanc').get((request, response)=>{
+  Db.getVN_sin_dto_financ().then((data)=>{
+    response.json(data[0]);
+  })
+})
+
+router.route('/rubrovta').get((request, response)=>{
+  Db.getRubroVta().then((data)=>{
+    response.json(data[0]);
+  })
+})
+
 router.route('/listabreveusointerno').get((request, response) => {
   jConfig.getListadePrecioBUI2().then((data)=>{
     response.json(data);
@@ -87,6 +105,18 @@ router.route('/listaconstsecoconfig').get((request, response) => {
 
 router.route('/listaconstseco').get((request, response) => {
   jConfig.getListaConstSeco().then((data)=>{
+    response.json(data);
+  })
+})
+
+router.route('/familiaarticulos').get((request, response)=> {
+  jConfig.getFamiliaArts().then((data)=>{
+    response.json(data);
+  })
+})
+
+router.route('/lpvnrubrosvtas').get((request, response)=> {
+  jConfig.getVN_1().then((data)=>{
     response.json(data);
   })
 })
@@ -142,6 +172,15 @@ router.route('/constsecoarmadoconfig2').get(Pg.getConstSecoArmadoConfig2)
 
 // Tabla Const. Seco Nombres Config
 router.route('/constseconombresconfig').get(Pg.getConstSecoNombresConfig)
+
+// Tabla Sets de Ventas
+router.route('/setsdeventas').get(Pg.getSetsVentas)
+
+// Tabla Familia de articulos
+router.route('/familiadearticulo').get(Pg.getFamiliaArt)
+
+// Tabla Vincular articulos a familia
+router.route('/vinculararticulosafamilia').get(Pg.getVincularArtFamilia)
 
 const port = 8090;
 
