@@ -1,5 +1,4 @@
 const { response, request } = require('express');
-const { takeRightWhile } = require('lodash');
 var configpg = require('./dbconfig_pg.js');
 const Pool = require('pg').Pool
 const pool = new Pool(configpg);
@@ -26,10 +25,10 @@ const getTablasById = (request, response) => {
 }
 
 const createTablas = (request, response) => {
-    const {nombre_tablas, url_tablas} = request.body
+    const {nombre_tablas, url_tablas, consultas_tablas} = request.body
 
-    pool.query('INSERT INTO tablas (nombre_tablas, url_tablas) VALUES ($1, $2) RETURNING *',
-    [nombre_tablas, url_tablas], (error, results) => {
+    pool.query('INSERT INTO tablas (nombre_tablas, url_tablas, consultas_tablas) VALUES ($1, $2, $3) RETURNING *',
+    [nombre_tablas, url_tablas, consultas_tablas], (error, results) => {
         if (error){
             throw error
         }
@@ -39,11 +38,11 @@ const createTablas = (request, response) => {
 
 const updateTablas = (request, response) => {
     const id = parseInt(request.params.id)
-    const {nombre_tablas, url_tablas} = request.body
+    const {nombre_tablas, url_tablas, consultas_tablas} = request.body
 
     pool.query(
-        'UPDATE tablas SET nombre_tablas = $1, url_tablas = $2 WHERE id = $3',
-        [nombre_tablas, url_tablas, id], (error, results) => {
+        'UPDATE tablas SET nombre_tablas = $1, url_tablas = $2, consultas_tablas = $3 WHERE id = $4',
+        [nombre_tablas, url_tablas, consultas_tablas, id], (error, results) => {
             if (error){
                 throw error
             }
@@ -362,11 +361,61 @@ const deleteDepos = (request, response) => {
 
 // Tabla Const. Seco Armado Config. 1
 const getConstSecoArmadoConfig1 = (request, response) => {
-    pool.query('SELECT * FROM public.const_seco_armado_config_1 ORDER BY id ASC', (error, results)=> {
+    pool.query('SELECT * FROM public.const_seco_armado_config_1', (error, results)=> {
         if (error){
             throw error
         }
         response.status(200).json(results.rows)
+    })
+}
+
+const getConstSecoArmadoConfig1ById = (request, response) => {
+    const id = parseInt(request.params.id)
+
+    pool.query('SELECT * FROM public.const_seco_armado_config_1 WHERE id = $1', [id], (error, results) => {
+        if (error){
+            throw error
+        }
+        response.status(200).json(results.rows)
+    })
+}
+
+const createConstSecoArmadoConfig1 = (request, response) => {
+    const {codptf, configcs, cant} = request.body
+
+    pool.query(
+        'INSERT INTO public.const_seco_armado_config_1 (codptf, configcs, cant) VALUES ($1, $2, $3) RETURNING *', 
+        [codptf, configcs, cant], (error, results) => {
+        if (error){
+            throw error
+        }
+        response.status(201).send(`Agregar correctamente id: ${results.rows[0].id}`)
+    })
+}
+
+const updateConstSecoArmadoConfig1 = (request, response) => {
+    const id = parseInt(request.params.id)
+    const {codptf, configcs, cant} = request.body
+
+    pool.query(
+        'UPDATE public.const_seco_armado_config_1 SET codptf = $1, configcs = $2, cant = $3 WHERE id = $4',
+        [codptf, configcs, cant, id], (error, results) => {
+            if (error){
+                throw error
+            }
+            response.status(200).send(`Modificado: ${id}`)
+        }
+    )
+}
+
+const deleteConstSecoArmadoConfig1 = (request, response) => {
+    const id = parseInt(request.params.id)
+
+    pool.query('DELETE FROM public.const_seco_armado_config_1 WHERE id = $1', [id], (error, results) => {
+        if (error){
+            throw error
+        }
+        response.status(200).send(`Eliminado: ${id}`)
     })
 }
 
@@ -380,13 +429,113 @@ const getConstSecoArmadoConfig2 = (request, response) => {
     })
 }
 
-// Tabla Const. Seco Nombres Config.
-const getConstSecoNombresConfig = (request, response) => {
-    pool.query('SELECT * FROM public.const_seco_nombres_configuraciones', (error, results)=> {
+const getConstSecoArmadoConfig2ByCod = (request, response) => {
+    const id = parseInt(request.params.id)
+
+    pool.query('SELECT * FROM public.const_seco_armado_config_2 WHERE id = $1', [id], (error, results) => {
         if (error){
             throw error
         }
         response.status(200).json(results.rows)
+    })
+}
+
+const createConstSecoArmadoConfig2 = (request, response) => {
+    const {cod_art, nombre_art_ptf, nombre_art_lp, uni_lp_x_cada_uni_ptf, uni, fracciona_uni_ptf, observacion} = request.body
+
+    pool.query(
+        'INSERT INTO public.const_seco_armado_config_2 (cod_art, nombre_art_ptf, nombre_art_lp, uni_lp_x_cada_uni_ptf, uni, fracciona_uni_ptf, observacion) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *', 
+        [cod_art, nombre_art_ptf, nombre_art_lp, uni_lp_x_cada_uni_ptf, uni, fracciona_uni_ptf, observacion], (error, results) => {
+        if (error){
+            throw error
+        }
+        response.status(201).send(`Agregar correctamente`)
+    })
+}
+
+const updateConstSecoArmadoConfig2 = (request, response) => {
+    const id = parseInt(request.params.id)
+    const {cod_art, nombre_art_ptf, nombre_art_lp, uni_lp_x_cada_uni_ptf, uni, fracciona_uni_ptf, observacion} = request.body
+
+    pool.query(
+        'UPDATE public.const_seco_armado_config_2 SET cod_art = $1, nombre_art_ptf = $2, nombre_art_lp = $3, uni_lp_x_cada_uni_ptf = $4, uni = $5, fracciona_uni_ptf = $6, observacion = $7 WHERE id = $8',
+        [cod_art, nombre_art_ptf, nombre_art_lp, uni_lp_x_cada_uni_ptf, uni, fracciona_uni_ptf, observacion, id], (error, results) => {
+            if (error){
+                throw error
+            }
+            response.status(200).send(`Modificado`)
+        }
+    )
+}
+
+const deleteConstSecoArmadoConfig2 = (request, response) => {
+    const id = parseInt(request.params.id)
+
+    pool.query('DELETE FROM public.const_seco_armado_config_2 WHERE id = $1', [id], (error, results) => {
+        if (error){
+            throw error
+        }
+        response.status(200).send(`Eliminado: ${id}`)
+    })
+}
+
+// Tabla Const. Seco Nombres Config.
+const getConstSecoNombresConfig = (request, response) => {
+    pool.query('SELECT * FROM public.const_seco_nombres_configuraciones ORDER BY id ASC', (error, results)=> {
+        if (error){
+            throw error
+        }
+        response.status(200).json(results.rows)
+    })
+}
+
+const getConstSecoNombresConfigByCod = (request, response) => {
+    const id = parseInt(request.params.id)
+
+    pool.query('SELECT * FROM public.const_seco_nombres_configuraciones WHERE id = $1', [id], (error, results) => {
+        if (error){
+            throw error
+        }
+        response.status(200).json(results.rows)
+    })
+}
+
+const updateConstSecoNombresConfig = (request, response) => {
+    const id = parseInt(request.params.id)
+    const {cod_conf_cs, nombre_conf_cs} = request.body
+
+    pool.query(
+        'UPDATE public.const_seco_nombres_configuraciones SET cod_conf_cs = $1, nombre_conf_cs = $2 WHERE id = $3',
+        [cod_conf_cs, nombre_conf_cs, id], (error, results) => {
+            if (error){
+                throw error
+            }
+            response.status(200).send(`Modificado: ${id}`)
+        }
+    )
+}
+
+const createConstSecoNombresConfig = (request, response) => {
+    const {cod_conf_cs, nombre_conf_cs} = request.body
+
+    pool.query(
+        'INSERT INTO public.const_seco_nombres_configuraciones (cod_conf_cs, nombre_conf_cs) VALUES ($1, $2) RETURNING *', 
+        [cod_conf_cs, nombre_conf_cs], (error, results) => {
+        if (error){
+            throw error
+        }
+        response.status(201).send(`Agregar correctamente`)
+    })
+}
+
+const deleteConstSecoNombresConfig = (request, response) => {
+    const id = parseInt(request.params.id)
+
+    pool.query('DELETE FROM public.const_seco_nombres_configuraciones WHERE id = $1', [id], (error, results) => {
+        if (error){
+            throw error
+        }
+        response.status(200).send(`Eliminado: ${id}`)
     })
 }
 
@@ -400,6 +549,56 @@ const getSetsVentas = (request, response) => {
     })
 }
 
+const getSetsVentasByCod = (request, response) => {
+    const id = parseInt(request.params.id)
+
+    pool.query('SELECT * FROM public.sets_de_ventas WHERE id = $1', [id], (error, results) => {
+        if (error){
+            throw error
+        }
+        response.status(200).json(results.rows)
+    })
+}
+
+const updateSetsVentas = (request, response) => {
+    const id = parseInt(request.params.id)
+    const {cod_set_art, nombre_set_art} = request.body
+
+    pool.query(
+        'UPDATE public.sets_de_ventas SET cod_set_art = $1, nombre_set_art = $2 WHERE id = $3',
+        [cod_set_art, nombre_set_art, id], (error, results) => {
+            if (error){
+                throw error
+            }
+            response.status(200).send(`Modificado: ${id}`)
+        }
+    )
+}
+
+const createSetsVentas = (request, response) => {
+    const {cod_set_art, nombre_set_art} = request.body
+
+    pool.query(
+        'INSERT INTO public.sets_de_ventas (cod_set_art, nombre_set_art) VALUES ($1, $2) RETURNING *', 
+        [cod_set_art, nombre_set_art], (error, results) => {
+        if (error){
+            throw error
+        }
+        response.status(201).send(`Agregar correctamente id: ${results.rows[0].id}`)
+    })
+}
+
+const deleteSetsVentas = (request, response) => {
+    const id = parseInt(request.params.id)
+
+    pool.query('DELETE FROM public.sets_de_ventas WHERE id = $1', [id], (error, results) => {
+        if (error){
+            throw error
+        }
+        response.status(200).send(`Eliminado: ${id}`)
+    })
+}
+
 // Tabla FAMILIA DE ARTICULOS
 const getFamiliaArt = (request, response) => {
     pool.query('SELECT * FROM public.familias_de_articulos ORDER BY id ASC', (error, results) =>{
@@ -407,6 +606,56 @@ const getFamiliaArt = (request, response) => {
             throw error
         }
         response.status(200).json(results.rows)
+    })
+}
+
+const getFamiliaArtById = (request, response) => {
+    const id = parseInt(request.params.id)
+
+    pool.query('SELECT * FROM public.familias_de_articulos WHERE id = $1', [id], (error, results) => {
+        if (error){
+            throw error
+        }
+        response.status(200).json(results.rows)
+    })
+}
+
+const updateFamiliaArt = (request, response) => {
+    const id = parseInt(request.params.id)
+    const {cod_fami_art, nombre_fami_art, nro_orden_de_la_fami, set_de_la_familia} = request.body
+
+    pool.query(
+        'UPDATE public.familias_de_articulos SET cod_fami_art = $1, nombre_fami_art = $2, nro_orden_de_la_fami =$3, set_de_la_familia = $4 WHERE id = $5',
+        [cod_fami_art, nombre_fami_art, nro_orden_de_la_fami, set_de_la_familia, id], (error, results) => {
+            if (error){
+                throw error
+            }
+            response.status(200).send(`Modificado: ${id}`)
+        }
+    )
+}
+
+const createFamiliaArt = (request, response) => {
+    const {cod_fami_art, nombre_fami_art, nro_orden_de_la_fami, set_de_la_familia} = request.body
+
+    pool.query(
+        'INSERT INTO public.familias_de_articulos (cod_fami_art, nombre_fami_art, nro_orden_de_la_fami, set_de_la_familia) VALUES ($1, $2, $3, $4) RETURNING *', 
+        [cod_fami_art, nombre_fami_art, nro_orden_de_la_fami, set_de_la_familia], (error, results) => {
+        if (error){
+            throw error
+        }
+        response.status(201).send(`Agregar correctamente id: ${results.rows[0].id}`)
+    })
+}
+
+const deleteFamiliaArt = (request, response) => {
+    const id = parseInt(request.params.id)
+
+    pool.query('DELETE FROM public.familias_de_articulos WHERE id = $1', [id], (error, results) => {
+        if (error){
+            throw error
+        }
+        response.status(200).send(`Eliminado: ${id}`)
     })
 }
 
@@ -420,6 +669,56 @@ const getVincularArtFamilia = (request, response) => {
     })
 }
 
+const getVincularArtFamiliaByCod = (request, response) => {
+    const id = parseInt(request.params.id)
+
+    pool.query('SELECT * FROM public.vincular_articulos_a_familia WHERE cod = $1', [id], (error, results) => {
+        if (error){
+            throw error
+        }
+        response.status(200).json(results.rows)
+    })
+}
+
+const updateVincularArtFamilia = (request, response) => {
+    const id = parseInt(request.params.id)
+    const {cod_art, cod_familia, orden_art_familia} = request.body
+
+    pool.query(
+        'UPDATE public.vincular_articulos_a_familia SET  cod_art = $1, cod_familia =$2, orden_art_familia = $3 WHERE cod = $4',
+        [cod_art, cod_familia, orden_art_familia, id], (error, results) => {
+            if (error){
+                throw error
+            }
+            response.status(200).send(`Modificado`)
+        }
+    )
+}
+
+const createVincularArtFamilia = (request, response) => {
+    const {cod_art, cod_familia, orden_art_familia} = request.body
+
+    pool.query(
+        'INSERT INTO public.vincular_articulos_a_familia (cod_art, cod_familia, orden_art_familia) VALUES ($1, $2, $3) RETURNING *', 
+        [cod_art, cod_familia, orden_art_familia], (error, results) => {
+        if (error){
+            throw error
+        }
+        response.status(201).send(`Agregar correctamente id: ${results.rows[0].cod}`)
+    })
+}
+
+const deleteVincularArtFamilia = (request, response) => {
+    const id = parseInt(request.params.id)
+
+    pool.query('DELETE FROM public.vincular_articulos_a_familia WHERE cod = $1', [id], (error, results) => {
+        if (error){
+            throw error
+        }
+        response.status(200).send(`Eliminado: ${id}`)
+    })
+}
+
 module.exports = {
     getDeposANoConsiderar, getDeposANoConsiderarByCod, createDepos, updateDepos, deleteDepos,
     getNPaConsiderar, getNPaConsiderarByCod, createNP, updateNP, deleteNP,
@@ -427,6 +726,10 @@ module.exports = {
     getMovContenedores, getMovContenedoresById, createMovContenedores, updateMovContenedores, deleteMovContenedores,
     getListadePrecioBUI, getListadePrecioBUIById, createListadePrecioBUI, updateListadePrecioBUI, deleteListadePrecioBUI,
     getTablas, getTablasById, createTablas, updateTablas, deleteTablas,
-    getConstSecoArmadoConfig1, getConstSecoArmadoConfig2, getConstSecoNombresConfig,
-    getSetsVentas, getFamiliaArt, getVincularArtFamilia
+    getConstSecoArmadoConfig1, getConstSecoArmadoConfig1ById, createConstSecoArmadoConfig1, updateConstSecoArmadoConfig1, deleteConstSecoArmadoConfig1,
+    getConstSecoArmadoConfig2, getConstSecoArmadoConfig2ByCod, createConstSecoArmadoConfig2, updateConstSecoArmadoConfig2, deleteConstSecoArmadoConfig2,
+    getConstSecoNombresConfig, getConstSecoNombresConfigByCod, createConstSecoNombresConfig, updateConstSecoNombresConfig, deleteConstSecoNombresConfig,
+    getSetsVentas, getSetsVentasByCod, createSetsVentas, updateSetsVentas, deleteSetsVentas,
+    getFamiliaArt, getFamiliaArtById, createFamiliaArt, updateFamiliaArt, deleteFamiliaArt,
+    getVincularArtFamilia, getVincularArtFamiliaByCod, updateVincularArtFamilia, createVincularArtFamilia, deleteVincularArtFamilia
 }

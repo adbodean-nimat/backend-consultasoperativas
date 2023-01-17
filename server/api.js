@@ -166,21 +166,45 @@ router.route('/movimientosdecontenedores/:id').delete(Pg.deleteMovContenedores)
 
 // Tabla Const. Seco Armado Config 1
 router.route('/constsecoarmadoconfig1').get(Pg.getConstSecoArmadoConfig1)
+router.route('/constsecoarmadoconfig1/:id').get(Pg.getConstSecoArmadoConfig1ById)
+router.route('/constsecoarmadoconfig1/').post(Pg.createConstSecoArmadoConfig1)
+router.route('/constsecoarmadoconfig1/:id').put(Pg.updateConstSecoArmadoConfig1)
+router.route('/constsecoarmadoconfig1/:id').delete(Pg.deleteConstSecoArmadoConfig1)
 
 // Tabla Const. Seco Armado Config 2
 router.route('/constsecoarmadoconfig2').get(Pg.getConstSecoArmadoConfig2)
+router.route('/constsecoarmadoconfig2/:id').get(Pg.getConstSecoArmadoConfig2ByCod)
+router.route('/constsecoarmadoconfig2/').post(Pg.createConstSecoArmadoConfig2)
+router.route('/constsecoarmadoconfig2/:id').put(Pg.updateConstSecoArmadoConfig2)
+router.route('/constsecoarmadoconfig2/:id').delete(Pg.deleteConstSecoArmadoConfig2)
 
 // Tabla Const. Seco Nombres Config
 router.route('/constseconombresconfig').get(Pg.getConstSecoNombresConfig)
+router.route('/constseconombresconfig/:id').get(Pg.getConstSecoNombresConfigByCod)
+router.route('/constseconombresconfig/').post(Pg.createConstSecoNombresConfig)
+router.route('/constseconombresconfig/:id').put(Pg.updateConstSecoNombresConfig)
+router.route('/constseconombresconfig/:id').delete(Pg.deleteConstSecoNombresConfig)
 
 // Tabla Sets de Ventas
 router.route('/setsdeventas').get(Pg.getSetsVentas)
+router.route('/setsdeventas/:id').get(Pg.getSetsVentasByCod)
+router.route('/setsdeventas').post(Pg.createSetsVentas)
+router.route('/setsdeventas/:id').put(Pg.updateSetsVentas)
+router.route('/setsdeventas/:id').delete(Pg.deleteSetsVentas)
 
 // Tabla Familia de articulos
 router.route('/familiadearticulo').get(Pg.getFamiliaArt)
+router.route('/familiadearticulo/:id').get(Pg.getFamiliaArtById)
+router.route('/familiadearticulo').post(Pg.createFamiliaArt)
+router.route('/familiadearticulo/:id').put(Pg.updateFamiliaArt)
+router.route('/familiadearticulo/:id').delete(Pg.deleteFamiliaArt)
 
 // Tabla Vincular articulos a familia
 router.route('/vinculararticulosafamilia').get(Pg.getVincularArtFamilia)
+router.route('/vinculararticulosafamilia/:id').get(Pg.getVincularArtFamiliaByCod)
+router.route('/vinculararticulosafamilia').post(Pg.createVincularArtFamilia)
+router.route('/vinculararticulosafamilia/:id').put(Pg.updateVincularArtFamilia)
+router.route('/vinculararticulosafamilia/:id').delete(Pg.deleteVincularArtFamilia)
 
 const port = 8090;
 
