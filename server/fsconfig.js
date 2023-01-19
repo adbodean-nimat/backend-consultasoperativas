@@ -1,4 +1,3 @@
-const { replace } = require('lodash');
 const xlsx = require('xlsx');
 
 exports.getFileExcel = async (request, response) => {

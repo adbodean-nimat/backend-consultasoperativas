@@ -1,6 +1,7 @@
 var Db = require('./dboperacion');
 var Pg = require('./dboperacion_pg');
 var jConfig = require('./jconfig');
+var fsConfig = require('./fsconfig');
 var express = require('express');
 var bodyParser = require('body-parser');
 var cors = require('cors');
@@ -120,6 +121,8 @@ router.route('/lpvnrubrosvtas').get((request, response)=> {
     response.json(data);
   })
 })
+
+router.route('/rowaplancanje').get(fsConfig.getFileExcel)
 
 
 //Tablas
