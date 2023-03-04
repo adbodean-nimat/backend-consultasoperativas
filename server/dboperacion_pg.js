@@ -361,7 +361,7 @@ const deleteDepos = (request, response) => {
 
 // Tabla Const. Seco Armado Config. 1
 const getConstSecoArmadoConfig1 = (request, response) => {
-    pool.query('SELECT * FROM public.const_seco_armado_config_1', (error, results)=> {
+    pool.query('SELECT * FROM const_seco_armado_config_1 ORDER BY id ASC', (error, results)=> {
         if (error){
             throw error
         }
@@ -372,7 +372,7 @@ const getConstSecoArmadoConfig1 = (request, response) => {
 const getConstSecoArmadoConfig1ById = (request, response) => {
     const id = parseInt(request.params.id)
 
-    pool.query('SELECT * FROM public.const_seco_armado_config_1 WHERE id = $1', [id], (error, results) => {
+    pool.query('SELECT * FROM const_seco_armado_config_1 WHERE id = $1', [id], (error, results) => {
         if (error){
             throw error
         }
@@ -398,7 +398,7 @@ const updateConstSecoArmadoConfig1 = (request, response) => {
     const {codptf, configcs, cant} = request.body
 
     pool.query(
-        'UPDATE public.const_seco_armado_config_1 SET codptf = $1, configcs = $2, cant = $3 WHERE id = $4',
+        'UPDATE const_seco_armado_config_1 SET codptf = $1, configcs = $2, cant = $3 WHERE id = $4',
         [codptf, configcs, cant, id], (error, results) => {
             if (error){
                 throw error

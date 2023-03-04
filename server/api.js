@@ -5,21 +5,63 @@ var fsConfig = require('./fsconfig');
 var express = require('express');
 var bodyParser = require('body-parser');
 var cors = require('cors');
-const { request, response, Router } = require('express');
 var app = express();
 var router = express.Router();
+var passport = require('passport');
+var LdapStrategy = require('passport-ldapauth');
 const https = require('https');
 const fs = require('fs');
-app.use(cors());
-app.use(bodyParser.urlencoded({ extended: true }));
-app.use(bodyParser.json());
-/* app.use('/', express.static('public')); */
-/* app.use('/test', express.static('test')); */
 const httpsOptions = {
   key: fs.readFileSync(process.env.SSL_KEY),
   cert: fs.readFileSync(process.env.SSL_CERT)
 }
-app.use('/api', router);
+const jwt = require("jsonwebtoken");
+const verifyUserToken = (req, res, next) => {
+  if (!req.headers.authorization) {
+    return res.status(401).send("Solicitud no autorizada");
+  }
+  const token = req.headers["authorization"].split(" ")[1];
+  if (!token) {
+    return res.status(401).send("Acceso denegado. No se proporcionó token.");
+  }
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = decoded.user;
+    next();
+  } catch (err) {
+    res.status(400).send("Token inválido.");
+  }
+};
+passport.use(new LdapStrategy({
+  server: {
+    url: process.env.LDAP_URL,
+    bindDN: process.env.LDAP_bindDN,
+    bindCredentials: process.env.LDAP_bindCredentials,
+    searchBase: process.env.LDAP_searchBase,
+    searchFilter: process.env.LDAP_searchFilter
+  }
+}))
+app.use(cors());
+app.use(bodyParser.urlencoded({ extended: true }));
+app.use(bodyParser.json());
+app.use(passport.initialize())
+app.use('/api', verifyUserToken, router);
+
+app.post('/login', function (req, res, next){
+  passport.authenticate('ldapauth', {session: false}, function(err, user, info) {
+    var error = err || info
+    // console.log(user);
+    if (error) 
+      return res.status(500).json({error})
+    if (!user) {
+      return res.status(400).send("User Not Found")
+    }
+    // res.status(200).send(user)
+    //create token
+    const token = jwt.sign({ user }, process.env.JWT_SECRET);
+    return res.status(200).json({"token": token, user});
+  })(req, res, next)
+})
 
 router.use((request, response, next) => {
     console.log('middleware');
@@ -27,8 +69,8 @@ router.use((request, response, next) => {
   });
 
 router.route('/control').get((request, response) => {
-  Db.getControl().then((data) => {
-      response.json(data[0]);
+    Db.getControl().then((data) => {
+        response.json(data[0]);
     })
   })
 

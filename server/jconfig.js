@@ -2,14 +2,15 @@ require('dotenv').config();
 const https = require('https');
 const axios = require('axios');
 const _ = require('lodash');
-const httpsAgent = new https.Agent({ rejectUnauthorized: false });
+const httpsAgent = new https.Agent({ rejectUnauthorized: false }); 
+const token = process.env.JWT_TOKEN
+/* const AuthToken = { headers: {'Authorization': `Basic ${token}`},} */
 async function getListadePrecioBUI2() {
     let endpoints = [
         `${process.env.URL_API}` + 'listadepreciobreveusointerno',
         `${process.env.URL_API}` + 'listabreveuso'
-      ];
-    
-    let response = await Promise.all(endpoints.map((endpoint) => axios.get(endpoint, {httpsAgent}))).then(
+    ]
+    let response = await Promise.all(endpoints.map((endpoint) => axios.get(endpoint,{httpsAgent, headers: {'Authorization': `Basic ${token}`}}))).then(
         ([{data: firstResponse}, {data: secundResponse}]) => {
 
             var joined = firstResponse.map(function(e) {
@@ -23,7 +24,9 @@ async function getListadePrecioBUI2() {
             });
             return joined;
         } 
-    );
+    ).catch(function (error) {
+        console.log(error);
+   });
     return response;  
 }
 
@@ -31,10 +34,9 @@ async function getConsSecoConfig() {
     let endpoints2 = [
         `${process.env.URL_API}` + 'constsecoarmadoconfig1',
         `${process.env.URL_API}` + 'constsecoarmadoconfig2',
-        `${process.env.URL_API}` + 'constseconombresconfig'   
+        `${process.env.URL_API}` + 'constseconombresconfig',
       ];
-    
-    let response = await Promise.all(endpoints2.map((endpoint2) => axios.get(endpoint2,{httpsAgent}))).then(
+    let response = await Promise.all(endpoints2.map((endpoint2) => axios.get(endpoint2,{httpsAgent, headers: {'Authorization': `Basic ${token}`}}))).then(
         ([{data: firstResponse}, {data: secundResponse}, {data: threeResponse}]) => {
 
             var joined = firstResponse.map(function(e) {
@@ -56,18 +58,18 @@ async function getConsSecoConfig() {
             });
             return joined
         } 
-    );
+    ).catch(function (error) {
+        console.log(error);
+   });
     return response;  
 }
 
 async function getListaConstSeco() {
     let endpoints3 = [
         `${process.env.URL_API}` + 'listaconstsecoconfig',
-        `${process.env.URL_API}` + 'listaconstsecosql'
-               
+        `${process.env.URL_API}` + 'listaconstsecosql',
       ];
-    
-    let response = await Promise.all(endpoints3.map((endpoint3) => axios.get(endpoint3,{httpsAgent}))).then(
+    let response = await Promise.all(endpoints3.map((endpoint3) => axios.get(endpoint3,{httpsAgent, headers: {'Authorization': `Basic ${token}`}}))).then(
         ([{data: firstResponse}, {data: secundResponse}]) => {
 
             var results = [];
@@ -101,7 +103,9 @@ async function getListaConstSeco() {
             }
             return results;
         } 
-    );
+    ).catch(function (error) {
+        console.log(error);
+   });
     return response;  
 }
 
@@ -111,8 +115,7 @@ async function getFamiliaArts() {
         `${process.env.URL_API}` + 'familiadearticulo',
         `${process.env.URL_API}` + 'setsdeventas',
       ];
-    
-    let response = await Promise.all(endpoints4.map((endpoint4) => axios.get(endpoint4,{httpsAgent}))).then(
+    let response = await Promise.all(endpoints4.map((endpoint4) => axios.get(endpoint4,{httpsAgent, headers: {'Authorization': `Basic ${token}`}}))).then(
         ([{data: firstResponse}, {data: secundResponse}, {data: threeResponse}]) => {
 
             var joined = firstResponse.map(function(e) {
@@ -137,17 +140,18 @@ async function getFamiliaArts() {
             })
             return joined2
         } 
-    );
+    ).catch(function (error) {
+        console.log(error);
+   });
     return response;  
 }
 
 async function getVN_1() {
     let endpoints3 = [
         `${process.env.URL_API}` + 'familiaarticulos',
-        `${process.env.URL_API}` + 'vnsindtofinanc'
+        `${process.env.URL_API}` + 'vnsindtofinanc',
       ];
-    
-    let response = await Promise.all(endpoints3.map((endpoint3) => axios.get(endpoint3,{httpsAgent}))).then(
+    let response = await Promise.all(endpoints3.map((endpoint3) => axios.get(endpoint3,{httpsAgent, headers: {'Authorization': `Basic ${token}`}}))).then(
         ([{data: firstResponse}, {data: secundResponse}]) => {
             var results = [];
             for (var i=0; i<firstResponse.length; i++) {
@@ -191,7 +195,9 @@ async function getVN_1() {
             }
             return results;
         } 
-    );
+    ).catch(function (error) {
+        console.log(error);
+   });
     return response;  
 }
 
