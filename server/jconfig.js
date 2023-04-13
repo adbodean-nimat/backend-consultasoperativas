@@ -4,7 +4,6 @@ const axios = require('axios');
 const _ = require('lodash');
 const httpsAgent = new https.Agent({ rejectUnauthorized: false }); 
 const token = process.env.JWT_TOKEN
-/* const AuthToken = { headers: {'Authorization': `Basic ${token}`},} */
 async function getListadePrecioBUI2() {
     let endpoints = [
         `${process.env.URL_API}` + 'listadepreciobreveusointerno',

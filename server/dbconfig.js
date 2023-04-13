@@ -9,9 +9,10 @@ const config = {
       trustServerCertificate: true,
       trustedconnection:  true,
       enableArithAbort:  true,
-      instancename:  'MSSQLSERVER'  // SQL Server instance name
+      instancename:  'MSSQLSERVER'
     },
-    port:   parseInt(process.env.SQL_PORT, 10)
+    port: parseInt(process.env.SQL_PORT, 10),
+    requestTimeout: 30000
   }
   
   module.exports = config;

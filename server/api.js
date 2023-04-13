@@ -68,6 +68,24 @@ router.use((request, response, next) => {
     next();
   });
 
+router.route('/vblesentrnp/:id').get((request, response) => {
+    Db.getVblesEntrNP(request.params.id).then((data) => {
+      response.json(data[0]);
+    })
+  })
+
+router.route('/listapreciosventaalpublico').get((request, response)=>{
+  Db.getListaPreciosVentaAlPublico().then((data)=>{
+    response.json(data[0]);
+  })
+})
+
+router.route('/listaprecioscostoreposicion').get((request, response)=> {
+  Db.getListaPreciosCostoReposicion().then((data)=>{
+    response.json(data[0]);
+  })
+})
+
 router.route('/control').get((request, response) => {
     Db.getControl().then((data) => {
         response.json(data[0]);
@@ -112,6 +130,18 @@ router.route('/listabreveuso').get((request, response) => {
 
 router.route('/listaconstsecosql').get((request, response) => {
   Db.getListaConstSecoSQL().then((data)=> {
+    response.json(data[0]);
+  })
+})
+
+router.route('/ventdca1').get((request, response) => {
+  Db.getSQL_VENT_DCA1().then((data)=> {
+    response.json(data[0]);
+  })
+})
+
+router.route('/ventdvc1').get((request, response) => {
+  Db.getSQL_VENT_DVC1().then((data)=> {
     response.json(data[0]);
   })
 })

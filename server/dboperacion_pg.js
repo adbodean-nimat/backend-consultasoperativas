@@ -541,7 +541,7 @@ const deleteConstSecoNombresConfig = (request, response) => {
 
 // Tabla SETS DE VENTAS
 const getSetsVentas = (request, response) => {
-    pool.query('SELECT * FROM public.sets_de_ventas ORDER BY id ASC', (error, results) =>{
+    pool.query('SELECT * FROM public.sets_de_ventas', (error, results) =>{
         if (error){
             throw error
         }
@@ -601,7 +601,7 @@ const deleteSetsVentas = (request, response) => {
 
 // Tabla FAMILIA DE ARTICULOS
 const getFamiliaArt = (request, response) => {
-    pool.query('SELECT * FROM public.familias_de_articulos ORDER BY id ASC', (error, results) =>{
+    pool.query('SELECT * FROM public.familias_de_articulos', (error, results) =>{
         if (error){
             throw error
         }
@@ -661,7 +661,7 @@ const deleteFamiliaArt = (request, response) => {
 
 // Tabla Vincular articulos a familia
 const getVincularArtFamilia = (request, response) => {
-    pool.query('SELECT * FROM public.vincular_articulos_a_familia ORDER BY cod ASC', (error, results) =>{
+    pool.query('SELECT * FROM public.vincular_articulos_a_familia', (error, results) =>{
         if (error){
             throw error
         }
