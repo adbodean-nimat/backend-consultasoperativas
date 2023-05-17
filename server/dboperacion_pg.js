@@ -32,7 +32,7 @@ const createTablas = (request, response) => {
         if (error){
             throw error
         }
-        response.status(201).send(`Agregar correctamente id: ${results.rows[0].id}`)
+        response.status(201).send(`Agregar correctamente`)
     })
 }
 
@@ -46,7 +46,7 @@ const updateTablas = (request, response) => {
             if (error){
                 throw error
             }
-            response.status(200).send(`Modificar correctamente: ${id}`)
+            response.status(200).send(`Modificar correctamente`)
         }
     )
 }
@@ -58,7 +58,7 @@ const deleteTablas = (request, response) => {
         if (error){
             throw error
         }
-        response.status(200).send(`Eliminar correctamente: ${id}`)
+        response.status(200).send(`Eliminar correctamente`)
     })
 }
 
@@ -91,7 +91,7 @@ const createListadePrecioBUI = (request, response) => {
         if (error){
             throw error
         }
-        response.status(201).send(`Agregar correctamente id: ${results.rows[0].id}`)
+        response.status(201).send(`Agregar correctamente`)
     })
 }
 
@@ -105,7 +105,7 @@ const updateListadePrecioBUI = (request, response) => {
             if (error){
                 throw error
             }
-            response.status(200).send(`Modificar correctamente: ${id}`)
+            response.status(200).send(`Modificar correctamente`)
         }
     )
 }
@@ -117,7 +117,7 @@ const deleteListadePrecioBUI = (request, response) => {
         if (error){
             throw error
         }
-        response.status(200).send(`Eliminar correctamente: ${id}`)
+        response.status(200).send(`Eliminar correctamente`)
     })
 }
 
@@ -150,7 +150,7 @@ const createMovContenedores = (request, response) => {
         if (error){
             throw error
         }
-        response.status(201).send(`Agregar correctamente id: ${results.rows[0].id}`)
+        response.status(201).send(`Agregar correctamente`)
     })
 }
 
@@ -164,7 +164,7 @@ const updateMovContenedores = (request, response) => {
             if (error){
                 throw error
             }
-            response.status(200).send(`Modificar correctamente: ${id}`)
+            response.status(200).send(`Modificar correctamente`)
         }
     )
 }
@@ -176,7 +176,7 @@ const deleteMovContenedores = (request, response) => {
         if (error){
             throw error
         }
-        response.status(200).send(`Eliminar deposito: ${id}`)
+        response.status(200).send(`Eliminar deposito correctamente`)
     })
 }
 
@@ -209,7 +209,7 @@ const createDimensionesCont = (request, response) => {
         if (error){
             throw error
         }
-        response.status(201).send(`Agregar correctamente id: ${results.rows[0].id}`)
+        response.status(201).send(`Agregar correctamente`)
     })
 }
 
@@ -223,7 +223,7 @@ const updateDimensionesCont = (request, response) => {
             if (error){
                 throw error
             }
-            response.status(200).send(`Modificar correctamente: ${id}`)
+            response.status(200).send(`Modificar correctamente`)
         }
     )
 }
@@ -235,7 +235,7 @@ const deleteDimensionesCont = (request, response) => {
         if (error){
             throw error
         }
-        response.status(200).send(`Eliminar correctamente: ${id}`)
+        response.status(200).send(`Eliminar correctamente`)
     })
 }
 
@@ -268,7 +268,7 @@ const createNP = (request, response) => {
         if (error){
             throw error
         }
-        response.status(201).send(`Agregar correctamente id: ${results.rows[0].id}`)
+        response.status(201).send(`Agregar correctamente`)
     })
 }
 
@@ -282,7 +282,7 @@ const updateNP = (request, response) => {
             if (error){
                 throw error
             }
-            response.status(200).send(`Modificar NP: ${id}`)
+            response.status(200).send(`Modificar NP correctamente`)
         }
     )
 }
@@ -294,7 +294,7 @@ const deleteNP = (request, response) => {
         if (error){
             throw error
         }
-        response.status(200).send(`Eliminar NP: ${id}`)
+        response.status(200).send(`Eliminar NP correctamente`)
     })
 }
 
@@ -329,7 +329,7 @@ const createDepos = (request, response) => {
         if (error){
             throw error
         }
-        response.status(201).send(`Deposito agregar correctamente id: ${results.rows[0].id}`)
+        response.status(201).send(`Deposito agregar correctamente`)
     })
 }
 
@@ -343,7 +343,7 @@ const updateDepos = (request, response) => {
             if (error){
                 throw error
             }
-            response.status(200).send(`Modificar deposito: ${id}`)
+            response.status(200).send(`Modificar deposito correctamente`)
         }
     )
 }
@@ -355,7 +355,7 @@ const deleteDepos = (request, response) => {
         if (error){
             throw error
         }
-        response.status(200).send(`Eliminar deposito: ${id}`)
+        response.status(200).send(`Eliminar deposito correctamente`)
     })
 }
 
@@ -389,7 +389,7 @@ const createConstSecoArmadoConfig1 = (request, response) => {
         if (error){
             throw error
         }
-        response.status(201).send(`Agregar correctamente id: ${results.rows[0].id}`)
+        response.status(201).send(`Agregar correctamente`)
     })
 }
 
@@ -403,7 +403,7 @@ const updateConstSecoArmadoConfig1 = (request, response) => {
             if (error){
                 throw error
             }
-            response.status(200).send(`Modificado: ${id}`)
+            response.status(200).send(`Modificado correctamente`)
         }
     )
 }
@@ -415,7 +415,7 @@ const deleteConstSecoArmadoConfig1 = (request, response) => {
         if (error){
             throw error
         }
-        response.status(200).send(`Eliminado: ${id}`)
+        response.status(200).send(`Eliminado correctamente`)
     })
 }
 
@@ -475,7 +475,7 @@ const deleteConstSecoArmadoConfig2 = (request, response) => {
         if (error){
             throw error
         }
-        response.status(200).send(`Eliminado: ${id}`)
+        response.status(200).send(`Eliminado correctamente`)
     })
 }
 
@@ -510,7 +510,7 @@ const updateConstSecoNombresConfig = (request, response) => {
             if (error){
                 throw error
             }
-            response.status(200).send(`Modificado: ${id}`)
+            response.status(200).send(`Modificado correctamente`)
         }
     )
 }
@@ -535,7 +535,7 @@ const deleteConstSecoNombresConfig = (request, response) => {
         if (error){
             throw error
         }
-        response.status(200).send(`Eliminado: ${id}`)
+        response.status(200).send(`Eliminado correctamente`)
     })
 }
 
@@ -570,7 +570,7 @@ const updateSetsVentas = (request, response) => {
             if (error){
                 throw error
             }
-            response.status(200).send(`Modificado: ${id}`)
+            response.status(200).send(`Modificado correctamente`)
         }
     )
 }
@@ -584,7 +584,7 @@ const createSetsVentas = (request, response) => {
         if (error){
             throw error
         }
-        response.status(201).send(`Agregar correctamente id: ${results.rows[0].id}`)
+        response.status(201).send(`Agregar correctamente`)
     })
 }
 
@@ -595,7 +595,7 @@ const deleteSetsVentas = (request, response) => {
         if (error){
             throw error
         }
-        response.status(200).send(`Eliminado: ${id}`)
+        response.status(200).send(`Eliminado correctamente`)
     })
 }
 
@@ -625,12 +625,13 @@ const updateFamiliaArt = (request, response) => {
     const {cod_fami_art, nombre_fami_art, nro_orden_de_la_fami, set_de_la_familia} = request.body
 
     pool.query(
-        'UPDATE public.familias_de_articulos SET cod_fami_art = $1, nombre_fami_art = $2, nro_orden_de_la_fami =$3, set_de_la_familia = $4 WHERE id = $5',
-        [cod_fami_art, nombre_fami_art, nro_orden_de_la_fami, set_de_la_familia, id], (error, results) => {
+        'UPDATE public.familias_de_articulos SET id= $1, cod_fami_art= $2, nombre_fami_art= $3, nro_orden_de_la_fami= $4, set_de_la_familia= $5;',
+        /* 'UPDATE public.familias_de_articulos SET cod_fami_art = $1, nombre_fami_art = $2, nro_orden_de_la_fami =$3, set_de_la_familia = $4 WHERE id = $5', */
+        [id, cod_fami_art, nombre_fami_art, nro_orden_de_la_fami, set_de_la_familia], (error, results) => {
             if (error){
                 throw error
             }
-            response.status(200).send(`Modificado: ${id}`)
+            response.status(200).send(`Modificado correctamente`)
         }
     )
 }
@@ -639,12 +640,12 @@ const createFamiliaArt = (request, response) => {
     const {cod_fami_art, nombre_fami_art, nro_orden_de_la_fami, set_de_la_familia} = request.body
 
     pool.query(
-        'INSERT INTO public.familias_de_articulos (cod_fami_art, nombre_fami_art, nro_orden_de_la_fami, set_de_la_familia) VALUES ($1, $2, $3, $4) RETURNING *', 
+        'INSERT INTO public.familias_de_articulos (cod_fami_art, nombre_fami_art, nro_orden_de_la_fami, set_de_la_familia) VALUES ($1, $2, $3, $4)',
         [cod_fami_art, nombre_fami_art, nro_orden_de_la_fami, set_de_la_familia], (error, results) => {
         if (error){
             throw error
         }
-        response.status(201).send(`Agregar correctamente id: ${results.rows[0].id}`)
+        response.status(201).send(`Agregar correctamente`)
     })
 }
 
@@ -655,7 +656,7 @@ const deleteFamiliaArt = (request, response) => {
         if (error){
             throw error
         }
-        response.status(200).send(`Eliminado: ${id}`)
+        response.status(200).send(`Eliminado correctamente`)
     })
 }
 
@@ -690,7 +691,7 @@ const updateVincularArtFamilia = (request, response) => {
             if (error){
                 throw error
             }
-            response.status(200).send(`Modificado`)
+            response.status(200).send(`Modificado correctamente`)
         }
     )
 }
@@ -704,7 +705,7 @@ const createVincularArtFamilia = (request, response) => {
         if (error){
             throw error
         }
-        response.status(201).send(`Agregar correctamente id: ${results.rows[0].cod}`)
+        response.status(201).send(`Agregar correctamente`)
     })
 }
 
@@ -715,7 +716,67 @@ const deleteVincularArtFamilia = (request, response) => {
         if (error){
             throw error
         }
-        response.status(200).send(`Eliminado: ${id}`)
+        response.status(200).send(`Eliminado correctamente`)
+    })
+}
+
+// Tabla Productos para Distribucion LD
+const getProductosDistribucion = (request, response) => {
+    pool.query('SELECT * FROM public.productos_para_distribucion', (error, results) =>{
+        if (error){
+            throw error
+        }
+        response.status(200).json(results.rows)
+    })
+}
+
+const getProductosDistribucionByCod = (request, response) => {
+    const id = parseInt(request.params.id)
+
+    pool.query('SELECT * FROM public.productos_para_distribucion WHERE id = $1', [id], (error, results) => {
+        if (error){
+            throw error
+        }
+        response.status(200).json(results.rows)
+    })
+}
+
+const updateProductosDistribucion = (request, response) => {
+    const id = parseInt(request.params.id)
+    const {Codigo_producto, Nombre_producto} = request.body
+
+    pool.query(
+        'UPDATE public.productos_para_distribucion SET "Codigo_producto" = $1, "Nombre_producto" = $2 WHERE id = $3',
+        [Codigo_producto, Nombre_producto, id ], (error, results) => {
+            if (error){
+                throw error
+            }
+            response.status(200).send(`Modificado correctamente`)
+        }
+    )
+}
+
+const createProductosDistribucion = (request, response) => {
+    const {Codigo_producto, Nombre_producto} = request.body
+
+    pool.query(
+        'INSERT INTO public.productos_para_distribucion ("Codigo_producto", "Nombre_producto") VALUES ($1, $2)', 
+        [Codigo_producto, Nombre_producto], (error, results) => {
+        if (error){
+            throw error
+        }
+        response.status(201).send(`Agregar correctamente`)
+    })
+}
+
+const deleteProductosDistribucion = (request, response) => {
+    const id = parseInt(request.params.id)
+
+    pool.query('DELETE FROM public.productos_para_distribucion WHERE id = $1', [id], (error, results) => {
+        if (error){
+            throw error
+        }
+        response.status(200).send(`Eliminado correctamente`)
     })
 }
 
@@ -731,5 +792,6 @@ module.exports = {
     getConstSecoNombresConfig, getConstSecoNombresConfigByCod, createConstSecoNombresConfig, updateConstSecoNombresConfig, deleteConstSecoNombresConfig,
     getSetsVentas, getSetsVentasByCod, createSetsVentas, updateSetsVentas, deleteSetsVentas,
     getFamiliaArt, getFamiliaArtById, createFamiliaArt, updateFamiliaArt, deleteFamiliaArt,
-    getVincularArtFamilia, getVincularArtFamiliaByCod, updateVincularArtFamilia, createVincularArtFamilia, deleteVincularArtFamilia
+    getVincularArtFamilia, getVincularArtFamiliaByCod, updateVincularArtFamilia, createVincularArtFamilia, deleteVincularArtFamilia,
+    getProductosDistribucion, getProductosDistribucionByCod, updateProductosDistribucion, createProductosDistribucion, deleteProductosDistribucion
 }

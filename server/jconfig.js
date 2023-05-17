@@ -192,12 +192,66 @@ async function getVN_1() {
                     }
                 }
             }
+            return results
+        } 
+    ).catch(function (error) {
+        console.log(error);
+   });
+    return response  
+}
+
+async function getLPDistribucion(){
+    let endpoints4 = [
+        `${process.env.URL_API}` + 'productospdistribucion',
+        `${process.env.URL_API}` + 'lpvnrubrosvtas',
+      ];
+      let response2 = await Promise.all(endpoints4.map((endpoint4) => axios.get(endpoint4,{httpsAgent, headers: {'Authorization': `Basic ${token}`}}))).then(
+        ([{data: firstResponse}, {data: secundResponse}]) => {
+            var results = [];
+            for (var i=0; i<firstResponse.length; i++) {
+                for (var j=0; j<secundResponse.length; j++) {
+                    if (firstResponse[i].Codigo_producto === secundResponse[j].ARTS_ARTICULO_EMP) {
+                        results.push({
+                            ARVE_RUBRO_VENTA: secundResponse[j].ARVE_RUBRO_VENTA, 
+                            RUBV_NOMBRE: secundResponse[j].RUBV_NOMBRE,
+                            cod_set_art: secundResponse[j].cod_set_art,
+                            nombre_set_art: secundResponse[j].nombre_set_art,
+                            cod_fami_art: secundResponse[j].cod_fami_art,
+                            nombre_fami_art: secundResponse[j].nombre_fami_art,
+                            nro_orden_de_la_fami: secundResponse[j].nro_orden_de_la_fami,
+                            orden_art_familia: secundResponse[j].orden_art_familia,
+                            ARTS_ARTICULO: secundResponse[j].ARTS_ARTICULO,
+                            ARTS_ARTICULO_EMP: secundResponse[j].ARTS_ARTICULO_EMP,
+                            ARTS_NOMBRE: secundResponse[j].ARTS_NOMBRE,
+                            ARTS_UNIMED_STOCK: secundResponse[j].ARTS_UNIMED_STOCK,
+                            ARVE_BLOQUEO_VENTA: secundResponse[j].ARVE_BLOQUEO_VENTA,
+                            ARTS_FACTOR_HOMSTO: secundResponse[j].ARTS_FACTOR_HOMSTO,
+                            COD_CTE: secundResponse[j].COD_CTE,
+                            ARTS_CLASIF_1: secundResponse[j].ARTS_CLASIF_1,
+                            ARTS_CLASIF_8: secundResponse[j].ARTS_CLASIF_8,
+                            CIMP_TASA: secundResponse[j].CIMP_TASA,
+                            ARTS_PESO_EMB_UMS: secundResponse[j].ARTS_PESO_EMB_UMS,
+                            DVC1_LISTA_PRECVTA: secundResponse[j].DVC1_LISTA_PRECVTA,
+                            DCA1_POR_DESCUENTO: secundResponse[j].DCA1_POR_DESCUENTO,
+                            ARPV_PRECIO_VTA: secundResponse[j].ARPV_PRECIO_VTA,
+                            ARPV_MONEDA: secundResponse[j].ARPV_MONEDA,
+                            ARPV_FECHA_ULT_ACT: secundResponse[j].ARPV_FECHA_ULT_ACT,
+                            COTI_COTIZACION: secundResponse[j].COTI_COTIZACION,
+                            COTI_FECHA: secundResponse[j].COTI_FECHA,
+                            Fecha_cambio_precios_hasta: secundResponse[j].Fecha_cambio_precios_hasta,
+                            PRECIO_LISTA_CON_IVA: secundResponse[j].PRECIO_LISTA_CON_IVA,
+                            Fecha_Ult_Modif: secundResponse[j].Fecha_Ult_Modif,
+                            Delay_cambio_precio: secundResponse[j].Delay_cambio_precio,
+                        });
+                    }
+                }
+            }
             return results;
         } 
     ).catch(function (error) {
         console.log(error);
    });
-    return response;  
+    return response2
 }
 
 module.exports = {
@@ -205,5 +259,6 @@ module.exports = {
     getConsSecoConfig,
     getListaConstSeco,
     getFamiliaArts,
-    getVN_1
+    getVN_1,
+    getLPDistribucion
     };

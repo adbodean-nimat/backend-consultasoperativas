@@ -194,6 +194,12 @@ router.route('/lpvnrubrosvtas').get((request, response)=> {
   })
 })
 
+router.route('/lpvndistribucion').get((request, response)=>{
+  jConfig.getLPDistribucion().then((data)=>{
+    response.json(data);
+  })
+})
+
 router.route('/rowaplancanje').get(fsConfig.getFileExcel)
 
 
@@ -280,6 +286,13 @@ router.route('/vinculararticulosafamilia/:id').get(Pg.getVincularArtFamiliaByCod
 router.route('/vinculararticulosafamilia').post(Pg.createVincularArtFamilia)
 router.route('/vinculararticulosafamilia/:id').put(Pg.updateVincularArtFamilia)
 router.route('/vinculararticulosafamilia/:id').delete(Pg.deleteVincularArtFamilia)
+
+// Tabla Productos para Distribucion
+router.route('/productospdistribucion').get(Pg.getProductosDistribucion)
+router.route('/productospdistribucion/:id').get(Pg.getProductosDistribucionByCod)
+router.route('/productospdistribucion').post(Pg.createProductosDistribucion)
+router.route('/productospdistribucion/:id').put(Pg.updateProductosDistribucion)
+router.route('/productospdistribucion/:id').delete(Pg.deleteProductosDistribucion)
 
 const port = 8090;
 
