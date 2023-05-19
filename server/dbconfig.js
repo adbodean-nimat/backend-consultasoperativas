@@ -12,7 +12,7 @@ const config = {
       instancename:  'MSSQLSERVER'
     },
     port: parseInt(process.env.SQL_PORT, 10),
-    requestTimeout: 30000
+    requestTimeout: 50000
   }
   
   module.exports = config;
