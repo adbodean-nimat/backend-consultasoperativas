@@ -16,6 +16,7 @@ const httpsOptions = {
   cert: fs.readFileSync(process.env.SSL_CERT)
 }
 const jwt = require("jsonwebtoken");
+const { response } = require('express');
 const verifyUserToken = (req, res, next) => {
   if (!req.headers.authorization) {
     return res.status(401).send("Solicitud no autorizada");
@@ -73,6 +74,24 @@ router.route('/vblesentrnp/:id').get((request, response) => {
       response.json(data[0]);
     })
   })
+
+router.route('/combo/:id').get((request, response)=>{
+  Db.getComboArt(request.params.id).then((data)=>{
+    response.json(data[0]);
+  })
+})
+
+router.route('/m2/:id').get((request, response)=>{
+  Db.getM2Art(request.params.id).then((data)=>{
+    response.json(data[0]);
+  })
+})
+
+router.route('/m2saldo/:id').get((request, response)=>{
+  Db.getM2Saldo(request.params.id).then((data)=>{
+    response.json(data[0]);
+  })
+})
 
 router.route('/listapreciosventaalpublico').get((request, response)=>{
   Db.getListaPreciosVentaAlPublico().then((data)=>{
@@ -188,8 +207,20 @@ router.route('/familiaarticulos').get((request, response)=> {
   })
 })
 
+router.route('/familiaarticulosdistribucion').get((request, response)=> {
+  jConfig.getFamiliaArts2().then((data)=>{
+    response.json(data);
+  })
+})
+
 router.route('/lpvnrubrosvtas').get((request, response)=> {
   jConfig.getVN_1().then((data)=>{
+    response.json(data);
+  })
+})
+
+router.route('/lpvnrubrosvtasdistribucion').get((request, response)=> {
+  jConfig.getVN_2().then((data)=>{
     response.json(data);
   })
 })
@@ -293,6 +324,20 @@ router.route('/productospdistribucion/:id').get(Pg.getProductosDistribucionByCod
 router.route('/productospdistribucion').post(Pg.createProductosDistribucion)
 router.route('/productospdistribucion/:id').put(Pg.updateProductosDistribucion)
 router.route('/productospdistribucion/:id').delete(Pg.deleteProductosDistribucion)
+
+// Tabla Rubros Ventas
+router.route('/rubrosventas').get(Pg.getRubrosVtas)
+router.route('/rubrosventas/:id').get(Pg.getRubrosVtasByCod)
+router.route('/rubrosventas').post(Pg.createRubrosVtas)
+router.route('/rubrosventas/:id').put(Pg.updateRubrosVtas)
+router.route('/rubrosventas/:id').delete(Pg.deleteRubrosVtas)
+
+// Tabla Familias Articulos Distribución
+router.route('/familiaartdistribucion').get(Pg.getFamArtDist)
+router.route('/familiaartdistribucion/:id').get(Pg.getFamArtDistByCod)
+router.route('/familiaartdistribucion').post(Pg.createFamArtDist)
+router.route('/familiaartdistribucion/:id').put(Pg.updateFamArtDist)
+router.route('/familiaartdistribucion/:id').delete(Pg.deleteFamArtDist)
 
 const port = 8090;
 

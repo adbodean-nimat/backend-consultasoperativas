@@ -743,11 +743,11 @@ const getProductosDistribucionByCod = (request, response) => {
 
 const updateProductosDistribucion = (request, response) => {
     const id = parseInt(request.params.id)
-    const {Codigo_producto, Nombre_producto} = request.body
+    const {Codigo_producto, Nombre_producto, Orden_producto, Familia_producto} = request.body
 
     pool.query(
-        'UPDATE public.productos_para_distribucion SET "Codigo_producto" = $1, "Nombre_producto" = $2 WHERE id = $3',
-        [Codigo_producto, Nombre_producto, id ], (error, results) => {
+        'UPDATE public.productos_para_distribucion SET "Codigo_producto" = $1, "Nombre_producto" = $2, "Orden_producto" = $3, "Familia_producto" = $4 WHERE id = $5',
+        [Codigo_producto, Nombre_producto, Orden_producto, Familia_producto, id ], (error, results) => {
             if (error){
                 throw error
             }
@@ -757,11 +757,11 @@ const updateProductosDistribucion = (request, response) => {
 }
 
 const createProductosDistribucion = (request, response) => {
-    const {Codigo_producto, Nombre_producto} = request.body
+    const {Codigo_producto, Nombre_producto, Orden_producto, Familia_producto} = request.body
 
     pool.query(
-        'INSERT INTO public.productos_para_distribucion ("Codigo_producto", "Nombre_producto") VALUES ($1, $2)', 
-        [Codigo_producto, Nombre_producto], (error, results) => {
+        'INSERT INTO public.productos_para_distribucion ("Codigo_producto", "Nombre_producto", "Orden_producto", "Familia_producto") VALUES ($1, $2, $3, $4)', 
+        [Codigo_producto, Nombre_producto, Orden_producto, Familia_producto], (error, results) => {
         if (error){
             throw error
         }
@@ -773,6 +773,126 @@ const deleteProductosDistribucion = (request, response) => {
     const id = parseInt(request.params.id)
 
     pool.query('DELETE FROM public.productos_para_distribucion WHERE id = $1', [id], (error, results) => {
+        if (error){
+            throw error
+        }
+        response.status(200).send(`Eliminado correctamente`)
+    })
+}
+
+// Tabla Rubros Ventas
+const getRubrosVtas = (request, response) => {
+    pool.query('SELECT * FROM public.rubros_ventas', (error, results) =>{
+        if (error){
+            throw error
+        }
+        response.status(200).json(results.rows)
+    })
+}
+
+const getRubrosVtasByCod = (request, response) => {
+    const id = parseInt(request.params.id)
+
+    pool.query('SELECT * FROM public.rubros_ventas WHERE id = $1', [id], (error, results) => {
+        if (error){
+            throw error
+        }
+        response.status(200).json(results.rows)
+    })
+}
+
+const updateRubrosVtas = (request, response) => {
+    const id = parseInt(request.params.id)
+    const {rubros_id, rubros_nombres, orden_rubros} = request.body
+
+    pool.query(
+        'UPDATE public.rubros_ventas SET "rubros_id" = $1, "rubros_nombres" = $2, "orden_rubros" = $3 WHERE id = $4',
+        [rubros_id, rubros_nombres, orden_rubros, id ], (error, results) => {
+            if (error){
+                throw error
+            }
+            response.status(200).send(`Modificado correctamente`)
+        }
+    )
+}
+
+const createRubrosVtas = (request, response) => {
+    const {rubros_id, rubros_nombres, orden_rubros} = request.body
+
+    pool.query(
+        'INSERT INTO public.rubros_ventas ("rubros_id", "rubros_nombres", "orden_rubros") VALUES ($1, $2, $3)', 
+        [rubros_id, rubros_nombres, orden_rubros], (error, results) => {
+        if (error){
+            throw error
+        }
+        response.status(201).send(`Agregar correctamente`)
+    })
+}
+
+const deleteRubrosVtas = (request, response) => {
+    const id = parseInt(request.params.id)
+
+    pool.query('DELETE FROM public.rubros_ventas WHERE id = $1', [id], (error, results) => {
+        if (error){
+            throw error
+        }
+        response.status(200).send(`Eliminado correctamente`)
+    })
+}
+
+// Tabla Familia Articulos Distribución
+const getFamArtDist = (request, response) => {
+    pool.query('SELECT * FROM public.familias_articulos_distribucion', (error, results) =>{
+        if (error){
+            throw error
+        }
+        response.status(200).json(results.rows)
+    })
+}
+
+const getFamArtDistByCod = (request, response) => {
+    const id = parseInt(request.params.id)
+
+    pool.query('SELECT * FROM public.familias_articulos_distribucion WHERE id = $1', [id], (error, results) => {
+        if (error){
+            throw error
+        }
+        response.status(200).json(results.rows)
+    })
+}
+
+const updateFamArtDist = (request, response) => {
+    const id = parseInt(request.params.id)
+    const {cod_familia_art, nombre_familia_art, nro_orden_familia, cod_set_art, nombre_set_art} = request.body
+
+    pool.query(
+        'UPDATE public.familias_articulos_distribucion SET "cod_familia_art" = $1, "nombre_familia_art" = $2, "nro_orden_familia" = $3, "cod_set_art" = $4, "nombre_set_art" = $5 WHERE id = $6',
+        [cod_familia_art, nombre_familia_art, nro_orden_familia, cod_set_art, nombre_set_art, id ], (error, results) => {
+            if (error){
+                throw error
+            }
+            response.status(200).send(`Modificado correctamente`)
+        }
+    )
+}
+
+const createFamArtDist = (request, response) => {
+    const {cod_familia_art, nombre_familia_art, nro_orden_familia, cod_set_art, nombre_set_art} = request.body
+
+    pool.query(
+        'INSERT INTO public.familias_articulos_distribucion ("cod_familia_art", "nombre_familia_art", "nro_orden_familia", "cod_set_art", "nombre_set_art") VALUES ($1, $2, $3, $4, $5)', 
+        [cod_familia_art, nombre_familia_art, nro_orden_familia, cod_set_art, nombre_set_art], (error, results) => {
+        if (error){
+            throw error
+        }
+        response.status(201).send(`Agregar correctamente`)
+    })
+}
+
+const deleteFamArtDist = (request, response) => {
+    const id = parseInt(request.params.id)
+
+    pool.query('DELETE FROM public.familias_articulos_distribucion WHERE id = $1', [id], (error, results) => {
         if (error){
             throw error
         }
@@ -793,5 +913,7 @@ module.exports = {
     getSetsVentas, getSetsVentasByCod, createSetsVentas, updateSetsVentas, deleteSetsVentas,
     getFamiliaArt, getFamiliaArtById, createFamiliaArt, updateFamiliaArt, deleteFamiliaArt,
     getVincularArtFamilia, getVincularArtFamiliaByCod, updateVincularArtFamilia, createVincularArtFamilia, deleteVincularArtFamilia,
-    getProductosDistribucion, getProductosDistribucionByCod, updateProductosDistribucion, createProductosDistribucion, deleteProductosDistribucion
+    getProductosDistribucion, getProductosDistribucionByCod, updateProductosDistribucion, createProductosDistribucion, deleteProductosDistribucion,
+    getRubrosVtas, getRubrosVtasByCod, updateRubrosVtas, createRubrosVtas, deleteRubrosVtas,
+    getFamArtDist, getFamArtDistByCod, updateFamArtDist, createFamArtDist, deleteFamArtDist
 }
