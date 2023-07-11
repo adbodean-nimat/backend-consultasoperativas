@@ -900,6 +900,67 @@ const deleteFamArtDist = (request, response) => {
     })
 }
 
+// Tabla Cartel Manual
+const getCartelManual = (request, response) => {
+    pool.query('SELECT * FROM public.cartel_manual', (error, results) =>{
+        if (error){
+            throw error
+        }
+        response.status(200).json(results.rows)
+    })
+}
+
+const getCartelManualbyId = (request, response) => {
+    const id = parseInt(request.params.id)
+
+    pool.query('SELECT * FROM public.cartel_manual WHERE id = $1', [id], (error, results) => {
+        if (error){
+            throw error
+        }
+        response.status(200).json(results.rows)
+    })
+}
+
+const updateCartelManual = (request, response) => {
+    const id = parseInt(request.params.id)
+    const {titulo, subtitulo, precio, unimed, outlet} = request.body
+
+    pool.query(
+        'UPDATE public.cartel_manual SET "titulo" = $1, "subtitulo" = $2, "precio" = $3, "unimed" = $4, "outlet" = $5 WHERE id = $6',
+        [titulo, subtitulo, precio, unimed, outlet, id ], (error, results) => {
+            if (error){
+                throw error
+            }
+            response.status(200).send(`Modificado correctamente`)
+        }
+    )
+}
+
+const createCartelManual = (request, response) => {
+    const {titulo, subtitulo, precio, unimed, outlet} = request.body
+
+    pool.query(
+        'INSERT INTO public.cartel_manual ("titulo", "subtitulo", "precio", "unimed", "outlet") VALUES ($1, $2, $3, $4, $5)', 
+        [titulo, subtitulo, precio, unimed, outlet], (error, results) => {
+        if (error){
+            throw error
+        }
+        response.status(201).send(`Agregar correctamente`)
+    })
+}
+
+const deleteCartelManual = (request, response) => {
+    const id = parseInt(request.params.id)
+
+    pool.query('DELETE FROM public.cartel_manual WHERE id = $1', [id], (error, results) => {
+        if (error){
+            throw error
+        }
+        response.status(200).send(`Eliminado correctamente`)
+    })
+}
+
+
 module.exports = {
     getDeposANoConsiderar, getDeposANoConsiderarByCod, createDepos, updateDepos, deleteDepos,
     getNPaConsiderar, getNPaConsiderarByCod, createNP, updateNP, deleteNP,
@@ -915,5 +976,6 @@ module.exports = {
     getVincularArtFamilia, getVincularArtFamiliaByCod, updateVincularArtFamilia, createVincularArtFamilia, deleteVincularArtFamilia,
     getProductosDistribucion, getProductosDistribucionByCod, updateProductosDistribucion, createProductosDistribucion, deleteProductosDistribucion,
     getRubrosVtas, getRubrosVtasByCod, updateRubrosVtas, createRubrosVtas, deleteRubrosVtas,
-    getFamArtDist, getFamArtDistByCod, updateFamArtDist, createFamArtDist, deleteFamArtDist
+    getFamArtDist, getFamArtDistByCod, updateFamArtDist, createFamArtDist, deleteFamArtDist,
+    getCartelManual, getCartelManualbyId, updateCartelManual, createCartelManual, deleteCartelManual
 }

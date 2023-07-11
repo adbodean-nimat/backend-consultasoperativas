@@ -339,6 +339,13 @@ router.route('/familiaartdistribucion').post(Pg.createFamArtDist)
 router.route('/familiaartdistribucion/:id').put(Pg.updateFamArtDist)
 router.route('/familiaartdistribucion/:id').delete(Pg.deleteFamArtDist)
 
+// Tabla Cartel Manual
+router.route('/cartelmanual').get(Pg.getCartelManual)
+router.route('/cartelmanual/:id').get(Pg.getCartelManualbyId)
+router.route('/cartelmanual').post(Pg.createCartelManual)
+router.route('/cartelmanual/:id').put(Pg.updateCartelManual)
+router.route('/cartelmanual/:id').delete(Pg.deleteCartelManual)
+
 const port = 8090;
 
 const httpsServer = https.createServer(httpsOptions, app)
