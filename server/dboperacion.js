@@ -1,4 +1,9 @@
+require('dotenv').config();
+const https = require('https');
 var config = require('./dbconfig.js');
+const axios = require('axios');
+const httpsAgent = new https.Agent({ rejectUnauthorized: false }); 
+const token = process.env.JWT_TOKEN
 const sql = require('mssql');
 const { Pool } = require('pg');
 
@@ -222,6 +227,101 @@ async function getComboArt(comboArt){
     }
   }
 
+  var ArrayDepositoANoConsiderar = [];
+  async function ArrayDeposaNoConsiderar() {
+      let urlArray = `${process.env.URL_API}` + 'depositoanoconsiderarparastockfisico'
+      const response = await axios.get(urlArray, {httpsAgent, headers: {'Authorization': `Basic ${token}`}})
+                                  .then(response => {results = []; data = response.data; for(var i = 0; i < data.length; i++){results.push(data[i]['codigo_deposito'])} 
+                                  return results })
+                                  .catch((error)=>{console.log(error)});
+      return ArrayDepositoANoConsiderar.push(response);
+  }
+  ArrayDeposaNoConsiderar();
+
+  async function getStockPartidaconvencimiento(){
+    try {
+      const DepositoANoConsiderar = ArrayDepositoANoConsiderar[0]
+      let pool = await sql.connect(config);
+      let listaStock = await pool.request().query("DECLARE @Depos_A_No_considerar_para_stock_fisico TABLE(Cod_Depos INT, Nomb_Depos VARCHAR(30)) INSERT INTO @Depos_A_No_considerar_para_stock_fisico SELECT dbo.STOC_DPOS.DPOS_DEPOSITO AS Cod_Depos ,dbo.STOC_DPOS.DPOS_NOMBRE AS Nomb_Depos FROM dbo.STOC_DPOS WITH (NOLOCK) WHERE dbo.STOC_DPOS.DPOS_DEPOSITO IN ("+ DepositoANoConsiderar +") SELECT dbo.STOC_ARTS.ARTS_ARTICULO ,dbo.STOC_ARTS.ARTS_NOMBRE ,dbo.STOC_ARTS.ARTS_ARTICULO_EMP ,Sum(dbo.STOC_SDPP.SDPP_STOCK_ACT) AS SumaDeSDPP_STOCK_ACT ,dbo.STOC_PART.PART_FECHA_VTO FROM ((dbo.STOC_ARTS INNER JOIN dbo.STOC_SDPP ON dbo.STOC_ARTS.ARTS_ARTICULO = dbo.STOC_SDPP.SDPP_ARTICULO) INNER JOIN dbo.STOC_PART ON dbo.STOC_SDPP.SDPP_PARTIDA = dbo.STOC_PART.PART_PARTIDA) LEFT JOIN @Depos_A_No_considerar_para_stock_fisico ON dbo.STOC_SDPP.SDPP_DEPOSITO = [@Depos_A_No_considerar_para_stock_fisico].[Cod_Depos] GROUP BY dbo.STOC_ARTS.ARTS_ARTICULO ,dbo.STOC_ARTS.ARTS_NOMBRE ,dbo.STOC_ARTS.ARTS_ARTICULO_EMP ,dbo.STOC_PART.PART_FECHA_VTO ,[@Depos_A_No_considerar_para_stock_fisico].[Nomb_Depos] HAVING (((Sum(dbo.STOC_SDPP.SDPP_STOCK_ACT))>0) AND ((dbo.STOC_PART.PART_FECHA_VTO) Is Not Null AND (dbo.STOC_PART.PART_FECHA_VTO)<=CONVERT(date, GETDATE())) AND (([@Depos_A_No_considerar_para_stock_fisico].[Nomb_Depos]) Is Null)) ");
+      return listaStock.recordsets;
+    }
+    catch (error) {
+      console.log(error);
+    }
+  }
+
+  async function getStock(){
+    try{
+      const DepositoANoConsiderar = ArrayDepositoANoConsiderar[0]
+      let pool = await sql.connect(config);
+      let listastock = await pool.request().query("DECLARE @Depos_A_No_considerar_para_stock_fisico TABLE(Cod_Depos INT, Nomb_Depos VARCHAR(30)) INSERT INTO @Depos_A_No_considerar_para_stock_fisico SELECT dbo.STOC_DPOS.DPOS_DEPOSITO AS Cod_Depos ,dbo.STOC_DPOS.DPOS_NOMBRE AS Nomb_Depos FROM dbo.STOC_DPOS WITH (NOLOCK) WHERE dbo.STOC_DPOS.DPOS_DEPOSITO IN ("+ DepositoANoConsiderar +") SELECT dbo.STOC_ARTS.ARTS_ARTICULO ,dbo.STOC_ARTS.ARTS_ARTICULO_EMP AS [Cod_Art] ,dbo.STOC_ARTS.ARTS_NOMBRE AS [Nombre_Art] ,Sum(dbo.STOC_STDP.STDP_STOCK_ACT) AS [Stock_Uni] ,dbo.STOC_ARTS.ARTS_UNIMED_HOMSTO AS [Uni_HS] ,dbo.STOC_ARTS.ARTS_FACTOR_HOMSTO ,dbo.STOC_ARTS.ARTS_CLASIF_1 ,dbo.STOC_ARTS.ARTS_CLASIF_2 ,dbo.STOC_ARTS.ARTS_CLASIF_3 ,dbo.STOC_ARTS.ARTS_CLASIF_4 ,dbo.STOC_ARTS.ARTS_CLASIF_5 ,dbo.STOC_ARTS.ARTS_CLASIF_6 ,dbo.STOC_ARTS.ARTS_CLASIF_7 ,dbo.STOC_ARTS.ARTS_CLASIF_8 FROM (dbo.STOC_ARTS WITH (NOLOCK) LEFT JOIN dbo.STOC_STDP WITH (NOLOCK) ON dbo.STOC_ARTS.ARTS_ARTICULO = dbo.STOC_STDP.STDP_ARTICULO) LEFT JOIN @Depos_A_No_considerar_para_stock_fisico ON dbo.STOC_STDP.STDP_DEPOSITO = [@Depos_A_No_considerar_para_stock_fisico].[Cod_Depos] GROUP BY dbo.STOC_ARTS.ARTS_ARTICULO ,dbo.STOC_ARTS.ARTS_ARTICULO_EMP ,dbo.STOC_ARTS.ARTS_NOMBRE ,dbo.STOC_ARTS.ARTS_UNIMED_HOMSTO ,dbo.STOC_ARTS.ARTS_FACTOR_HOMSTO ,dbo.STOC_ARTS.ARTS_CLASIF_1 ,dbo.STOC_ARTS.ARTS_CLASIF_2 ,dbo.STOC_ARTS.ARTS_CLASIF_3 ,dbo.STOC_ARTS.ARTS_CLASIF_4 ,dbo.STOC_ARTS.ARTS_CLASIF_5 ,dbo.STOC_ARTS.ARTS_CLASIF_6 ,dbo.STOC_ARTS.ARTS_CLASIF_7 ,dbo.STOC_ARTS.ARTS_CLASIF_8 ,[@Depos_A_No_considerar_para_stock_fisico].[Nomb_Depos] HAVING ((([@Depos_A_No_considerar_para_stock_fisico].[Nomb_Depos]) Is Null)) ");
+      return listastock.recordsets;
+    }
+    catch(error){
+      console.log(error);
+    }
+  }
+
+  var Array = [];
+  async function ArrayNPaConsiderar() {
+      let urlArrayNPaConsiderar = `${process.env.URL_API}` + 'npaconsiderar'
+      const response = await axios.get(urlArrayNPaConsiderar, {httpsAgent, headers: {'Authorization': `Basic ${token}`}})
+                                  .then(response => {results = []; data = response.data; for(var i = 0; i < data.length; i++){results.push(data[i]['cod_comp'])} return results })
+                                  .catch((error)=>{console.log(error)});
+      return Array.push(response);
+  } 
+  ArrayNPaConsiderar();
+
+  async function getNPPendienteEntrega(){
+    try{
+      const NPaConsiderar = Array[0].map(x => `'${x}'`);
+      const NPaConsiderarWithCommas = NPaConsiderar.join(',');
+      let pool = await sql.connect(config);
+      let listaNP = await pool.request()
+      .query("DECLARE @NP_A_Considerar TABLE(Cod_Comp VARCHAR(30), Nomb_Comp VARCHAR(30)) INSERT INTO @NP_A_Considerar SELECT dbo.VENT_TCVE.TCVE_TIPO_COM AS Cod_Comp ,dbo.VENT_TCVE.TCVE_NOMBRE AS Nomb_Comp FROM dbo.VENT_TCVE WITH (NOLOCK) WHERE dbo.VENT_TCVE.TCVE_TIPO_COM IN ("+ NPaConsiderarWithCommas +") DECLARE @NP_Pendientes_entrega TABLE( NPCA_FECHA_EMI DATETIME, NPCA_DIVISION_NPCA SMALLINT, NPCA_TIPO_NPCA VARCHAR(3), NPCA_NUMERO_NPCA DECIMAL(10,0), ARTS_ARTICULO_EMP VARCHAR(30), ARTS_NOMBRE VARCHAR(70), NPDE_UNIMED VARCHAR(3), NPDE_CANT_PEDIDA DECIMAL(14,4), NPDE_CANT_ENTREG DECIMAL(14,4), NPDE_MOTIVO_CANC VARCHAR(3), Uni_Pte_Entr_NP DECIMAL(12,2), ARTS_FACTOR_HOMSTO DECIMAL(24,14), ARTS_CLASIF_2 VARCHAR(10)) INSERT INTO @NP_Pendientes_entrega SELECT dbo.VENT_NPCA.NPCA_FECHA_EMI ,dbo.VENT_NPCA.NPCA_DIVISION_NPCA ,dbo.VENT_NPCA.NPCA_TIPO_NPCA ,dbo.VENT_NPCA.NPCA_NUMERO_NPCA ,dbo.STOC_ARTS.ARTS_ARTICULO_EMP ,dbo.STOC_ARTS.ARTS_NOMBRE ,dbo.VENT_NPDE.NPDE_UNIMED ,dbo.VENT_NPDE.NPDE_CANT_PEDIDA ,dbo.VENT_NPDE.NPDE_CANT_ENTREG ,dbo.VENT_NPDE.NPDE_MOTIVO_CANC ,[NPDE_CANT_PEDIDA]-[NPDE_CANT_ENTREG] AS [Uni_Pte_Entr_NP] ,dbo.STOC_ARTS.ARTS_FACTOR_HOMSTO ,dbo.STOC_ARTS.ARTS_CLASIF_2 FROM @NP_A_Considerar INNER JOIN ((dbo.VENT_NPCA WITH (NOLOCK) INNER JOIN dbo.VENT_NPDE WITH (NOLOCK) ON (dbo.VENT_NPCA.NPCA_NUMERO_NPCA = dbo.VENT_NPDE.NPDE_NUMERO_NPCA) AND (dbo.VENT_NPCA.NPCA_TIPO_NPCA = dbo.VENT_NPDE.NPDE_TIPO_NPCA) AND (dbo.VENT_NPCA.NPCA_DIVISION_NPCA = dbo.VENT_NPDE.NPDE_DIVISION_NPCA)) INNER JOIN dbo.STOC_ARTS WITH (NOLOCK) ON dbo.VENT_NPDE.NPDE_ARTICULO = dbo.STOC_ARTS.ARTS_ARTICULO) ON [@NP_A_Considerar].[Cod_Comp] = dbo.VENT_NPCA.NPCA_TIPO_NPCA WHERE (((dbo.VENT_NPDE.NPDE_MOTIVO_CANC) Is Null)) DECLARE @NP_Pendientes_entrega2 TABLE( NPCA_FECHA_EMI DATETIME, NPCA_DIVISION_NPCA SMALLINT, NPCA_TIPO_NPCA VARCHAR(3), NPCA_NUMERO_NPCA DECIMAL(10,0), ARTS_ARTICULO_EMP VARCHAR(30), ARTS_NOMBRE VARCHAR(70), NPDE_UNIMED VARCHAR(3), NPDE_CANT_PEDIDA DECIMAL(14,4), NPDE_CANT_ENTREG DECIMAL(14,4), NPDE_MOTIVO_CANC VARCHAR(3), Uni_Pte_Entr_NP DECIMAL(12,2), ARTS_FACTOR_HOMSTO DECIMAL(24,14), NP_UniM2_Pte_Entr DECIMAL(12,2), ARTS_CLASIF_2 VARCHAR(10) ) INSERT INTO @NP_Pendientes_entrega2 SELECT [@NP_Pendientes_entrega].NPCA_FECHA_EMI ,[@NP_Pendientes_entrega].NPCA_DIVISION_NPCA ,[@NP_Pendientes_entrega].NPCA_TIPO_NPCA ,[@NP_Pendientes_entrega].NPCA_NUMERO_NPCA ,[@NP_Pendientes_entrega].ARTS_ARTICULO_EMP ,[@NP_Pendientes_entrega].ARTS_NOMBRE ,[@NP_Pendientes_entrega].NPDE_UNIMED ,[@NP_Pendientes_entrega].NPDE_CANT_PEDIDA ,[@NP_Pendientes_entrega].NPDE_CANT_ENTREG ,[@NP_Pendientes_entrega].NPDE_MOTIVO_CANC ,[@NP_Pendientes_entrega].Uni_Pte_Entr_NP ,[@NP_Pendientes_entrega].ARTS_FACTOR_HOMSTO ,IIf([ARTS_CLASIF_2]='0004',Round([@NP_Pendientes_entrega].[Uni_Pte_Entr_NP]/[ARTS_FACTOR_HOMSTO],3) ,[@NP_Pendientes_entrega].[Uni_Pte_Entr_NP]) AS [NP_UniM2_Pte_Entr] ,[@NP_Pendientes_entrega].ARTS_CLASIF_2 FROM @NP_Pendientes_entrega WHERE ((([@NP_Pendientes_entrega].[Uni_Pte_Entr_NP])>0)) SELECT [@NP_Pendientes_entrega2].NPCA_TIPO_NPCA ,[@NP_Pendientes_entrega2].ARTS_ARTICULO_EMP ,[@NP_Pendientes_entrega2].ARTS_NOMBRE ,Sum([@NP_Pendientes_entrega2].[Uni_Pte_Entr_NP]) AS [Uni_Pte_Entr_NP] ,Sum([@NP_Pendientes_entrega2].[NP_UniM2_Pte_Entr]) AS [NP_UniM2_Pte_Entr] FROM @NP_Pendientes_entrega2 GROUP BY [@NP_Pendientes_entrega2].NPCA_TIPO_NPCA ,[@NP_Pendientes_entrega2].ARTS_ARTICULO_EMP ,[@NP_Pendientes_entrega2].ARTS_NOMBRE");
+      return listaNP.recordsets;
+    }
+    catch(error){
+      console.log(error);
+    }
+  }
+
+  async function getStockFisicoyDisp(){
+    try{
+      const NPaConsiderar = Array[0].map(x => `'${x}'`);
+      const NPaConsiderarWithCommas = NPaConsiderar.join(',');
+      const DepositoANoConsiderar = ArrayDepositoANoConsiderar[0]
+      let pool = await sql.connect(config);
+      let stockfisico = await pool.request().query("DECLARE @NP_A_Considerar TABLE(Cod_Comp VARCHAR(30), Nomb_Comp VARCHAR(30)) INSERT INTO @NP_A_Considerar SELECT dbo.VENT_TCVE.TCVE_TIPO_COM AS Cod_Comp, dbo.VENT_TCVE.TCVE_NOMBRE AS Nomb_Comp FROM dbo.VENT_TCVE WITH (NOLOCK) WHERE dbo.VENT_TCVE.TCVE_TIPO_COM IN ("+ NPaConsiderarWithCommas +") DECLARE @NP_Pendientes_entrega TABLE( NPCA_FECHA_EMI DATETIME, NPCA_DIVISION_NPCA SMALLINT, NPCA_TIPO_NPCA VARCHAR(3), NPCA_NUMERO_NPCA DECIMAL(10,0), ARTS_ARTICULO_EMP VARCHAR(30), ARTS_NOMBRE VARCHAR(70), NPDE_UNIMED VARCHAR(3), NPDE_CANT_PEDIDA DECIMAL(14,4), NPDE_CANT_ENTREG DECIMAL(14,4), NPDE_MOTIVO_CANC VARCHAR(3), Uni_Pte_Entr_NP DECIMAL(12,2), ARTS_FACTOR_HOMSTO DECIMAL(24,14), ARTS_CLASIF_2 VARCHAR(10)) INSERT INTO @NP_Pendientes_entrega SELECT dbo.VENT_NPCA.NPCA_FECHA_EMI ,dbo.VENT_NPCA.NPCA_DIVISION_NPCA ,dbo.VENT_NPCA.NPCA_TIPO_NPCA ,dbo.VENT_NPCA.NPCA_NUMERO_NPCA ,dbo.STOC_ARTS.ARTS_ARTICULO_EMP ,dbo.STOC_ARTS.ARTS_NOMBRE ,dbo.VENT_NPDE.NPDE_UNIMED ,dbo.VENT_NPDE.NPDE_CANT_PEDIDA ,dbo.VENT_NPDE.NPDE_CANT_ENTREG ,dbo.VENT_NPDE.NPDE_MOTIVO_CANC ,[NPDE_CANT_PEDIDA]-[NPDE_CANT_ENTREG] AS [Uni_Pte_Entr_NP] ,dbo.STOC_ARTS.ARTS_FACTOR_HOMSTO ,dbo.STOC_ARTS.ARTS_CLASIF_2 FROM @NP_A_Considerar INNER JOIN ((dbo.VENT_NPCA WITH (NOLOCK) INNER JOIN dbo.VENT_NPDE WITH (NOLOCK) ON (dbo.VENT_NPCA.NPCA_NUMERO_NPCA = dbo.VENT_NPDE.NPDE_NUMERO_NPCA) AND (dbo.VENT_NPCA.NPCA_TIPO_NPCA = dbo.VENT_NPDE.NPDE_TIPO_NPCA) AND (dbo.VENT_NPCA.NPCA_DIVISION_NPCA = dbo.VENT_NPDE.NPDE_DIVISION_NPCA)) INNER JOIN dbo.STOC_ARTS WITH (NOLOCK) ON dbo.VENT_NPDE.NPDE_ARTICULO = dbo.STOC_ARTS.ARTS_ARTICULO) ON [@NP_A_Considerar].[Cod_Comp] = dbo.VENT_NPCA.NPCA_TIPO_NPCA WHERE (((dbo.VENT_NPDE.NPDE_MOTIVO_CANC) Is Null)) DECLARE @NP_Pendientes_entrega2 TABLE( NPCA_FECHA_EMI DATETIME, NPCA_DIVISION_NPCA SMALLINT, NPCA_TIPO_NPCA VARCHAR(3), NPCA_NUMERO_NPCA DECIMAL(10,0), ARTS_ARTICULO_EMP VARCHAR(30), ARTS_NOMBRE VARCHAR(70), NPDE_UNIMED VARCHAR(3), NPDE_CANT_PEDIDA DECIMAL(14,4), NPDE_CANT_ENTREG DECIMAL(14,4), NPDE_MOTIVO_CANC VARCHAR(3), Uni_Pte_Entr_NP DECIMAL(12,2), ARTS_FACTOR_HOMSTO DECIMAL(24,14), NP_UniM2_Pte_Entr DECIMAL(12,2), ARTS_CLASIF_2 VARCHAR(10) ) INSERT INTO @NP_Pendientes_entrega2 SELECT [@NP_Pendientes_entrega].NPCA_FECHA_EMI ,[@NP_Pendientes_entrega].NPCA_DIVISION_NPCA ,[@NP_Pendientes_entrega].NPCA_TIPO_NPCA ,[@NP_Pendientes_entrega].NPCA_NUMERO_NPCA ,[@NP_Pendientes_entrega].ARTS_ARTICULO_EMP ,[@NP_Pendientes_entrega].ARTS_NOMBRE ,[@NP_Pendientes_entrega].NPDE_UNIMED ,[@NP_Pendientes_entrega].NPDE_CANT_PEDIDA ,[@NP_Pendientes_entrega].NPDE_CANT_ENTREG ,[@NP_Pendientes_entrega].NPDE_MOTIVO_CANC ,[@NP_Pendientes_entrega].Uni_Pte_Entr_NP ,[@NP_Pendientes_entrega].ARTS_FACTOR_HOMSTO ,IIf([ARTS_CLASIF_2]='0004',Round([@NP_Pendientes_entrega].[Uni_Pte_Entr_NP]/[ARTS_FACTOR_HOMSTO],3) ,[@NP_Pendientes_entrega].[Uni_Pte_Entr_NP]) AS [NP_UniM2_Pte_Entr] ,[@NP_Pendientes_entrega].ARTS_CLASIF_2 FROM @NP_Pendientes_entrega WHERE ((([@NP_Pendientes_entrega].[Uni_Pte_Entr_NP])>0)) DECLARE @NP_Pendientes_entrega3 TABLE(NPCA_TIPO_NPCA VARCHAR(3), ARTS_ARTICULO_EMP VARCHAR(30), ARTS_NOMBRE VARCHAR(70), Uni_Pte_Entr_NP DECIMAL(12,2), NP_UniM2_Pte_Entr DECIMAL(12,2)) INSERT INTO @NP_Pendientes_entrega3 SELECT [@NP_Pendientes_entrega2].NPCA_TIPO_NPCA ,[@NP_Pendientes_entrega2].ARTS_ARTICULO_EMP ,[@NP_Pendientes_entrega2].ARTS_NOMBRE ,Sum([@NP_Pendientes_entrega2].[Uni_Pte_Entr_NP]) AS [Uni_Pte_Entr_NP] ,Sum([@NP_Pendientes_entrega2].[NP_UniM2_Pte_Entr]) AS [NP_UniM2_Pte_Entr] FROM @NP_Pendientes_entrega2 GROUP BY [@NP_Pendientes_entrega2].NPCA_TIPO_NPCA ,[@NP_Pendientes_entrega2].ARTS_ARTICULO_EMP ,[@NP_Pendientes_entrega2].ARTS_NOMBRE DECLARE @Depos_A_No_considerar_para_stock_fisico TABLE (Cod_Depos INT, Nomb_Depos VARCHAR(30)) INSERT INTO @Depos_A_No_considerar_para_stock_fisico SELECT dbo.STOC_DPOS.DPOS_DEPOSITO AS Cod_Depos,dbo.STOC_DPOS.DPOS_NOMBRE AS Nomb_Depos FROM dbo.STOC_DPOS WITH (NOLOCK) WHERE dbo.STOC_DPOS.DPOS_DEPOSITO IN ("+ DepositoANoConsiderar +") DECLARE @StockConVencido TABLE(ARTS_ARTICULO INT, ARTS_NOMBRE VARCHAR(70), ARTS_ARTICULO_EMP VARCHAR(30), SumaDeSDPP_STOCK_ACT DECIMAL(14,0), PART_FECHA_VTO DATETIME) INSERT INTO @StockConVencido SELECT dbo.STOC_ARTS.ARTS_ARTICULO ,dbo.STOC_ARTS.ARTS_NOMBRE ,dbo.STOC_ARTS.ARTS_ARTICULO_EMP ,Sum(dbo.STOC_SDPP.SDPP_STOCK_ACT) AS SumaDeSDPP_STOCK_ACT ,dbo.STOC_PART.PART_FECHA_VTO FROM ((dbo.STOC_ARTS WITH (NOLOCK) INNER JOIN dbo.STOC_SDPP WITH (NOLOCK) ON dbo.STOC_ARTS.ARTS_ARTICULO = dbo.STOC_SDPP.SDPP_ARTICULO) INNER JOIN dbo.STOC_PART WITH (NOLOCK) ON dbo.STOC_SDPP.SDPP_PARTIDA = dbo.STOC_PART.PART_PARTIDA) LEFT JOIN @Depos_A_No_considerar_para_stock_fisico ON dbo.STOC_SDPP.SDPP_DEPOSITO = [@Depos_A_No_considerar_para_stock_fisico].[Cod_Depos] GROUP BY dbo.STOC_ARTS.ARTS_ARTICULO ,dbo.STOC_ARTS.ARTS_NOMBRE ,dbo.STOC_ARTS.ARTS_ARTICULO_EMP ,dbo.STOC_PART.PART_FECHA_VTO ,[@Depos_A_No_considerar_para_stock_fisico].[Nomb_Depos] HAVING (((Sum(dbo.STOC_SDPP.SDPP_STOCK_ACT))>0) AND ((dbo.STOC_PART.PART_FECHA_VTO) Is Not Null AND (dbo.STOC_PART.PART_FECHA_VTO)<=CONVERT(date, GETDATE())) AND (([@Depos_A_No_considerar_para_stock_fisico].[Nomb_Depos]) Is Null)) DECLARE @Stock TABLE (ARTS_ARTICULO INT, Cod_Art VARCHAR(30), Nombre_Art VARCHAR(70), Stock_Uni DECIMAL(14,0), Uni_HS VARCHAR(3), ARTS_FACTOR_HOMSTO DECIMAL(14,4), ARTS_CLASIF_1 VARCHAR(10), ARTS_CLASIF_2 VARCHAR(10), ARTS_CLASIF_3 VARCHAR(10), ARTS_CLASIF_4 VARCHAR(10), ARTS_CLASIF_5 VARCHAR(10), ARTS_CLASIF_6 VARCHAR(10), ARTS_CLASIF_7 VARCHAR(10), ARTS_CLASIF_8 VARCHAR(10)) INSERT INTO @Stock SELECT dbo.STOC_ARTS.ARTS_ARTICULO ,dbo.STOC_ARTS.ARTS_ARTICULO_EMP AS [Cod_Art] ,dbo.STOC_ARTS.ARTS_NOMBRE AS [Nombre_Art] ,Sum(dbo.STOC_STDP.STDP_STOCK_ACT) AS [Stock_Uni] ,dbo.STOC_ARTS.ARTS_UNIMED_HOMSTO AS [Uni_HS] ,dbo.STOC_ARTS.ARTS_FACTOR_HOMSTO ,dbo.STOC_ARTS.ARTS_CLASIF_1 ,dbo.STOC_ARTS.ARTS_CLASIF_2 ,dbo.STOC_ARTS.ARTS_CLASIF_3 ,dbo.STOC_ARTS.ARTS_CLASIF_4 ,dbo.STOC_ARTS.ARTS_CLASIF_5 ,dbo.STOC_ARTS.ARTS_CLASIF_6 ,dbo.STOC_ARTS.ARTS_CLASIF_7 ,dbo.STOC_ARTS.ARTS_CLASIF_8 FROM (dbo.STOC_ARTS WITH (NOLOCK) LEFT JOIN dbo.STOC_STDP WITH (NOLOCK) ON dbo.STOC_ARTS.ARTS_ARTICULO = dbo.STOC_STDP.STDP_ARTICULO) LEFT JOIN @Depos_A_No_considerar_para_stock_fisico ON dbo.STOC_STDP.STDP_DEPOSITO = [@Depos_A_No_considerar_para_stock_fisico].[Cod_Depos] GROUP BY dbo.STOC_ARTS.ARTS_ARTICULO ,dbo.STOC_ARTS.ARTS_ARTICULO_EMP ,dbo.STOC_ARTS.ARTS_NOMBRE ,dbo.STOC_ARTS.ARTS_UNIMED_HOMSTO ,dbo.STOC_ARTS.ARTS_FACTOR_HOMSTO ,dbo.STOC_ARTS.ARTS_CLASIF_1 ,dbo.STOC_ARTS.ARTS_CLASIF_2 ,dbo.STOC_ARTS.ARTS_CLASIF_3 ,dbo.STOC_ARTS.ARTS_CLASIF_4 ,dbo.STOC_ARTS.ARTS_CLASIF_5 ,dbo.STOC_ARTS.ARTS_CLASIF_6 ,dbo.STOC_ARTS.ARTS_CLASIF_7 ,dbo.STOC_ARTS.ARTS_CLASIF_8 ,[@Depos_A_No_considerar_para_stock_fisico].[Nomb_Depos] HAVING ((([@Depos_A_No_considerar_para_stock_fisico].[Nomb_Depos]) Is Null)) SELECT [@Stock].ARTS_ARTICULO ,[@Stock].[Cod_Art] ,[@Stock].[Nombre_Art] ,[@Stock].[Stock_Uni] ,[@StockConVencido].SumaDeSDPP_STOCK_ACT AS [Stock_Uni_con_vencido] ,[@Stock].[Uni_HS] /*,IIf([Stock_Uni]=0,IIf([ARTS_CLASIF_2]='0004',Round([Stock_Uni]/[ARTS_FACTOR_HOMSTO],2) ,[Stock_Uni]),0)*/ ,(CASE WHEN Stock_Uni = [Stock_Uni] THEN (Round([Stock_Uni]/NULLIF([ARTS_FACTOR_HOMSTO],0),2)) ELSE 0 END) AS [Stock_Uni_M2_ceram] ,[@NP_Pendientes_entrega3].[Uni_Pte_Entr_NP] ,IIf( ([Stock_Uni]-IIf([@StockConVencido].SumaDeSDPP_STOCK_ACT=[@StockConVencido].SumaDeSDPP_STOCK_ACT,[@StockConVencido].SumaDeSDPP_STOCK_ACT,0)-IIf([Uni_Pte_Entr_NP]=[Uni_Pte_Entr_NP],[Uni_Pte_Entr_NP],0)) > 0, ([Stock_Uni]-IIf([@StockConVencido].SumaDeSDPP_STOCK_ACT=[@StockConVencido].SumaDeSDPP_STOCK_ACT,[@StockConVencido].SumaDeSDPP_STOCK_ACT,0)-IIf([Uni_Pte_Entr_NP]=[Uni_Pte_Entr_NP],[Uni_Pte_Entr_NP],0)) , 0) AS [Uni_M2_Disp] ,[@Stock].ARTS_FACTOR_HOMSTO ,[@Stock].ARTS_CLASIF_1 ,[@Stock].ARTS_CLASIF_2 ,[@Stock].ARTS_CLASIF_3 ,[@Stock].ARTS_CLASIF_4 ,[@Stock].ARTS_CLASIF_5 ,[@Stock].ARTS_CLASIF_6 ,[@Stock].ARTS_CLASIF_7 ,[@Stock].ARTS_CLASIF_8 FROM (@Stock LEFT JOIN @NP_Pendientes_entrega3 ON [@Stock].[Cod_Art] = [@NP_Pendientes_entrega3].ARTS_ARTICULO_EMP) LEFT JOIN @StockConVencido ON [@Stock].ARTS_ARTICULO = [@StockConVencido].ARTS_ARTICULO");
+      return stockfisico.recordsets;
+    }
+    catch(error){
+      console.log(error);
+    }
+  }
+
+  async function getListadePrecioWeb(){
+    try{
+      let pool = await sql.connect(config);
+      let listaprecio = await pool.request().query("DECLARE @COTI_MONE TABLE(COTI_COTIZACION DECIMAL(14,5), COTI_FECHA DATETIME, COTI_MONEDA1 VARCHAR(3), COTI_MONEDA2 VARCHAR(3)) INSERT INTO @COTI_MONE SELECT dbo.SIST_COTI.COTI_COTIZACION, dbo.SIST_COTI.COTI_FECHA, dbo.SIST_COTI.COTI_MONEDA1, dbo.SIST_COTI.COTI_MONEDA2 FROM dbo.SIST_COTI WITH(NOLOCK) WHERE dbo.SIST_COTI.COTI_FECHA < GETDATE() DECLARE @Lista_precio_1 TABLE( ARPV_ARTICULO INT ,ARPV_LISTA_PRECVTA INT ,ARPV_PRECIO_VTA DECIMAL(14,2) ,ARPV_MONEDA VARCHAR(3) ,MaxDeCOTI_FECHA DATETIME ,CIMP_TASA DECIMAL (7,4)) INSERT INTO @Lista_precio_1 SELECT dbo.VENT_ARPV.ARPV_ARTICULO ,dbo.VENT_ARPV.ARPV_LISTA_PRECVTA ,dbo.VENT_ARPV.ARPV_PRECIO_VTA ,dbo.VENT_ARPV.ARPV_MONEDA ,Max([@COTI_MONE].COTI_FECHA) AS MaxDeCOTI_FECHA ,dbo.SIST_CIMP.CIMP_TASA FROM ((dbo.VENT_ARPV WITH (NOLOCK) LEFT JOIN @COTI_MONE ON dbo.VENT_ARPV.ARPV_MONEDA = [@COTI_MONE].COTI_MONEDA1) INNER JOIN dbo.VENT_ARVI WITH (NOLOCK) ON dbo.VENT_ARPV.ARPV_ARTICULO = dbo.VENT_ARVI.ARVI_ARTICULO) INNER JOIN dbo.SIST_CIMP WITH (NOLOCK) ON (dbo.VENT_ARVI.ARVI_CATEGORIA_IMP = dbo.SIST_CIMP.CIMP_CATEGORIA_IMP) AND (dbo.VENT_ARVI.ARVI_IMPUESTO = dbo.SIST_CIMP.CIMP_IMPUESTO) GROUP BY dbo.VENT_ARPV.ARPV_ARTICULO ,dbo.VENT_ARPV.ARPV_LISTA_PRECVTA ,dbo.VENT_ARPV.ARPV_PRECIO_VTA ,dbo.VENT_ARPV.ARPV_MONEDA ,dbo.SIST_CIMP.CIMP_TASA HAVING (((dbo.VENT_ARPV.ARPV_LISTA_PRECVTA)=1)) ORDER BY Max([@COTI_MONE].COTI_FECHA) DECLARE @Lista_precio_2 TABLE( ARPV_ARTICULO INT ,ARPV_LISTA_PRECVTA INT ,ARPV_PRECIO_VTA DECIMAL(14,2) ,ARPV_MONEDA VARCHAR(3) ,COTI_COTIZACION DECIMAL(14,5) ,CIMP_TASA DECIMAL (7,4) ,Precio_base_pesos_SI DECIMAL(14,2) ,Pre_Lista_con_IVA_L1 DECIMAL(14,2) ,Pre_Cdo_con_IVA_L1 DECIMAL(14,2) ) INSERT INTO @Lista_precio_2 SELECT [@Lista_precio_1].ARPV_ARTICULO ,[@Lista_precio_1].ARPV_LISTA_PRECVTA ,[@Lista_precio_1].ARPV_PRECIO_VTA ,[@Lista_precio_1].ARPV_MONEDA ,dbo.SIST_COTI.COTI_COTIZACION ,[@Lista_precio_1].CIMP_TASA ,(CASE WHEN COTI_COTIZACION = [COTI_COTIZACION] THEN ([ARPV_PRECIO_VTA]*[COTI_COTIZACION]) ELSE [ARPV_PRECIO_VTA] END) AS [Precio_base_pesos_SI] ,Round((CASE WHEN COTI_COTIZACION = [COTI_COTIZACION] THEN ([ARPV_PRECIO_VTA]*[COTI_COTIZACION]) ELSE [ARPV_PRECIO_VTA] END)*(1+[CIMP_TASA]/100) ,2) AS [Pre_Lista_con_IVA_L1] ,Round((CASE WHEN COTI_COTIZACION = [COTI_COTIZACION] THEN ([ARPV_PRECIO_VTA]*[COTI_COTIZACION]) ELSE [ARPV_PRECIO_VTA] END)*0.8*(1+[CIMP_TASA]/100) ,2) AS [Pre_Cdo_con_IVA_L1] FROM @Lista_precio_1 LEFT JOIN dbo.SIST_COTI WITH (NOLOCK) ON ([@Lista_precio_1].ARPV_MONEDA = dbo.SIST_COTI.COTI_MONEDA1) AND ([@Lista_precio_1].MaxDeCOTI_FECHA = dbo.SIST_COTI.COTI_FECHA) DECLARE @Lista_precio_3 TABLE( ARTS_ARTICULO_EMP VARCHAR(30) ,ARTS_NOMBRE VARCHAR(70) ,ARTS_UNIMED_STOCK VARCHAR(3) ,Unidad VARCHAR(10) ,Pre_Lista_con_IVA_L1 DECIMAL(14,2) ,Pre_Cdo_con_IVA_L1 DECIMAL(14,2) ,Pre_Lista_con_IVA_L1xM2 DECIMAL(14,2) ,Pre_Cdo_con_IVA_L1xM2 DECIMAL(14,2) ,RAC DECIMAL(14,3) ,Copete_2 TEXT ) INSERT INTO @Lista_precio_3 SELECT dbo.STOC_ARTS.ARTS_ARTICULO_EMP ,dbo.STOC_ARTS.ARTS_NOMBRE ,dbo.STOC_ARTS.ARTS_UNIMED_STOCK ,IIf([ARTS_CLASIF_2]='0004','M2',dbo.STOC_ARTS.[ARTS_UNIMED_STOCK]) AS Unidad ,[@Lista_precio_2].[Pre_Lista_con_IVA_L1] ,[@Lista_precio_2].[Pre_Cdo_con_IVA_L1] ,IIf(dbo.STOC_ARTS.[ARTS_CLASIF_2]='0004',Round([@Lista_precio_2].[Pre_Lista_con_IVA_L1]*dbo.STOC_ARTS.[ARTS_FACTOR_HOMSTO],2) ,0) AS [Pre_Lista_con_IVA_L1xM2] ,IIf(dbo.STOC_ARTS.[ARTS_CLASIF_2]='0004',Round([@Lista_precio_2].[Pre_Cdo_con_IVA_L1]*dbo.STOC_ARTS.[ARTS_FACTOR_HOMSTO],2) ,0) AS [Pre_Cdo_con_IVA_L1xM2] ,IIf(dbo.STOC_ARTS.[ARTS_CLASIF_2]='0004',Round(1/NULLIF([ARTS_FACTOR_HOMSTO],0),3) ,0) AS [RAC] ,IIf(dbo.STOC_ARTS.[ARTS_CLASIF_2]='0004','Venta por caja cerrada. El precio por m2 es aproximado. La caja rinde ' + CAST(CAST(1/NULLIF([ARTS_FACTOR_HOMSTO],0) AS DECIMAL(14,3)) AS NVARCHAR) + ' m2 aproximadamente','') AS [Copete_2] FROM @Lista_precio_2 INNER JOIN dbo.STOC_ARTS WITH (NOLOCK) ON [@Lista_precio_2].ARPV_ARTICULO = dbo.STOC_ARTS.ARTS_ARTICULO SELECT [@Lista_precio_3].ARTS_ARTICULO_EMP ,[@Lista_precio_3].ARTS_NOMBRE ,[@Lista_precio_3].ARTS_UNIMED_STOCK ,[@Lista_precio_3].[Pre_Cdo_con_IVA_L1] ,[@Lista_precio_3].[Copete_2] FROM @Lista_precio_3 WHERE ((([@Lista_precio_3].[Pre_Cdo_con_IVA_L1])>0))");
+      return listaprecio.recordsets;
+    }
+    catch(error){
+      console.log(error);
+    }
+  }
+
+  async function getPlanillaImportar(){
+    try{
+      let pool = await sql.connect(config);
+      let listaPlanilla = await pool.request().query("SELECT 'Simple Product' AS ProductType ,dbo.STOC_ARTS.ARTS_NOMBRE AS Name ,'El precio corresponde a pago en efectivo, tarjeta de crédito en una cuota, tarjeta de débito o medios electrónicos.' AS FullDescription ,'Simple Product' AS ProductTemplate ,'' AS MetaKeywords ,'' AS MetaDescription ,'' AS MetaTitle ,'' AS SeName ,'FALSO' AS AllowCustomerReviews ,dbo.STOC_ARTS.ARTS_ARTICULO_EMP AS SKU ,'VERDADERO' AS IsShipEnabled ,'Manage Stock' AS ManageInventoryMethod ,IIf(SUBSTRING([ARTS_ARTICULO_EMP],1,2)='91','FALSO','VERDADERO') AS DisplayStockQuantity ,'1' AS NotifyAdminForQuantityBelow ,IIf(([CA08_CLASIF_8]=0130) ,'Allow Qty Below0 And Notify Customer',IIf(SUBSTRING([ARTS_ARTICULO_EMP],1,2)='81','Allow Qty Below0 And Notify Customer','No Backorders')) AS BackorderMode ,1 AS OrderMinimumQuantity ,1000 AS OrderMaximumQuantity ,'FALSO' AS CallForPrice ,dbo.STOC_CA06.CA06_NOMBRE AS Manufacturers ,[ARTS_PESO_EMB_UMS] AS Weight ,'' AS Picture1 ,IIf([ARTS_CLASIF_2]=0004,Round(1/NULLIF([ARTS_FACTOR_HOMSTO],0),3),0) AS BasepriceAmount ,'FALSO' AS Deleted FROM(((dbo.STOC_ARTS WITH (NOLOCK) INNER JOIN dbo.STOC_CA02 WITH (NOLOCK) ON dbo.STOC_ARTS.ARTS_CLASIF_2 = dbo.STOC_CA02.CA02_CLASIF_2) INNER JOIN dbo.STOC_CA06 WITH (NOLOCK) ON dbo.STOC_ARTS.ARTS_CLASIF_6 = dbo.STOC_CA06.CA06_CLASIF_6) INNER JOIN dbo.STOC_CA08 WITH (NOLOCK) ON dbo.STOC_ARTS.ARTS_CLASIF_8 = dbo.STOC_CA08.CA08_CLASIF_8) INNER JOIN dbo.STOC_ARVE WITH (NOLOCK) ON dbo.STOC_ARTS.ARTS_ARTICULO = dbo.STOC_ARVE.ARVE_ARTICULO");
+      return listaPlanilla.recordsets;
+    }
+    catch(error){
+      console.log(error);
+    }
+  }
+
   async function addControl(control) {
     try {
       let  pool = await  sql.connect(config);
@@ -269,5 +369,11 @@ async function getComboArt(comboArt){
     getListaPreciosVentaAlPublico: getListaPreciosVentaAlPublico,
     getComboArt: getComboArt,
     getM2Art: getM2Art,
-    getM2Saldo: getM2Saldo
+    getM2Saldo: getM2Saldo,
+    getStockPartidaconvencimiento: getStockPartidaconvencimiento,
+    getStock: getStock,
+    getNPPendienteEntrega: getNPPendienteEntrega,
+    getListadePrecioWeb: getListadePrecioWeb,
+    getStockFisicoyDisp: getStockFisicoyDisp,
+    getPlanillaImportar: getPlanillaImportar
   }

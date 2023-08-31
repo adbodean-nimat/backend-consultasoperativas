@@ -4,6 +4,7 @@ const axios = require('axios');
 const _ = require('lodash');
 const httpsAgent = new https.Agent({ rejectUnauthorized: false }); 
 const token = process.env.JWT_TOKEN
+
 async function getListadePrecioBUI2() {
     let endpoints = [
         `${process.env.URL_API}` + 'listadepreciobreveusointerno',
@@ -346,6 +347,159 @@ async function getLPDistribucion(){
     return response2
 }
 
+async function getPlanillaImportarStock(){
+    let endpoints4 = [
+        `${process.env.URL_API}` + 'planillaimportar',
+        `${process.env.URL_API}` + 'stockfisicoydispon',
+        `${process.env.URL_API}` + 'listadeprecioweb',
+      ];
+      let response = await Promise.all(endpoints4.map((endpoint4) => axios.get(endpoint4,{httpsAgent, headers: {'Authorization': `Basic ${token}`}}))).then(
+        ([{data: firstResponse}, {data: secundResponse}, {data: threeResponse}]) => {
+            var results = [];
+            for (var i=0; i<firstResponse.length; i++) {
+                for (var j=0; j<secundResponse.length; j++) {
+                    if (firstResponse[i].SKU === secundResponse[j].Cod_Art) {
+                        results.push({
+                            ProductType: firstResponse[i].ProductType,
+                            Name: firstResponse[i].Name,
+                            FullDescription: firstResponse[i].FullDescription,
+                            ProductTemplate: firstResponse[i].ProductTemplate,
+                            MetaKeywords: firstResponse[i].MetaKeywords,
+                            MetaDescription: firstResponse[i].MetaDescription,
+                            MetaTitle: firstResponse[i].MetaTitle,
+                            SeName: firstResponse[i].SeName,
+                            AllowCustomerReviews: firstResponse[i].AllowCustomerReviews,
+                            SKU: firstResponse[i].SKU,
+                            IsShipEnabled: firstResponse[i].IsShipEnabled,
+                            ManageInventoryMethod: firstResponse[i].ManageInventoryMethod,
+                            DisplayStockQuantity: firstResponse[i].DisplayStockQuantity,
+                            StockQuantity: firstResponse[i].SKU.substring(0,2)=="91" ? 1000 : firstResponse[i].SKU.substring(0,2)=="81" ? 2 : secundResponse[j].Uni_M2_Disp,
+                            DisplayStockAvailability: secundResponse[j].ARTS_CLASIF_8 == "0130" && secundResponse[j].Uni_M2_Disp == 0 ? "FALSO" : firstResponse[i].SKU.substring(0,3)=="811" ? "VERDADERO" : "VERDADERO",
+                            DisplayStockQuantity: firstResponse[i].SKU.substring(0,2)=="91" ? "FALSO" : "VERDADERO",
+                            NotifyAdminForQuantityBelow: firstResponse[i].NotifyAdminForQuantityBelow,
+                            BackorderMode: firstResponse[i].BackorderMode,
+                            OrderMinimumQuantity: firstResponse[i].OrderMinimumQuantity,
+                            CallForPrice: firstResponse[i].CallForPrice,
+                            DisableBuyButton: secundResponse[j].ARTS_CLASIF_8 == "0130" && secundResponse[j].Uni_M2_Disp == 0 ? "VERDADERO" :  secundResponse[j].Uni_M2_Disp == 0 ? "VERDADERO" : "FALSO",
+                            Manufacturers: firstResponse[i].Manufacturers,
+                            Weight: firstResponse[i].Weight,
+                            Picture1: firstResponse[i].Picture1,
+                            BasepriceAmount: firstResponse[i].BasepriceAmount,
+                            Deleted: firstResponse[i].Deleted
+                        });
+                    }
+                }
+            }
+            var results2 = [];
+            for (var i=0; i<results.length; i++) {
+                for (var j=0; j<threeResponse.length; j++) {
+                    if (results[i].SKU === threeResponse[j].ARTS_ARTICULO_EMP) {
+                        results2.push({
+                            ProductType: results[i].ProductType,
+                            Name: results[i].Name,
+                            FullDescription: results[i].FullDescription,
+                            ProductTemplate: results[i].ProductTemplate,
+                            MetaKeywords: results[i].MetaKeywords,
+                            MetaDescription: results[i].MetaDescription,
+                            MetaTitle: results[i].MetaTitle,
+                            SeName: results[i].SeName,
+                            AllowCustomerReviews: results[i].AllowCustomerReviews,
+                            SKU: results[i].SKU,
+                            IsShipEnabled: results[i].IsShipEnabled,
+                            ManageInventoryMethod: results[i].ManageInventoryMethod,
+                            DisplayStockQuantity: results[i].DisplayStockQuantity,
+                            StockQuantity: results[i].StockQuantity,
+                            DisplayStockAvailability: results[i].DisplayStockAvailability,
+                            DisplayStockQuantity: results[i].DisplayStockQuantity,
+                            NotifyAdminForQuantityBelow: results[i].NotifyAdminForQuantityBelow,
+                            BackorderMode: results[i].BackorderMode,
+                            OrderMinimumQuantity: results[i].OrderMinimumQuantity,
+                            CallForPrice: results[i].CallForPrice,
+                            DisableBuyButton: results[i].DisableBuyButton,
+                            Price: threeResponse[j].Pre_Cdo_con_IVA_L1,
+                            Manufacturers: results[i].Manufacturers,
+                            Weight: results[i].Weight,
+                            Picture1: results[i].Picture1,
+                            BasepriceAmount: results[i].BasepriceAmount,
+                            Deleted: results[i].Deleted
+                        });
+                    }
+                }
+            }
+            return results2;
+        } 
+    ).catch(function (error) {
+        console.log(error);
+   });
+    return response
+}
+
+/* async function getListaStock() {
+    let endpoints = [
+        `${process.env.URL_API}` + 'depositoanoconsiderarparastockfisico',
+        `${process.env.URL_API}` + 'stock'
+    ]
+    let response = await Promise.all(endpoints.map((endpoint) => axios.get(endpoint,{httpsAgent, headers: {'Authorization': `Basic ${token}`}}))).then(
+        ([{data: firstResponse}, {data: secundResponse}]) => {
+            var results = [];
+            var results2 = secundResponse.map(function(e) {
+                return Object.assign({}, e, firstResponse.reduce(function(acc, val) {
+                    if (val.codigo_deposito == e.STDP_DEPOSITO) {
+                        return val
+                    } else {
+                        return acc
+                    }
+                }, {}))
+            });
+            results2.forEach(elements =>{
+                if(elements.codigo_deposito == null){
+                  results.push(
+                    {
+                        ARTS_ART: elements.ARTS_ARTICULO,
+                        ARTS_COD: elements.ARTS_ARTICULO_EMP,
+                        ARTS_NOMBRE: elements.ARTS_NOMBRE,
+                        STDP_STOCK_ACT: elements.STDP_STOCK_ACT,
+                        ARTS_UNIMED_HOMSTO: elements.ARTS_UNIMED_HOMSTO,
+                        ARTS_FACTOR_HOMSTO: elements.ARTS_FACTOR_HOMSTO,
+                        ARTS_CLASIF_1: elements.ARTS_CLASIF_1,
+                        ARTS_CLASIF_2: elements.ARTS_CLASIF_2,
+                        ARTS_CLASIF_3: elements.ARTS_CLASIF_3,
+                        ARTS_CLASIF_4: elements.ARTS_CLASIF_4,
+                        ARTS_CLASIF_5: elements.ARTS_CLASIF_5,
+                        ARTS_CLASIF_6: elements.ARTS_CLASIF_6,
+                        ARTS_CLASIF_7: elements.ARTS_CLASIF_7,
+                        ARTS_CLASIF_8: elements.ARTS_CLASIF_8
+                    }
+                    )
+                }
+            })
+
+            const sumMap = new Map();
+
+            for (entry of results) {
+                if (entry.ARTS_COD) {
+                  const batchAcc = sumMap.get(entry.ARTS_COD)
+              
+                  if (batchAcc) {
+                    batchAcc.STDP_STOCK_ACT += entry.STDP_STOCK_ACT
+                  } else {
+                    sumMap.set(entry.ARTS_COD, entry)
+                  }
+                }
+            }
+              
+            const arr = Array.from(sumMap, ([, value]) => value)
+            
+            console.log(results.length)
+            console.log(arr.length)
+            return arr;
+        } 
+    ).catch(function (error) {
+        console.log(error);
+    });
+    return response;  
+} */
+
 module.exports = {
     getListadePrecioBUI2,
     getConsSecoConfig,
@@ -354,5 +508,6 @@ module.exports = {
     getFamiliaArts2,
     getVN_1,
     getVN_2,
-    getLPDistribucion
+    getLPDistribucion,
+    getPlanillaImportarStock
     };

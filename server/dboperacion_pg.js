@@ -1,4 +1,3 @@
-const { response, request } = require('express');
 var configpg = require('./dbconfig_pg.js');
 const Pool = require('pg').Pool
 const pool = new Pool(configpg);
@@ -960,6 +959,152 @@ const deleteCartelManual = (request, response) => {
     })
 }
 
+// Tabla Desposito no a considerar para stock fisico
+const getDespositoNoAConsiderarParaStockFisico = (request, response) => {
+    pool.query('SELECT * FROM public.depos_a_no_considerar_para_stock_fisico ORDER BY id ASC ', (error, results) =>{
+        if (error){
+            throw error
+        }
+        response.status(200).json(results.rows)
+    })
+}
+
+const updateDespositoNoAConsiderarParaStockFisico = (request, response) => {
+    const id = parseInt(request.params.id)
+    const {codigo_deposito, nombre_deposito} = request.body
+
+    pool.query(
+        'UPDATE public.depos_a_no_considerar_para_stock_fisico SET "codigo_deposito" = $1, "nombre_deposito" = $2 WHERE id = $3',
+        [codigo_deposito, nombre_deposito, id ], (error, results) => {
+            if (error){
+                throw error
+            }
+            response.status(200).send(`Modificado correctamente`)
+        }
+    )
+}
+
+const createDespositoNoAConsiderarParaStockFisico = (request, response) => {
+    const {codigo_deposito, nombre_deposito} = request.body
+
+    pool.query(
+        'INSERT INTO public.depos_a_no_considerar_para_stock_fisico ("codigo_deposito", "nombre_deposito") VALUES ($1, $2)', 
+        [codigo_deposito, nombre_deposito], (error, results) => {
+        if (error){
+            throw error
+        }
+        response.status(201).send(`Agregar correctamente`)
+    })
+}
+
+const deleteDespositoNoAConsiderarParaStockFisico = (request, response) => {
+    const id = parseInt(request.params.id)
+
+    pool.query('DELETE FROM public.depos_a_no_considerar_para_stock_fisico WHERE id = $1', [id], (error, results) => {
+        if (error){
+            throw error
+        }
+        response.status(200).send(`Eliminado correctamente`)
+    })
+}
+
+// Tabla Categorias Web
+const getCategoriasWeb = (request, response) => {
+    pool.query('SELECT * FROM public.categorias', (error, results) =>{
+        if (error){
+            throw error
+        }
+        response.status(200).json(results.rows)
+    })
+}
+
+const updateCategoriasWeb = (request, response) => {
+    const id = parseInt(request.params.id)
+    const {id_categorias, nombre_categorias} = request.body
+
+    pool.query(
+        'UPDATE public.categorias SET id = $3,  "id_categorias" = $1, "nombre_categorias" = $2 WHERE id = $3',
+        [id_categorias, nombre_categorias, id ], (error, results) => {
+            if (error){
+                throw error
+            }
+            response.status(200).send(`Modificado correctamente`)
+        }
+    )
+}
+
+const createCategoriasWeb = (request, response) => {
+    const {id_categorias, nombre_categorias} = request.body
+
+    pool.query(
+        'INSERT INTO public.categorias ("id_categorias", "nombre_categorias") VALUES ($1, $2)', 
+        [id_categorias, nombre_categorias], (error, results) => {
+        if (error){
+            throw error
+        }
+        response.status(201).send(`Agregar correctamente`)
+    })
+}
+
+const deleteCategoriasWeb = (request, response) => {
+    const id = parseInt(request.params.id)
+
+    pool.query('DELETE FROM public.categorias WHERE id = $1', [id], (error, results) => {
+        if (error){
+            throw error
+        }
+        response.status(200).send(`Eliminado correctamente`)
+    })
+}
+
+// Tabla Articulos Web
+const getArticulosWeb = (request, response) => {
+    pool.query('SELECT * FROM public.articulos', (error, results) =>{
+        if (error){
+            throw error
+        }
+        response.status(200).json(results.rows)
+    })
+}
+
+const updateArticulosWeb = (request, response) => {
+    const id = parseInt(request.params.id)
+    const {publicado, codigo_art, nombre_art, orden_art, marcar_nuevo, mostrar_inicio, outlet, copete, descripcion, bloq_vtas, min_para_web, min_para_obs, categorias1, categorias2, categorias3, categorias4} = request.body
+
+    pool.query(
+        'UPDATE public.articulos SET id=$17, publicado=$1, codigo_art=$2, nombre_art=$3, orden_art=$4, marcar_nuevo=$5, mostrar_inicio=$6, outlet=$7, copete=$8, descripcion=$9, bloq_vtas=$10, min_para_web=$11, min_para_obs=$12, categorias1=$13, categorias2=$14, categorias3=$15, categorias4=$16 WHERE id=$17',
+        [publicado, codigo_art, nombre_art, orden_art, marcar_nuevo, mostrar_inicio, outlet, copete, descripcion, bloq_vtas, min_para_web, min_para_obs, categorias1, categorias2, categorias3, categorias4, id ], (error, results) => {
+            if (error){
+                throw error
+            }
+            response.status(200).send(`Modificado correctamente`)
+        }
+    )
+}
+
+const createArticulosWeb = (request, response) => {
+    const {publicado, codigo_art, nombre_art, orden_art, marcar_nuevo, mostrar_inicio, outlet, copete, descripcion, bloq_vtas, min_para_web, min_para_obs, categorias1, categorias2, categorias3, categorias4} = request.body
+
+    pool.query(
+        'INSERT INTO public.articulos (publicado, codigo_art, nombre_art, orden_art, marcar_nuevo, mostrar_inicio, outlet, copete, descripcion, bloq_vtas, min_para_web, min_para_obs, categorias1, categorias2, categorias3, categorias4) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)', 
+        [publicado, codigo_art, nombre_art, orden_art, marcar_nuevo, mostrar_inicio, outlet, copete, descripcion, bloq_vtas, min_para_web, min_para_obs, categorias1, categorias2, categorias3, categorias4], (error, results) => {
+        if (error){
+            throw error
+        }
+        response.status(201).send(`Agregar correctamente`)
+    })
+}
+
+const deleteArticulosWeb = (request, response) => {
+    const id = parseInt(request.params.id)
+
+    pool.query('DELETE FROM public.articulos WHERE id = $1', [id], (error, results) => {
+        if (error){
+            throw error
+        }
+        response.status(200).send(`Eliminado correctamente`)
+    })
+}
 
 module.exports = {
     getDeposANoConsiderar, getDeposANoConsiderarByCod, createDepos, updateDepos, deleteDepos,
@@ -977,5 +1122,8 @@ module.exports = {
     getProductosDistribucion, getProductosDistribucionByCod, updateProductosDistribucion, createProductosDistribucion, deleteProductosDistribucion,
     getRubrosVtas, getRubrosVtasByCod, updateRubrosVtas, createRubrosVtas, deleteRubrosVtas,
     getFamArtDist, getFamArtDistByCod, updateFamArtDist, createFamArtDist, deleteFamArtDist,
-    getCartelManual, getCartelManualbyId, updateCartelManual, createCartelManual, deleteCartelManual
+    getCartelManual, getCartelManualbyId, updateCartelManual, createCartelManual, deleteCartelManual,
+    getDespositoNoAConsiderarParaStockFisico, updateDespositoNoAConsiderarParaStockFisico, createDespositoNoAConsiderarParaStockFisico, deleteDespositoNoAConsiderarParaStockFisico,
+    getCategoriasWeb, updateCategoriasWeb,createCategoriasWeb,deleteCategoriasWeb,
+    getArticulosWeb, updateArticulosWeb, createArticulosWeb, deleteArticulosWeb
 }

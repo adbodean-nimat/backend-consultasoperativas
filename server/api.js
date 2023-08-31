@@ -9,6 +9,7 @@ var app = express();
 var router = express.Router();
 var passport = require('passport');
 var LdapStrategy = require('passport-ldapauth');
+var compression = require('compression');
 const https = require('https');
 const fs = require('fs');
 const httpsOptions = {
@@ -17,6 +18,8 @@ const httpsOptions = {
 }
 const jwt = require("jsonwebtoken");
 const { response } = require('express');
+/* const { response } = require('express');
+const { request } = require('http'); */
 const verifyUserToken = (req, res, next) => {
   if (!req.headers.authorization) {
     return res.status(401).send("Solicitud no autorizada");
@@ -43,6 +46,7 @@ passport.use(new LdapStrategy({
   }
 }))
 app.use(cors());
+app.use(compression())
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 app.use(passport.initialize())
@@ -183,6 +187,42 @@ router.route('/rubrovta').get((request, response)=>{
   })
 })
 
+router.route('/stockpartidaconvencimiento').get((request, response)=>{
+  Db.getStockPartidaconvencimiento().then((data)=>{
+    response.json(data[0]);
+  })
+})
+
+router.route('/stock').get((request, response)=>{
+  Db.getStock().then((data)=>{
+    response.json(data[0]);
+  })
+})
+
+router.route('/nppendientesentrega').get((request, response)=>{
+  Db.getNPPendienteEntrega().then((data)=>{
+    response.json(data);
+  })
+})
+
+router.route('/stockfisicoydispon').get((request, response)=>{
+  Db.getStockFisicoyDisp().then((data)=>{
+    response.json(data[0])
+  })
+})
+
+router.route('/listadeprecioweb').get((request, response)=>{
+  Db.getListadePrecioWeb().then((data)=>{
+    response.json(data[0]);
+  })
+})
+
+router.route('/planillaimportar').get((request, response)=>{
+  Db.getPlanillaImportar().then((data)=>{
+    response.json(data[0]);
+  })
+})
+
 router.route('/listabreveusointerno').get((request, response) => {
   jConfig.getListadePrecioBUI2().then((data)=>{
     response.json(data);
@@ -231,6 +271,12 @@ router.route('/lpvndistribucion').get((request, response)=>{
   })
 })
 
+router.route('/planillaimportarstockprecio').get((request, response)=>{
+  jConfig.getPlanillaImportarStock().then((data)=>{
+    response.json(data);
+  })
+})
+
 router.route('/rowaplancanje').get(fsConfig.getFileExcel)
 
 
@@ -254,6 +300,12 @@ router.route('/deposanoconsiderar/:id').get(Pg.getDeposANoConsiderarByCod)
 router.route('/deposanoconsiderar/').post(Pg.createDepos)
 router.route('/deposanoconsiderar/:id').put(Pg.updateDepos)
 router.route('/deposanoconsiderar/:id').delete(Pg.deleteDepos)
+
+// Tabla Desposito A No Considerar para Stock Fisico
+router.route('/depositoanoconsiderarparastockfisico').get(Pg.getDespositoNoAConsiderarParaStockFisico)
+router.route('/depositoanoconsiderarparastockfisico/').post(Pg.createDespositoNoAConsiderarParaStockFisico)
+router.route('/depositoanoconsiderarparastockfisico/:id').put(Pg.updateDespositoNoAConsiderarParaStockFisico)
+router.route('/depositoanoconsiderarparastockfisico/:id').delete(Pg.deleteDespositoNoAConsiderarParaStockFisico)
 
 // Tabla NP_a_Considerar
 router.route('/npaconsiderar').get(Pg.getNPaConsiderar)
@@ -345,6 +397,18 @@ router.route('/cartelmanual/:id').get(Pg.getCartelManualbyId)
 router.route('/cartelmanual').post(Pg.createCartelManual)
 router.route('/cartelmanual/:id').put(Pg.updateCartelManual)
 router.route('/cartelmanual/:id').delete(Pg.deleteCartelManual)
+
+// Tabla Categorias Web
+router.route('/categoriasweb').get(Pg.getCategoriasWeb)
+router.route('/categoriasweb').post(Pg.createCategoriasWeb)
+router.route('/categoriasweb/:id').put(Pg.updateCategoriasWeb)
+router.route('/categoriasweb/:id').delete(Pg.deleteCategoriasWeb)
+
+// Tabla Articulos Web
+router.route('/articulosweb').get(Pg.getArticulosWeb)
+router.route('/articulosweb').post(Pg.createArticulosWeb)
+router.route('/articulosweb/:id').put(Pg.updateArticulosWeb)
+router.route('/articulosweb/:id').delete(Pg.deleteArticulosWeb)
 
 const port = 8090;
 
