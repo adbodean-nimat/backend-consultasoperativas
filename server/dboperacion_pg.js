@@ -624,7 +624,7 @@ const updateFamiliaArt = (request, response) => {
     const {cod_fami_art, nombre_fami_art, nro_orden_de_la_fami, set_de_la_familia} = request.body
 
     pool.query(
-        'UPDATE public.familias_de_articulos SET id= $1, cod_fami_art= $2, nombre_fami_art= $3, nro_orden_de_la_fami= $4, set_de_la_familia= $5;',
+        'UPDATE public.familias_de_articulos SET id= $1, cod_fami_art= $2, nombre_fami_art= $3, nro_orden_de_la_fami= $4, set_de_la_familia= $5 WHERE id = $1;',
         /* 'UPDATE public.familias_de_articulos SET cod_fami_art = $1, nombre_fami_art = $2, nro_orden_de_la_fami =$3, set_de_la_familia = $4 WHERE id = $5', */
         [id, cod_fami_art, nombre_fami_art, nro_orden_de_la_fami, set_de_la_familia], (error, results) => {
             if (error){
@@ -1069,11 +1069,11 @@ const getArticulosWeb = (request, response) => {
 
 const updateArticulosWeb = (request, response) => {
     const id = parseInt(request.params.id)
-    const {publicado, codigo_art, nombre_art, orden_art, marcar_nuevo, mostrar_inicio, outlet, copete, descripcion, bloq_vtas, min_para_web, min_para_obs, categorias1, categorias2, categorias3, categorias4} = request.body
+    const {publicado, codigo_art, nombre_art, orden_art, marcar_nuevo, mostrar_inicio, outlet, copete, descripcion, bloq_vtas, min_para_web, stock, categorias1, categorias2, categorias3, categorias4} = request.body
 
     pool.query(
-        'UPDATE public.articulos SET id=$17, publicado=$1, codigo_art=$2, nombre_art=$3, orden_art=$4, marcar_nuevo=$5, mostrar_inicio=$6, outlet=$7, copete=$8, descripcion=$9, bloq_vtas=$10, min_para_web=$11, min_para_obs=$12, categorias1=$13, categorias2=$14, categorias3=$15, categorias4=$16 WHERE id=$17',
-        [publicado, codigo_art, nombre_art, orden_art, marcar_nuevo, mostrar_inicio, outlet, copete, descripcion, bloq_vtas, min_para_web, min_para_obs, categorias1, categorias2, categorias3, categorias4, id ], (error, results) => {
+        'UPDATE public.articulos SET id=$17, publicado=$1, codigo_art=$2, nombre_art=$3, orden_art=$4, marcar_nuevo=$5, mostrar_inicio=$6, outlet=$7, copete=$8, descripcion=$9, bloq_vtas=$10, min_para_web=$11, stock=$12, categorias1=$13, categorias2=$14, categorias3=$15, categorias4=$16 WHERE id=$17',
+        [publicado, codigo_art, nombre_art, orden_art, marcar_nuevo, mostrar_inicio, outlet, copete, descripcion, bloq_vtas, min_para_web, stock, categorias1, categorias2, categorias3, categorias4, id ], (error, results) => {
             if (error){
                 throw error
             }
@@ -1083,11 +1083,11 @@ const updateArticulosWeb = (request, response) => {
 }
 
 const createArticulosWeb = (request, response) => {
-    const {publicado, codigo_art, nombre_art, orden_art, marcar_nuevo, mostrar_inicio, outlet, copete, descripcion, bloq_vtas, min_para_web, min_para_obs, categorias1, categorias2, categorias3, categorias4} = request.body
+    const {publicado, codigo_art, nombre_art, orden_art, marcar_nuevo, mostrar_inicio, outlet, copete, descripcion, bloq_vtas, min_para_web, stock, categorias1, categorias2, categorias3, categorias4} = request.body
 
     pool.query(
-        'INSERT INTO public.articulos (publicado, codigo_art, nombre_art, orden_art, marcar_nuevo, mostrar_inicio, outlet, copete, descripcion, bloq_vtas, min_para_web, min_para_obs, categorias1, categorias2, categorias3, categorias4) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)', 
-        [publicado, codigo_art, nombre_art, orden_art, marcar_nuevo, mostrar_inicio, outlet, copete, descripcion, bloq_vtas, min_para_web, min_para_obs, categorias1, categorias2, categorias3, categorias4], (error, results) => {
+        'INSERT INTO public.articulos (publicado, codigo_art, nombre_art, orden_art, marcar_nuevo, mostrar_inicio, outlet, copete, descripcion, bloq_vtas, min_para_web, stock, categorias1, categorias2, categorias3, categorias4) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)', 
+        [publicado, codigo_art, nombre_art, orden_art, marcar_nuevo, mostrar_inicio, outlet, copete, descripcion, bloq_vtas, min_para_web, stock, categorias1, categorias2, categorias3, categorias4], (error, results) => {
         if (error){
             throw error
         }

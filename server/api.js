@@ -2,6 +2,7 @@ var Db = require('./dboperacion');
 var Pg = require('./dboperacion_pg');
 var jConfig = require('./jconfig');
 var fsConfig = require('./fsconfig');
+var jsonToExcel = require('./jsontoexcel');
 var express = require('express');
 var bodyParser = require('body-parser');
 var cors = require('cors');
@@ -17,9 +18,6 @@ const httpsOptions = {
   cert: fs.readFileSync(process.env.SSL_CERT)
 }
 const jwt = require("jsonwebtoken");
-const { response } = require('express');
-/* const { response } = require('express');
-const { request } = require('http'); */
 const verifyUserToken = (req, res, next) => {
   if (!req.headers.authorization) {
     return res.status(401).send("Solicitud no autorizada");
@@ -274,6 +272,18 @@ router.route('/lpvndistribucion').get((request, response)=>{
 router.route('/planillaimportarstockprecio').get((request, response)=>{
   jConfig.getPlanillaImportarStock().then((data)=>{
     response.json(data);
+  })
+})
+
+router.route('/planillaimportarweb').get((request, response)=>{
+  jsonToExcel.getWebNimat().then((data)=>{
+    response.json(data);
+  })
+})
+
+router.route('/jsontosheet').get((request,response)=>{
+  jsonToExcel.jsontosheet().then((data)=>{
+    response.status(200).send('Generar correctamente');
   })
 })
 
