@@ -283,7 +283,7 @@ router.route('/planillaimportarweb').get((request, response)=>{
 
 router.route('/jsontosheet').get((request,response)=>{
   jsonToExcel.jsontosheet().then((data)=>{
-    response.status(200).send('Generar correctamente');
+    response.status(200).send('Generado correctamente');
   })
 })
 
@@ -419,6 +419,13 @@ router.route('/articulosweb').get(Pg.getArticulosWeb)
 router.route('/articulosweb').post(Pg.createArticulosWeb)
 router.route('/articulosweb/:id').put(Pg.updateArticulosWeb)
 router.route('/articulosweb/:id').delete(Pg.deleteArticulosWeb)
+
+// Tabla Actualización Web
+router.route('/actualizadoweb/:id').put(Pg.UpdateActualizacionWebNow)
+router.route('/actualizacionweb').get(Pg.getActualizacionWeb)
+router.route('/actualizacionweb').post(Pg.CreateActualizacionWeb)
+router.route('/actualizacionweb/:id').put(Pg.UpdateActualizacionWeb)
+router.route('/actualizacionweb/:id').delete(Pg.deleteActualizacionWeb)
 
 const port = 8090;
 

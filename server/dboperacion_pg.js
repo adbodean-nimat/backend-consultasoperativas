@@ -1,3 +1,4 @@
+const { now } = require('lodash');
 var configpg = require('./dbconfig_pg.js');
 const Pool = require('pg').Pool
 const pool = new Pool(configpg);
@@ -1106,6 +1107,69 @@ const deleteArticulosWeb = (request, response) => {
     })
 }
 
+// Tabla Actualización Web
+const getActualizacionWeb = (request, response) => {
+    pool.query('SELECT * FROM public.actualizacion_web', (error, results) =>{
+        if (error){
+            throw error
+        }
+        response.status(200).json(results.rows)
+    })
+}
+
+const UpdateActualizacionWebNow = (request, response) => {
+    const id = parseInt(request.params.id)
+
+    pool.query(
+        'UPDATE public.actualizacion_web SET actualizacion_fecha = now() WHERE id = $1;',
+        [id], (error, results) => {
+            if (error){
+                throw error
+            }
+            response.status(200).send(`Modificado correctamente`)
+        }
+    )
+}
+
+const UpdateActualizacionWeb = (request, response) => {
+    const id = parseInt(request.params.id)
+    const {actualizacion_automatica, actualizacion_cron} = request.body
+
+    pool.query(
+        'UPDATE public.actualizacion_web SET id = $1, actualizacion_automatica = $2, actualizacion_fecha = now(), actualizacion_cron = $3 WHERE id = $1;',
+        [id, actualizacion_automatica, actualizacion_cron], (error, results) => {
+            if (error){
+                throw error
+            }
+            response.status(200).send(`Modificado correctamente`)
+        }
+    )
+}
+
+const CreateActualizacionWeb = (request, response) => {
+    const {actualizacion_automatica} = request.body
+
+    pool.query(
+        'INSERT INTO public.actualizacion_web(actualizacion_automatica) VALUES ($1);', 
+        [actualizacion_automatica], (error, results) => {
+        if (error){
+            throw error
+        }
+        response.status(201).send(`Agregar correctamente`)
+    })
+}
+
+const deleteActualizacionWeb = (request, response) => {
+    const id = parseInt(request.params.id)
+
+    pool.query('DELETE FROM public.actualizacion_web WHERE id = $1', [id], (error, results) => {
+        if (error){
+            throw error
+        }
+        response.status(200).send(`Eliminado correctamente`)
+    })
+}
+
 module.exports = {
     getDeposANoConsiderar, getDeposANoConsiderarByCod, createDepos, updateDepos, deleteDepos,
     getNPaConsiderar, getNPaConsiderarByCod, createNP, updateNP, deleteNP,
@@ -1125,5 +1189,6 @@ module.exports = {
     getCartelManual, getCartelManualbyId, updateCartelManual, createCartelManual, deleteCartelManual,
     getDespositoNoAConsiderarParaStockFisico, updateDespositoNoAConsiderarParaStockFisico, createDespositoNoAConsiderarParaStockFisico, deleteDespositoNoAConsiderarParaStockFisico,
     getCategoriasWeb, updateCategoriasWeb,createCategoriasWeb,deleteCategoriasWeb,
-    getArticulosWeb, updateArticulosWeb, createArticulosWeb, deleteArticulosWeb
+    getArticulosWeb, updateArticulosWeb, createArticulosWeb, deleteArticulosWeb,
+    getActualizacionWeb, UpdateActualizacionWeb, CreateActualizacionWeb, deleteActualizacionWeb, UpdateActualizacionWebNow
 }

@@ -374,19 +374,24 @@ async function getPlanillaImportarStock(){
                             MetaTitle: firstResponse[i].MetaTitle,
                             SeName: firstResponse[i].SeName,
                             AllowCustomerReviews: firstResponse[i].AllowCustomerReviews,
-                            Published: secundResponse[j].ARVE_BLOQUEO_VENTA == 1 ? "BLOQUEADO" : secundResponse[j].ARTS_CLASIF_8 == "0180" && secundResponse[j].Uni_M2_Disp == 0 ? "FALSO" : secundResponse[j].ARTS_CLASIF_8 == "0190" && secundResponse[j].Uni_M2_Disp == 0 ? "FALSO" : secundResponse[j].ARTS_CLASIF_8 == "0130" ? "VERDADERO" : firstResponse[i].SKU.substring(0,2)=="81" ? "VERDADERO" : "FALSO",
+                            Published: secundResponse[j].ARVE_BLOQUEO_VENTA == 1 ? "BLOQUEADO" 
+                            : secundResponse[j].ARTS_CLASIF_8 == "0180" && secundResponse[j].Uni_M2_Disp == 0 ? "FALSE" 
+                            : secundResponse[j].ARTS_CLASIF_8 == "0190" && secundResponse[j].Uni_M2_Disp == 0 ? "FALSE" 
+                            : secundResponse[j].ARTS_CLASIF_8 == "0130" ? "TRUE" 
+                            : firstResponse[i].SKU.substring(0,2)=="81" ? "TRUE" 
+                            : "FALSE",
                             SKU: firstResponse[i].SKU,
                             IsShipEnabled: firstResponse[i].IsShipEnabled,
                             ManageInventoryMethod: firstResponse[i].ManageInventoryMethod,
                             StockQuantity: secundResponse[j].Uni_M2_Disp,
-                            DisplayStockAvailability: secundResponse[j].ARTS_CLASIF_8 == "0130" && secundResponse[j].Uni_M2_Disp == 0 ? "FALSO" : firstResponse[i].SKU.substring(0,3)=="811" ? "VERDADERO" : "VERDADERO",
-                            DisplayStockQuantity: firstResponse[i].SKU.substring(0,2)=="91" ? "FALSO" : "VERDADERO",
+                            DisplayStockAvailability: secundResponse[j].ARTS_CLASIF_8 == "0130" && secundResponse[j].Uni_M2_Disp == 0 ? "FALSE" : firstResponse[i].SKU.substring(0,3)=="811" ? "TRUE" : "TRUE",
+                            DisplayStockQuantity: firstResponse[i].SKU.substring(0,2)=="91" ? "FALSE" : "TRUE",
                             NotifyAdminForQuantityBelow: firstResponse[i].NotifyAdminForQuantityBelow,
                             BackorderMode: firstResponse[i].BackorderMode,
                             OrderMinimumQuantity: firstResponse[i].OrderMinimumQuantity,
                             OrderMaximumQuantity: 1000,
                             CallForPrice: firstResponse[i].CallForPrice,
-                            DisableBuyButton: secundResponse[j].ARTS_CLASIF_8 == "0130" && secundResponse[j].Uni_M2_Disp == 0 ? "VERDADERO" :  secundResponse[j].Uni_M2_Disp == 0 ? "VERDADERO" : "FALSO",
+                            DisableBuyButton: secundResponse[j].ARTS_CLASIF_8 == "0130" && secundResponse[j].Uni_M2_Disp == 0 ? "TRUE" :  secundResponse[j].Uni_M2_Disp == 0 ? "TRUE" : "FALSE",
                             Manufacturers: firstResponse[i].Manufacturers,
                             Weight: firstResponse[i].Weight,
                             Picture1: firstResponse[i].Picture1,

@@ -1,5 +1,6 @@
 // Progressbar
 $progressbar-height: 22px !default;
+$progressbar-horizontal-width: 100% !default;
 $progressbar-animation-timing: 1s linear infinite !default;
 $progressbar-border-width: 0px !default;
 $progressbar-font-family: $font-family !default;
@@ -22,3 +23,7 @@ $progressbar-indeterminate-border: $progressbar-border !default;
 $progressbar-indeterminate-gradient: null !default;
 
 $progressbar-chunk-border: $body-bg !default;
+
+// Circular Progressbar
+$kendo-circular-progressbar-arc-stroke: $primary !default;
+$kendo-circular-progressbar-scale-stroke: $progressbar-bg !default;
