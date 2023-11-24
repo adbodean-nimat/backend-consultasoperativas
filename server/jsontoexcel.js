@@ -88,12 +88,10 @@ async function getWebNimat(){
 async function jsontosheet(){
     let url = `${process.env.URL_API}` + 'planillaimportarweb';
     const raw_data = (await axios(url, {httpsAgent, headers: {'Authorization': `Basic ${token}`}})).data;
-    const route = 'C:/Users//abodean//Dropbox'
+    const route = `${process.env.URL_DROPBOX}`
     const routePath = path.normalize(route);
     const filePath = path.join(__dirname, '/Importar_AgileWorks _M2.xlsx');
     console.log(filePath);
-    //console.log(__dirname);
-    //console.log(__filename);
     const workSheet = xlsx.utils.json_to_sheet(raw_data);
     const wb = xlsx.utils.book_new();
     
@@ -111,8 +109,8 @@ async function actualizadoWeb(){
     await axios.put(urlapi, {}, {httpsAgent: new https.Agent({ rejectUnauthorized: false }), headers: {'Authorization': `Basic ${token}`}});
 }
 
-var job = new CronJob(
-    "0 */30 * * * *",
+var lunvie = new CronJob(
+    "0 */60 7-19 * * 1-5",
     function () {
         jsontosheet();
         actualizadoWeb();
@@ -122,6 +120,18 @@ var job = new CronJob(
     true,
     "America/Buenos_Aires"
   );
+
+var sab = new CronJob(
+    "0 */60 7-13 * * 6",
+    function () {
+        jsontosheet();
+        actualizadoWeb();
+        console.log('Actualizado Web');
+    },
+    null,
+    true,
+    "America/Buenos_Aires"
+);
 
 module.exports = {
     getWebNimat,
