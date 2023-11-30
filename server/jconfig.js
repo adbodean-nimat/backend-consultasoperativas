@@ -157,7 +157,7 @@ async function getFamiliaArts2() {
             var joined = firstResponse.map(function(e) {
                 return Object.assign({}, e,
                     secundResponse.reduce(function(acc, val) {
-                        if (val.nombre_familia_art == e.Familia_producto) {
+                        if (val.cod_familia_art == e.Cod_Familia_producto) {
                             return val
                         } else {
                             return acc

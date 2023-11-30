@@ -5,7 +5,7 @@ const axios = require('axios');
 const httpsAgent = new https.Agent({ rejectUnauthorized: false }); 
 const token = process.env.JWT_TOKEN
 const sql = require('mssql');
-const { Pool } = require('pg');
+// const { Pool } = require('pg');
 
 async function getRubroVta(){
   try{
@@ -323,10 +323,21 @@ async function getComboArt(comboArt){
     }
   }
 
+  async function getStocArts(){
+    try{
+      let pool = await sql.connect(config);
+      let listaArts = await pool.request().query("SELECT dbo.STOC_ARTS.ARTS_ARTICULO_EMP, dbo.STOC_ARTS.ARTS_NOMBRE FROM dbo.STOC_ARTS WITH (NOLOCK)");
+      return listaArts.recordsets
+    }
+    catch(error){
+      console.log(error)
+    }
+  }
+
   async function addControl(control) {
     try {
       let  pool = await  sql.connect(config);
-      let  insertControl = await  pool.request()
+      let  insertControl = await pool.request()
       .input('CLIE_FECHA_ALTA', sql.Date(), control.CLIE_FECHA_ALTA)
       .input('AUDI_USUARIO', sql.VarChar(8), control.AUDI_USUARIO)
       .input('USUA_NOMBRE', sql.VarChar(30), control.USUA_NOMBRE)
@@ -376,5 +387,6 @@ async function getComboArt(comboArt){
     getNPPendienteEntrega: getNPPendienteEntrega,
     getListadePrecioWeb: getListadePrecioWeb,
     getStockFisicoyDisp: getStockFisicoyDisp,
-    getPlanillaImportar: getPlanillaImportar
+    getPlanillaImportar: getPlanillaImportar,
+    getStocArts: getStocArts
   }

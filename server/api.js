@@ -221,6 +221,12 @@ router.route('/planillaimportar').get((request, response)=>{
   })
 })
 
+router.route('/stocarts').get((request, response)=>{
+  Db.getStocArts().then((data)=>{
+    response.json(data[0]);
+  })
+})
+
 router.route('/listabreveusointerno').get((request, response) => {
   jConfig.getListadePrecioBUI2().then((data)=>{
     response.json(data);
