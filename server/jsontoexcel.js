@@ -90,7 +90,7 @@ async function jsontosheet(){
     const raw_data = (await axios(url, {httpsAgent, headers: {'Authorization': `Basic ${token}`}})).data;
     const route = `${process.env.URL_DROPBOX}`
     const routePath = path.normalize(route);
-    const filePath = path.join(__dirname, '/Importar_AgileWorks _M2.xlsx');
+    const filePath = path.join(route, '/Importar_AgileWorks _M2.xlsx');
     console.log(filePath);
     const workSheet = xlsx.utils.json_to_sheet(raw_data);
     const wb = xlsx.utils.book_new();
