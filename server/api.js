@@ -227,6 +227,12 @@ router.route('/stocarts').get((request, response)=>{
   })
 })
 
+router.route('/lpvnrubrosvtasacopio').get((request, response)=>{
+ Db.getRubrosVtaAcopio().then((data)=>{
+  response.json(data[0])
+ })
+})
+
 router.route('/listabreveusointerno').get((request, response) => {
   jConfig.getListadePrecioBUI2().then((data)=>{
     response.json(data);
