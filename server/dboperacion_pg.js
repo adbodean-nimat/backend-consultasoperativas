@@ -1131,13 +1131,43 @@ const UpdateActualizacionWebNow = (request, response) => {
     )
 }
 
-const UpdateActualizacionWeb = (request, response) => {
+const UpdateActualizacionWebCron = (request, response) => {
     const id = parseInt(request.params.id)
-    const {actualizacion_automatica, actualizacion_cron} = request.body
+    const {actualizacion_cron_lunesaviernes, actualizacion_cron_sabados} = request.body
 
     pool.query(
-        'UPDATE public.actualizacion_web SET id = $1, actualizacion_automatica = $2, actualizacion_fecha = now(), actualizacion_cron = $3 WHERE id = $1;',
-        [id, actualizacion_automatica, actualizacion_cron], (error, results) => {
+        'UPDATE public.actualizacion_web SET id = $1, actualizacion_cron_lunesaviernes = $2, actualizacion_cron_sabados = $3 WHERE id = $1;',
+        [id, actualizacion_cron_lunesaviernes, actualizacion_cron_sabados], (error, results) => {
+            if (error){
+                throw error
+            }
+            response.status(200).send(`Modificado correctamente`)
+        }
+    )
+}
+
+const UpdateActualizacionWebChecked = (request, response) => {
+    const id = parseInt(request.params.id)
+    const {actualizacion_automatica} = request.body
+
+    pool.query(
+        'UPDATE public.actualizacion_web SET id = $1, actualizacion_automatica = $2 WHERE id = $1;',
+        [id, actualizacion_automatica], (error, results) => {
+            if (error){
+                throw error
+            }
+            response.status(200).send(`Modificado correctamente`)
+        }
+    )
+}
+
+const UpdateActualizacionWeb = (request, response) => {
+    const id = parseInt(request.params.id)
+    const {actualizacion_automatica, actualizacion_cron_lunesaviernes, actualizacion_cron_sabados} = request.body
+
+    pool.query(
+        'UPDATE public.actualizacion_web SET id = $1, actualizacion_automatica = $2, actualizacion_fecha = now(), actualizacion_cron_lunesaviernes = $3, actualizacion_cron_sabados = $4 WHERE id = $1;',
+        [id, actualizacion_automatica, actualizacion_cron_lunesaviernes, actualizacion_cron_sabados], (error, results) => {
             if (error){
                 throw error
             }
@@ -1190,5 +1220,5 @@ module.exports = {
     getDespositoNoAConsiderarParaStockFisico, updateDespositoNoAConsiderarParaStockFisico, createDespositoNoAConsiderarParaStockFisico, deleteDespositoNoAConsiderarParaStockFisico,
     getCategoriasWeb, updateCategoriasWeb,createCategoriasWeb,deleteCategoriasWeb,
     getArticulosWeb, updateArticulosWeb, createArticulosWeb, deleteArticulosWeb,
-    getActualizacionWeb, UpdateActualizacionWeb, CreateActualizacionWeb, deleteActualizacionWeb, UpdateActualizacionWebNow
+    getActualizacionWeb, UpdateActualizacionWeb, CreateActualizacionWeb, deleteActualizacionWeb, UpdateActualizacionWebNow, UpdateActualizacionWebCron, UpdateActualizacionWebChecked
 }

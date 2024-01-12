@@ -233,6 +233,12 @@ router.route('/lpvnrubrosvtasacopio').get((request, response)=>{
  })
 })
 
+router.route('/combo').get((request, response)=>{
+  Db.getCombo().then((data)=>{
+    response.json(data[0])
+  })
+})
+
 router.route('/listabreveusointerno').get((request, response) => {
   jConfig.getListadePrecioBUI2().then((data)=>{
     response.json(data);
@@ -296,6 +302,12 @@ router.route('/planillaimportarweb').get((request, response)=>{
 router.route('/jsontosheet').get((request,response)=>{
   jsonToExcel.jsontosheet().then((data)=>{
     response.status(200).send('Generado correctamente');
+  })
+})
+
+router.route('/aplicarcambioscron').get((request, response)=>{
+  jsonToExcel.getActualizacionWeb().then((data)=>{
+    response.status(200).send('Aplicado');
   })
 })
 
@@ -433,7 +445,9 @@ router.route('/articulosweb/:id').put(Pg.updateArticulosWeb)
 router.route('/articulosweb/:id').delete(Pg.deleteArticulosWeb)
 
 // Tabla Actualización Web
-router.route('/actualizadoweb/:id').put(Pg.UpdateActualizacionWebNow)
+router.route('/actualizadowebnow/:id').put(Pg.UpdateActualizacionWebNow)
+router.route('/actualizacionwebcron/:id').put(Pg.UpdateActualizacionWebCron)
+router.route('/actualizacionwebchecked/:id').put(Pg.UpdateActualizacionWebChecked)
 router.route('/actualizacionweb').get(Pg.getActualizacionWeb)
 router.route('/actualizacionweb').post(Pg.CreateActualizacionWeb)
 router.route('/actualizacionweb/:id').put(Pg.UpdateActualizacionWeb)

@@ -21,7 +21,7 @@
     "express-session": "^1.17.3",
     "jsonwebtoken": "^9.0.0",
     "lodash": "^4.17.21",
-    "mssql": "^8.1.2",
+    "mssql": "^8.1.4",
     "passport": "^0.6.0",
     "passport-ldapauth": "^3.0.1",
     "pg": "^8.7.3",

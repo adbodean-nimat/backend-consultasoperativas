@@ -54,7 +54,7 @@ async function getWebNimat(){
                             OrderMinimumQuantity: 1,
                             OrderMaximumQuantity: 1000,
                             CallForPrice: secundResponse[j].CallForPrice == "FALSO" ? "FALSE" : secundResponse[j].CallForPrice == "VERDADERO" ? "TRUE" : secundResponse[j].CallForPrice,
-                            DisableBuyButton: secundResponse[j].DisableBuyButton,
+                            DisableBuyButton: firstResponse[i].stock > 0 && firstResponse[i].bloq_vtas == true ? "FALSE" : secundResponse[j].DisableBuyButton,
                             Price: secundResponse[j].Price,
                             Categories: 
                                firstResponse[i].outlet == true ? '3127|' + firstResponse[i].orden_art +';'
@@ -91,7 +91,6 @@ async function jsontosheet(){
     const route = `${process.env.URL_DROPBOX}`
     const routePath = path.normalize(route);
     const filePath = path.join(route, '/Importar_AgileWorks _M2.xlsx');
-    console.log(filePath);
     const workSheet = xlsx.utils.json_to_sheet(raw_data);
     const wb = xlsx.utils.book_new();
     
@@ -105,35 +104,47 @@ async function jsontosheet(){
 }
 
 async function actualizadoWeb(){
-    let urlapi = `${process.env.URL_API}` + 'actualizadoweb/1';
+    let urlapi = `${process.env.URL_API}` + 'actualizadowebnow/1';
     await axios.put(urlapi, {}, {httpsAgent: new https.Agent({ rejectUnauthorized: false }), headers: {'Authorization': `Basic ${token}`}});
 }
 
-var lunvie = new CronJob(
-    "0 */60 7-19 * * 1-5",
-    function () {
-        jsontosheet();
-        actualizadoWeb();
-        console.log('Actualizado Web');
-    },
-    null,
-    true,
-    "America/Buenos_Aires"
-  );
-
-var sab = new CronJob(
-    "0 */60 7-13 * * 6",
-    function () {
-        jsontosheet();
-        actualizadoWeb();
-        console.log('Actualizado Web');
-    },
-    null,
-    true,
-    "America/Buenos_Aires"
-);
+async function getActualizacionWeb(){
+    let urlActualizacionWeb = `${process.env.URL_API}` + 'actualizacionweb';
+    const getData = (await axios.get(urlActualizacionWeb, {httpsAgent, headers: {'Authorization': `Basic ${token}`}})).data
+    var actualizacionautomatica = getData[0].actualizacion_automatica
+    var actualizacioncronlunesaviernes = getData[0].actualizacion_cron_lunesaviernes
+    var actualizacioncronsabados = getData[0].actualizacion_cron_sabados
+    
+    console.log('Aplicar cambios el día ' + Date())
+    
+    const lunvie = new CronJob(
+        actualizacioncronlunesaviernes,
+        function () {
+            jsontosheet();
+            actualizadoWeb();
+            console.log('Actualizado Web');
+        },
+        null,
+        actualizacionautomatica,
+        "America/Buenos_Aires"
+    );
+    
+    const sab = new CronJob(
+        actualizacioncronsabados,
+        function () {
+            jsontosheet();
+            actualizadoWeb();
+            console.log('Actualizado Web');
+        },
+        null,
+        actualizacionautomatica,
+        "America/Buenos_Aires"
+    );
+}
+getActualizacionWeb();
 
 module.exports = {
     getWebNimat,
-    jsontosheet
+    jsontosheet,
+    getActualizacionWeb
 }
