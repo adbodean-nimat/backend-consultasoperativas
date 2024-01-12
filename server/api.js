@@ -445,7 +445,7 @@ router.route('/articulosweb/:id').put(Pg.updateArticulosWeb)
 router.route('/articulosweb/:id').delete(Pg.deleteArticulosWeb)
 
 // Tabla Actualización Web
-router.route('/actualizadowebnow/:id').put(Pg.UpdateActualizacionWebNow)
+router.route('/actualizacionwebnow/:id').put(Pg.UpdateActualizacionWebNow)
 router.route('/actualizacionwebcron/:id').put(Pg.UpdateActualizacionWebCron)
 router.route('/actualizacionwebchecked/:id').put(Pg.UpdateActualizacionWebChecked)
 router.route('/actualizacionweb').get(Pg.getActualizacionWeb)

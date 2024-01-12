@@ -104,7 +104,7 @@ async function jsontosheet(){
 }
 
 async function actualizadoWeb(){
-    let urlapi = `${process.env.URL_API}` + 'actualizadowebnow/1';
+    let urlapi = `${process.env.URL_API}` + 'actualizacionwebnow/1';
     await axios.put(urlapi, {}, {httpsAgent: new https.Agent({ rejectUnauthorized: false }), headers: {'Authorization': `Basic ${token}`}});
 }
 
