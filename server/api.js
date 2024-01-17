@@ -239,6 +239,12 @@ router.route('/combo').get((request, response)=>{
   })
 })
 
+router.route('/comboweb').get((request, response)=>{
+  Db.getComboWeb().then((data)=>{
+    response.json(data[0])
+  })
+})
+
 router.route('/listabreveusointerno').get((request, response) => {
   jConfig.getListadePrecioBUI2().then((data)=>{
     response.json(data);
@@ -295,6 +301,12 @@ router.route('/planillaimportarstockprecio').get((request, response)=>{
 
 router.route('/planillaimportarweb').get((request, response)=>{
   jsonToExcel.getWebNimat().then((data)=>{
+    response.json(data);
+  })
+})
+
+router.route('/planillaimportarwebcombo').get((request, response)=>{
+  jsonToExcel.getWebNimatCombo().then((data)=>{
     response.json(data);
   })
 })

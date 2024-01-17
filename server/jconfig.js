@@ -10,7 +10,7 @@ async function getListadePrecioBUI2() {
         `${process.env.URL_API}` + 'listadepreciobreveusointerno',
         `${process.env.URL_API}` + 'listabreveuso'
     ]
-    let response = await Promise.all(endpoints.map((endpoint) => axios.get(endpoint,{httpsAgent, headers: {'Authorization': `Basic ${token}`}}))).then(
+    let response = await Promise.all(endpoints.map((endpoint) => axios.get(endpoint,{httpsAgent, headers: {'Authorization': `Basic ${token}`,'Accept-Encoding': 'gzip, deflate, br'}}))).then(
         ([{data: firstResponse}, {data: secundResponse}]) => {
 
             var joined = firstResponse.map(function(e) {
@@ -36,7 +36,7 @@ async function getConsSecoConfig() {
         `${process.env.URL_API}` + 'constsecoarmadoconfig2',
         `${process.env.URL_API}` + 'constseconombresconfig',
       ];
-    let response = await Promise.all(endpoints2.map((endpoint2) => axios.get(endpoint2,{httpsAgent, headers: {'Authorization': `Basic ${token}`}}))).then(
+    let response = await Promise.all(endpoints2.map((endpoint2) => axios.get(endpoint2,{httpsAgent, headers: {'Authorization': `Basic ${token}`,'Accept-Encoding': 'gzip, deflate, br'}}))).then(
         ([{data: firstResponse}, {data: secundResponse}, {data: threeResponse}]) => {
 
             var joined = firstResponse.map(function(e) {
@@ -69,7 +69,7 @@ async function getListaConstSeco() {
         `${process.env.URL_API}` + 'listaconstsecoconfig',
         `${process.env.URL_API}` + 'listaconstsecosql',
       ];
-    let response = await Promise.all(endpoints3.map((endpoint3) => axios.get(endpoint3,{httpsAgent, headers: {'Authorization': `Basic ${token}`}}))).then(
+    let response = await Promise.all(endpoints3.map((endpoint3) => axios.get(endpoint3,{httpsAgent, headers: {'Authorization': `Basic ${token}`,'Accept-Encoding': 'gzip, deflate, br'}}))).then(
         ([{data: firstResponse}, {data: secundResponse}]) => {
 
             var results = [];
@@ -115,7 +115,7 @@ async function getFamiliaArts() {
         `${process.env.URL_API}` + 'familiadearticulo',
         `${process.env.URL_API}` + 'setsdeventas',
       ];
-    let response = await Promise.all(endpoints4.map((endpoint4) => axios.get(endpoint4,{httpsAgent, headers: {'Authorization': `Basic ${token}`}}))).then(
+    let response = await Promise.all(endpoints4.map((endpoint4) => axios.get(endpoint4,{httpsAgent, headers: {'Authorization': `Basic ${token}`,'Accept-Encoding': 'gzip, deflate, br'}}))).then(
         ([{data: firstResponse}, {data: secundResponse}, {data: threeResponse}]) => {
 
             var joined = firstResponse.map(function(e) {
@@ -152,7 +152,7 @@ async function getFamiliaArts2() {
         `${process.env.URL_API}` + 'familiaartdistribucion',
         `${process.env.URL_API}` + 'setsdeventas',
       ];
-    let response = await Promise.all(endpoints4.map((endpoint4) => axios.get(endpoint4,{httpsAgent, headers: {'Authorization': `Basic ${token}`}}))).then(
+    let response = await Promise.all(endpoints4.map((endpoint4) => axios.get(endpoint4,{httpsAgent, headers: {'Authorization': `Basic ${token}`,'Accept-Encoding': 'gzip, deflate, br'}}))).then(
         ([{data: firstResponse}, {data: secundResponse}, {data: threeResponse}]) => {
             var joined = firstResponse.map(function(e) {
                 return Object.assign({}, e,
@@ -187,7 +187,7 @@ async function getVN_1() {
         `${process.env.URL_API}` + 'familiaarticulos',
         `${process.env.URL_API}` + 'vnsindtofinanc',
       ];
-    let response = await Promise.all(endpoints3.map((endpoint3) => axios.get(endpoint3,{httpsAgent, headers: {'Authorization': `Basic ${token}`}}))).then(
+    let response = await Promise.all(endpoints3.map((endpoint3) => axios.get(endpoint3,{httpsAgent, headers: {'Authorization': `Basic ${token}`,'Accept-Encoding': 'gzip, deflate, br'}}))).then(
         ([{data: firstResponse}, {data: secundResponse}]) => {
             var results = [];
             for (var i=0; i<firstResponse.length; i++) {
@@ -242,7 +242,7 @@ async function getVN_2() {
         `${process.env.URL_API}` + 'familiaarticulosdistribucion',
         `${process.env.URL_API}` + 'vnsindtofinanc',
       ];
-    let response = await Promise.all(endpoints3.map((endpoint3) => axios.get(endpoint3,{httpsAgent, headers: {'Authorization': `Basic ${token}`}}))).then(
+    let response = await Promise.all(endpoints3.map((endpoint3) => axios.get(endpoint3,{httpsAgent, headers: {'Authorization': `Basic ${token}`,'Accept-Encoding': 'gzip, deflate, br'}}))).then(
         ([{data: firstResponse}, {data: secundResponse}]) => {
             var results = [];
             for (var i=0; i<firstResponse.length; i++) {
@@ -296,7 +296,7 @@ async function getLPDistribucion(){
         `${process.env.URL_API}` + 'rubrosventas',
         `${process.env.URL_API}` + 'lpvnrubrosvtasdistribucion',
       ];
-      let response2 = await Promise.all(endpoints4.map((endpoint4) => axios.get(endpoint4,{httpsAgent, headers: {'Authorization': `Basic ${token}`}}))).then(
+      let response2 = await Promise.all(endpoints4.map((endpoint4) => axios.get(endpoint4,{httpsAgent, headers: {'Authorization': `Basic ${token}`,'Accept-Encoding': 'gzip, deflate, br'}}))).then(
         ([{data: firstResponse}, {data: secundResponse}]) => {
             var results = [];
             for (var i=0; i<firstResponse.length; i++) {
@@ -353,7 +353,7 @@ async function getPlanillaImportarStock(){
         `${process.env.URL_API}` + 'stockfisicoydispon',
         `${process.env.URL_API}` + 'listadeprecioweb',
       ];
-      let response = await Promise.all(endpoints4.map((endpoint4) => axios.get(endpoint4,{httpsAgent, headers: {'Authorization': `Basic ${token}`}}))).then(
+      let response = await Promise.all(endpoints4.map((endpoint4) => axios.get(endpoint4,{httpsAgent, headers: {'Authorization': `Basic ${token}`,'Accept-Encoding': 'gzip, deflate, br'}}))).then(
         ([{data: firstResponse}, {data: secundResponse}, {data: threeResponse}]) => {
             var results = [];
             for (var i=0; i<firstResponse.length; i++) {
