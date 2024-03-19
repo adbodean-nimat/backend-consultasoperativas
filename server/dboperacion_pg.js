@@ -1200,6 +1200,104 @@ const deleteActualizacionWeb = (request, response) => {
     })
 }
 
+// Tabla Comprobantes a Omitir 
+const getComprobantesAOmitir = (request, response) => {
+    pool.query('SELECT * FROM public.comprobantes_a_omitir ', (error, results) =>{
+        if (error){
+            throw error
+        }
+        response.status(200).json(results.rows)
+    })
+}
+
+const updateComprobantesAOmitir = (request, response) => {
+    const id = parseInt(request.params.id)
+    const {cod_comprobante, nombre_comprobante} = request.body
+
+    pool.query(
+        'UPDATE public.comprobantes_a_omitir SET "cod_comprobante" = $1, "nombre_comprobante" = $2 WHERE id = $3',
+        [cod_comprobante, nombre_comprobante, id ], (error, results) => {
+            if (error){
+                throw error
+            }
+            response.status(200).send(`Modificado correctamente`)
+        }
+    )
+}
+
+const createComprobantesAOmitir = (request, response) => {
+    const {cod_comprobante, nombre_comprobante} = request.body
+
+    pool.query(
+        'INSERT INTO public.comprobantes_a_omitir("cod_comprobante", "nombre_comprobante") VALUES ($1, $2)', 
+        [cod_comprobante, nombre_comprobante], (error, results) => {
+        if (error){
+            throw error
+        }
+        response.status(201).send(`Agregar correctamente`)
+    })
+}
+
+const deleteComprobantesAOmitir = (request, response) => {
+    const id = parseInt(request.params.id)
+
+    pool.query('DELETE FROM public.comprobantes_a_omitir WHERE id = $1', [id], (error, results) => {
+        if (error){
+            throw error
+        }
+        response.status(200).send(`Eliminado correctamente`)
+    })
+}
+
+// Tabla Remitos de Ventas
+const getRemitosVtas = (request, response) => {
+    pool.query('SELECT * FROM public.remitos_de_ventas ', (error, results) =>{
+        if (error){
+            throw error
+        }
+        response.status(200).json(results.rows)
+    })
+}
+
+const updateRemitosVtas = (request, response) => {
+    const id = parseInt(request.params.id)
+    const {cod_comprobante, nombre_comprobante} = request.body
+
+    pool.query(
+        'UPDATE public.remitos_de_ventas SET "cod_comprobante" = $1, "nombre_comprobante" = $2 WHERE id = $3',
+        [cod_comprobante, nombre_comprobante, id ], (error, results) => {
+            if (error){
+                throw error
+            }
+            response.status(200).send(`Modificado correctamente`)
+        }
+    )
+}
+
+const createRemitosVtas = (request, response) => {
+    const {cod_comprobante, nombre_comprobante} = request.body
+
+    pool.query(
+        'INSERT INTO public.remitos_de_ventas("cod_comprobante", "nombre_comprobante") VALUES ($1, $2)', 
+        [cod_comprobante, nombre_comprobante], (error, results) => {
+        if (error){
+            throw error
+        }
+        response.status(201).send(`Agregar correctamente`)
+    })
+}
+
+const deleteRemitosVtas = (request, response) => {
+    const id = parseInt(request.params.id)
+
+    pool.query('DELETE FROM public.remitos_de_ventas WHERE id = $1', [id], (error, results) => {
+        if (error){
+            throw error
+        }
+        response.status(200).send(`Eliminado correctamente`)
+    })
+}
+
 module.exports = {
     getDeposANoConsiderar, getDeposANoConsiderarByCod, createDepos, updateDepos, deleteDepos,
     getNPaConsiderar, getNPaConsiderarByCod, createNP, updateNP, deleteNP,
@@ -1220,5 +1318,7 @@ module.exports = {
     getDespositoNoAConsiderarParaStockFisico, updateDespositoNoAConsiderarParaStockFisico, createDespositoNoAConsiderarParaStockFisico, deleteDespositoNoAConsiderarParaStockFisico,
     getCategoriasWeb, updateCategoriasWeb,createCategoriasWeb,deleteCategoriasWeb,
     getArticulosWeb, updateArticulosWeb, createArticulosWeb, deleteArticulosWeb,
-    getActualizacionWeb, UpdateActualizacionWeb, CreateActualizacionWeb, deleteActualizacionWeb, UpdateActualizacionWebNow, UpdateActualizacionWebCron, UpdateActualizacionWebChecked
+    getActualizacionWeb, UpdateActualizacionWeb, CreateActualizacionWeb, deleteActualizacionWeb, UpdateActualizacionWebNow, UpdateActualizacionWebCron, UpdateActualizacionWebChecked,
+    getComprobantesAOmitir, updateComprobantesAOmitir, createComprobantesAOmitir, deleteComprobantesAOmitir,
+    getRemitosVtas, updateRemitosVtas, createRemitosVtas, deleteRemitosVtas
 }

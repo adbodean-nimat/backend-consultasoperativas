@@ -117,7 +117,7 @@ router.route('/control/:id').get((request, response) => {
     Db.getOrder(request.params.id).then((data) => {
       response.json(data[0]);
     })
-  })
+})
 
 router.route('/listadeclientes').get((request, response) => {
   Db.getListaClientes().then((data) => {
@@ -245,6 +245,18 @@ router.route('/comboweb').get((request, response)=>{
   })
 })
 
+router.route('/ultimavuelta').get((request, response)=>{
+  Db.getUltimaVta().then((data)=>{
+    response.json(data[0]);
+  })
+})
+
+router.route('/acopiocemento/:id').get((request, response)=>{
+  Db.AcopioCemento(request.params.id).then((data)=>{
+    response.json(data[0]);
+  })
+})
+
 router.route('/listabreveusointerno').get((request, response) => {
   jConfig.getListadePrecioBUI2().then((data)=>{
     response.json(data);
@@ -317,13 +329,9 @@ router.route('/jsontosheet').get((request,response)=>{
   })
 })
 
-router.route('/aplicarcambioscron').get((request, response)=>{
-  jsonToExcel.getActualizacionWeb().then((data)=>{
-    response.status(200).send('Aplicado');
-  })
-})
+router.route('/aplicarcambioscron').get(jsonToExcel.getActualizacionWeb);
 
-router.route('/rowaplancanje').get(fsConfig.getFileExcel)
+router.route('/rowaplancanje').get(fsConfig.getFileExcel);
 
 
 //Tablas
@@ -464,6 +472,18 @@ router.route('/actualizacionweb').get(Pg.getActualizacionWeb)
 router.route('/actualizacionweb').post(Pg.CreateActualizacionWeb)
 router.route('/actualizacionweb/:id').put(Pg.UpdateActualizacionWeb)
 router.route('/actualizacionweb/:id').delete(Pg.deleteActualizacionWeb)
+
+// Tabla Comprobantes a Omitir
+router.route('/comprobantesaomitir').get(Pg.getComprobantesAOmitir)
+router.route('/comprobantesaomitir').post(Pg.createComprobantesAOmitir)
+router.route('/comprobantesaomitir/:id').put(Pg.updateComprobantesAOmitir)
+router.route('/comprobantesaomitir/:id').delete(Pg.deleteComprobantesAOmitir)
+
+// Tabla Remitos de Ventas
+router.route('/remitosvtas').get(Pg.getRemitosVtas)
+router.route('/remitosvtas').post(Pg.createRemitosVtas)
+router.route('/remitosvtas/:id').put(Pg.updateRemitosVtas)
+router.route('/remitosvtas/:id').delete(Pg.deleteRemitosVtas)
 
 const port = 8090;
 

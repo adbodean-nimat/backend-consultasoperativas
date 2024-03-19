@@ -99,13 +99,16 @@ async function getWebNimatCombo(){
                     if (firstResponse[i].codigo_art == secundResponse[j].Cod_Combo) {
                         results.push({
                             ProductType: "Simple Product",
-                            VisibleIndividually: firstResponse[i].publicado === false ? "FALSE" 
-                            : secundResponse[j].SumaDeStock_Dispon == 0 ? "FALSE"
+                            VisibleIndividually: firstResponse[i].publicado === false ? "FALSE"
+                            : secundResponse[j].Sotck_Bool == 0 ? "FALSE" 
+                            : secundResponse[j].SumaDeStockDispon_CantCombo == 0 ? "FALSE"
+                            : secundResponse[j].CMBA_FECHA_VIG_HASTA == null ? "TRUE"
                             : new Date(secundResponse[j].CMBA_FECHA_VIG_HASTA) <= new Date() ? "FALSE"
-                            : secundResponse[j].SumaDeStock_Dispon >= firstResponse[i].min_para_web ? "TRUE" 
+                            : secundResponse[j].SumaDeStockDispon_CantCombo >= firstResponse[i].min_para_web ? "TRUE" 
+                            : secundResponse[j].Sotck_Bool == 1 ? "TRUE" 
                             : firstResponse[i].publicado === true ? "TRUE" 
                             : "FALSE",
-                            Name: secundResponse[j].Nombre_combo,
+                            Name: firstResponse[i].nombre_art,
                             ShortDescription: firstResponse[i].copete == "" ? '' : '<span>'+ firstResponse[i].copete +'</span>',
                             FullDescription: firstResponse[i].descripcion,
                             ProductTemplate: "Simple Product",
@@ -115,16 +118,19 @@ async function getWebNimatCombo(){
                             MetaTitle: "",
                             SeName: "",
                             AllowCustomerReviews: "FALSE",
-                            Published: firstResponse[i].publicado === false ? "FALSE" 
-                            : secundResponse[j].SumaDeStock_Dispon == 0 ? "FALSE"
+                            Published: firstResponse[i].publicado == false ? "FALSE"
+                            : secundResponse[j].Sotck_Bool == 0 ? "FALSE" 
+                            : secundResponse[j].SumaDeStockDispon_CantCombo == 0 ? "FALSE"
+                            : secundResponse[j].CMBA_FECHA_VIG_HASTA == null ? "TRUE"
                             : new Date(secundResponse[j].CMBA_FECHA_VIG_HASTA) <= new Date() ? "FALSE"
-                            : secundResponse[j].SumaDeStock_Dispon >= firstResponse[i].min_para_web ? "TRUE" 
-                            : firstResponse[i].publicado === true ? "TRUE" 
+                            : secundResponse[j].SumaDeStockDispon_CantCombo >= firstResponse[i].min_para_web ? "TRUE" 
+                            : secundResponse[j].Sotck_Bool == 1 ? "TRUE" 
+                            : firstResponse[i].publicado == true ? "TRUE" 
                             : "FALSE",
                             SKU: secundResponse[j].Cod_Combo,
                             IsShipEnabled: "TRUE",
                             ManageInventoryMethod: "Manage Stock",
-                            StockQuantity: secundResponse[j].SumaDeStock_Dispon,
+                            StockQuantity: secundResponse[j].SumaDeStockDispon_CantCombo,
                             DisplayStockAvailability: "TRUE",
                             DisplayStockQuantity: "TRUE",
                             NotifyAdminForQuantityBelow: "1",
@@ -132,8 +138,8 @@ async function getWebNimatCombo(){
                             OrderMinimumQuantity: 1,
                             OrderMaximumQuantity: 1000,
                             CallForPrice: "FALSE",
-                            DisableBuyButton: secundResponse[j].SumaDeStock_Dispon == 0 ? "TRUE" : "FALSE",
-                            Price: secundResponse[j].SumaDePre_Oferta_Cdo_x_Uni,
+                            DisableBuyButton: secundResponse[j].SumaDeStockDispon_CantCombo == 0 ? "TRUE" : "FALSE",
+                            Price: secundResponse[j].SumaDePre_Oferta_Cdo_total,
                             Categories: 
                                firstResponse[i].outlet == true ? '3127|' + firstResponse[i].orden_art +';'
                              + firstResponse[i].categorias1 +'|'+ firstResponse[i].orden_art +';' 
@@ -170,7 +176,7 @@ async function jsontosheet(){
     const raw_data2 = (await axios(urlcombo, {httpsAgent, headers: {'Authorization': `Basic ${token}`,'Accept-Encoding': 'gzip, deflate, br'}})).data;
     const route = `${process.env.URL_DROPBOX}`
     const routePath = path.normalize(route);
-    const filePath = path.join(route, '/Importar_AgileWorks _M2.xlsx');
+    const filePath = path.join(route, '/Importar_AgileWorks_M2.xlsx');
     const array = [...raw_data, ...raw_data2];
     const workSheet = xlsx.utils.json_to_sheet(array, {dense: true});
     const wb = xlsx.utils.book_new();
@@ -188,41 +194,76 @@ async function jsontosheet(){
 
 async function actualizadoWeb(){
     let urlapi = `${process.env.URL_API}` + 'actualizacionwebnow/1';
-    await axios.put(urlapi, {}, {httpsAgent: new https.Agent({ rejectUnauthorized: false }), headers: {'Authorization': `Basic ${token}`}});
+    await axios.put(urlapi, {}, {httpsAgent: new https.Agent({ rejectUnauthorized: false }), headers: {'Authorization': `Basic ${token}`, 'Accept-Encoding': 'gzip, deflate, br'}});
 }
 
-async function getActualizacionWeb(){
-    let urlActualizacionWeb = `${process.env.URL_API}` + 'actualizacionweb';
-    const getData = (await axios.get(urlActualizacionWeb, {httpsAgent, headers: {'Authorization': `Basic ${token}`}})).data
+function getActualizacionWeb() {
+    /* 
+    const getData = (await axios.get(urlActualizacionWeb, {httpsAgent, headers: {'Authorization': `Basic ${token}`, 'Accept-Encoding': 'gzip, deflate, br'}})).data
     var actualizacionautomatica = getData[0].actualizacion_automatica
     var actualizacioncronlunesaviernes = getData[0].actualizacion_cron_lunesaviernes
-    var actualizacioncronsabados = getData[0].actualizacion_cron_sabados
-    
+    var actualizacioncronsabados = getData[0].actualizacion_cron_sabados 
+
     console.log('Aplicar cambios el día ' + Date())
-    
-    const lunvie = new CronJob(
-        actualizacioncronlunesaviernes,
-        function () {
-            jsontosheet();
-            actualizadoWeb();
-            console.log('Actualizado Web');
-        },
-        null,
-        actualizacionautomatica,
-        "America/Buenos_Aires"
-    );
-    
-    const sab = new CronJob(
-        actualizacioncronsabados,
-        function () {
-            jsontosheet();
-            actualizadoWeb();
-            console.log('Actualizado Web');
-        },
-        null,
-        actualizacionautomatica,
-        "America/Buenos_Aires"
-    );
+    console.log('Actualización automática: ' + actualizacionautomatica)
+    */
+    let urlActualizacionWeb = `${process.env.URL_API}` + 'actualizacionweb';
+    let started = axios.get(urlActualizacionWeb, {httpsAgent, headers: {'Authorization': `Basic ${token}`, 'Accept-Encoding': 'gzip, deflate, br'}}).then((res)=>{
+        var data = res.data[0];
+        if(data.actualizacion_automatica == true){
+            console.log('Cron running');
+            const job_lunvie = CronJob.from({
+                cronTime: data.actualizacion_cron_lunesaviernes,
+                onTick: function () {
+                    jsontosheet();
+                    actualizadoWeb();
+                    console.log('Actualizado Web');                
+                },
+                onComplete: true,
+                start: true,
+                timeZone: 'America/Buenos_Aires'    
+            });
+            const job_sab = CronJob.from({
+                cronTime: data.actualizacion_cron_sabados,
+                onTick: function () {
+                    jsontosheet();
+                    actualizadoWeb();
+                    console.log('Actualizado Web');
+                },
+                onComplete: true,
+                start: true,
+                timeZone: "America/Buenos_Aires"
+            });
+        } else {
+            console.log('Cron stopping')
+        }
+    })
+
+/*     if(actualizacionautomatica == false){
+        console.log('No actualizar');
+    } else {
+        const lunvie = CronJob.from({
+            cronTime: actualizacioncronlunesaviernes,
+            onTick: async function () {
+                await jsontosheet();
+                await actualizadoWeb();
+                console.log('Actualizado Web');                
+            },
+            start: true,
+            timeZone: 'America/Buenos_Aires'
+        });
+
+        const sab = CronJob.from({
+            cronTime: actualizacioncronsabados,
+            onTick: async function () {
+                await jsontosheet();
+                await actualizadoWeb();
+                console.log('Actualizado Web');
+            },
+            start: true,
+            timeZone: "America/Buenos_Aires"
+        });
+    }  */
 }
 getActualizacionWeb();
 
