@@ -1146,9 +1146,9 @@ const UpdateActualizacionWebCron = (request, response) => {
     )
 }
 
-const UpdateActualizacionWebChecked = (request, response) => {
-    const id = parseInt(request.params.id)
-    const {actualizacion_automatica} = request.body
+const UpdateActualizacionWebChecked = (boolean) => {
+    const id = 1
+    const actualizacion_automatica = boolean
 
     pool.query(
         'UPDATE public.actualizacion_web SET id = $1, actualizacion_automatica = $2 WHERE id = $1;',
@@ -1156,7 +1156,7 @@ const UpdateActualizacionWebChecked = (request, response) => {
             if (error){
                 throw error
             }
-            response.status(200).send(`Modificado correctamente`)
+            //response.status(200).send(`Modificado correctamente`)
         }
     )
 }
@@ -1298,6 +1298,55 @@ const deleteRemitosVtas = (request, response) => {
     })
 }
 
+// Tabla Cales Cementos Plasticor
+const getCalesCementosPlasticor = (request, response) => {
+    pool.query('SELECT * FROM public.cales_cementos_plasticor ', (error, results) =>{
+        if (error){
+            throw error
+        }
+        response.status(200).json(results.rows)
+    })
+}
+
+const updateCalesCementosPlasticor = (request, response) => {
+    const id = parseInt(request.params.id)
+    const {cod_articulos, nombre_articulos} = request.body
+
+    pool.query(
+        'UPDATE public.cales_cementos_plasticor SET "cod_articulos" = $1, "nombre_articulos" = $2 WHERE id = $3',
+        [cod_articulos, nombre_articulos, id ], (error, results) => {
+            if (error){
+                throw error
+            }
+            response.status(200).send(`Modificado correctamente`)
+        }
+    )
+}
+
+const createCalesCementosPlasticor = (request, response) => {
+    const {cod_articulos, nombre_articulos} = request.body
+
+    pool.query(
+        'INSERT INTO public.cales_cementos_plasticor("cod_articulos", "nombre_articulos") VALUES ($1, $2)', 
+        [cod_articulos, nombre_articulos], (error, results) => {
+        if (error){
+            throw error
+        }
+        response.status(201).send(`Agregar correctamente`)
+    })
+}
+
+const deleteCalesCementosPlasticor = (request, response) => {
+    const id = parseInt(request.params.id)
+
+    pool.query('DELETE FROM public.cales_cementos_plasticor WHERE id = $1', [id], (error, results) => {
+        if (error){
+            throw error
+        }
+        response.status(200).send(`Eliminado correctamente`)
+    })
+}
+
 module.exports = {
     getDeposANoConsiderar, getDeposANoConsiderarByCod, createDepos, updateDepos, deleteDepos,
     getNPaConsiderar, getNPaConsiderarByCod, createNP, updateNP, deleteNP,
@@ -1320,5 +1369,6 @@ module.exports = {
     getArticulosWeb, updateArticulosWeb, createArticulosWeb, deleteArticulosWeb,
     getActualizacionWeb, UpdateActualizacionWeb, CreateActualizacionWeb, deleteActualizacionWeb, UpdateActualizacionWebNow, UpdateActualizacionWebCron, UpdateActualizacionWebChecked,
     getComprobantesAOmitir, updateComprobantesAOmitir, createComprobantesAOmitir, deleteComprobantesAOmitir,
-    getRemitosVtas, updateRemitosVtas, createRemitosVtas, deleteRemitosVtas
+    getRemitosVtas, updateRemitosVtas, createRemitosVtas, deleteRemitosVtas,
+    getCalesCementosPlasticor, updateCalesCementosPlasticor, createCalesCementosPlasticor, deleteCalesCementosPlasticor
 }

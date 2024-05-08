@@ -11,6 +11,8 @@ var router = express.Router();
 var passport = require('passport');
 var LdapStrategy = require('passport-ldapauth');
 var compression = require('compression');
+var CronJob = require('cron').CronJob
+const path = require('path');
 const https = require('https');
 const fs = require('fs');
 const httpsOptions = {
@@ -44,12 +46,11 @@ passport.use(new LdapStrategy({
   }
 }))
 app.use(cors());
-app.use(compression())
+app.use(compression());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
-app.use(passport.initialize())
+app.use(passport.initialize());
 app.use('/api', verifyUserToken, router);
-
 app.post('/login', function (req, res, next){
   passport.authenticate('ldapauth', {session: false}, function(err, user, info) {
     var error = err || info
@@ -257,6 +258,12 @@ router.route('/acopiocemento/:id').get((request, response)=>{
   })
 })
 
+router.route('/stocknpoc/calescementosplasticor').get((request, response)=>{
+  Db.StockNPOC_CalesCementosPlasticor().then((data)=>{
+    response.json(data[0]);
+  })
+})
+
 router.route('/listabreveusointerno').get((request, response) => {
   jConfig.getListadePrecioBUI2().then((data)=>{
     response.json(data);
@@ -329,10 +336,88 @@ router.route('/jsontosheet').get((request,response)=>{
   })
 })
 
-router.route('/aplicarcambioscron').get(jsonToExcel.getActualizacionWeb);
+router.route('/jsontosheetdownload').get((request, response)=>{
+  const routeDropbox = `${process.env.URL_DROPBOX}`
+  const filePath = path.join(routeDropbox, '/Importar_AgileWorks_M2.xlsx');
+  response.download(filePath);
+});
+
+async function getActualizadoWeb(){
+  try{
+    const data = await jsonToExcel.getActualizacionWeb();
+    console.log(data);
+
+    const job_lunvie = new CronJob(
+      await data.actualizacion_cron_lunesaviernes,
+      function(){
+        jsonToExcel.jsontosheet();
+        jsonToExcel.actualizadoWeb();
+        console.log('Actualizado Web');                
+      },
+      null,
+      true,
+      'America/Buenos_Aires'    
+    );
+    const job_sab = new CronJob(
+      await data.actualizacion_cron_sabados,
+      function(){
+        jsonToExcel.jsontosheet();
+        jsonToExcel.actualizadoWeb();
+        console.log('Actualizado Web');
+      },
+      null,
+      true,
+      "America/Buenos_Aires"
+    );
+    
+    if(await data.actualizacion_automatica == true){
+      job_lunvie.start(); 
+      job_sab.start();
+      console.log('Actualización automática: Iniciado');
+    } 
+    
+    if(await data.actualizacion_automatica == false){
+      job_lunvie.stop();
+      job_sab.stop();
+      console.log('Actualización automática: Detenido');
+    }
+
+    router.route('/job-stop').get((request, response)=>{
+      Pg.UpdateActualizacionWebChecked(false);
+      job_lunvie.stop();
+      job_sab.stop();
+      response.status(200).json({message:'job stopped successfully'});
+      console.log('Actualización automática: Detenido');
+    });
+    
+    router.route('/job-start').get((request, response)=>{
+      Pg.UpdateActualizacionWebChecked(true);
+      job_lunvie.start();
+      job_sab.start();
+      response.status(200).json({message:'job start successfully'});
+      console.log('Actualización automática: Iniciado');
+    }); 
+
+  }
+  catch(error){
+    console.log(error);
+  }
+  finally {
+    console.log('Todas las tareas están hechas');
+  }
+}
+getActualizadoWeb();
+
+router.route('/job-restart').get((request, response)=>{
+  setTimeout(()=>{
+    console.log('Reiniciando...')
+    process.exit(0);
+    }, 1000);
+  response.status(200).json({message: 'job restart successfully'});
+  console.log('Actualización automática: Reiniciado');
+});
 
 router.route('/rowaplancanje').get(fsConfig.getFileExcel);
-
 
 //Tablas
 router.route('/tablas').get(Pg.getTablas)
@@ -484,6 +569,12 @@ router.route('/remitosvtas').get(Pg.getRemitosVtas)
 router.route('/remitosvtas').post(Pg.createRemitosVtas)
 router.route('/remitosvtas/:id').put(Pg.updateRemitosVtas)
 router.route('/remitosvtas/:id').delete(Pg.deleteRemitosVtas)
+
+// Tabla Cales Cementos Plasticor
+router.route('/calescementosplasticor').get(Pg.getCalesCementosPlasticor)
+router.route('/calescementosplasticor').post(Pg.createCalesCementosPlasticor)
+router.route('/calescementosplasticor/:id').put(Pg.updateCalesCementosPlasticor)
+router.route('/calescementosplasticor/:id').delete(Pg.deleteCalesCementosPlasticor)
 
 const port = 8090;
 

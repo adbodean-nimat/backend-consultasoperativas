@@ -197,79 +197,19 @@ async function actualizadoWeb(){
     await axios.put(urlapi, {}, {httpsAgent: new https.Agent({ rejectUnauthorized: false }), headers: {'Authorization': `Basic ${token}`, 'Accept-Encoding': 'gzip, deflate, br'}});
 }
 
-function getActualizacionWeb() {
-    /* 
-    const getData = (await axios.get(urlActualizacionWeb, {httpsAgent, headers: {'Authorization': `Basic ${token}`, 'Accept-Encoding': 'gzip, deflate, br'}})).data
-    var actualizacionautomatica = getData[0].actualizacion_automatica
-    var actualizacioncronlunesaviernes = getData[0].actualizacion_cron_lunesaviernes
-    var actualizacioncronsabados = getData[0].actualizacion_cron_sabados 
-
-    console.log('Aplicar cambios el día ' + Date())
-    console.log('Actualización automática: ' + actualizacionautomatica)
-    */
+async function getActualizacionWeb() {
     let urlActualizacionWeb = `${process.env.URL_API}` + 'actualizacionweb';
-    let started = axios.get(urlActualizacionWeb, {httpsAgent, headers: {'Authorization': `Basic ${token}`, 'Accept-Encoding': 'gzip, deflate, br'}}).then((res)=>{
-        var data = res.data[0];
-        if(data.actualizacion_automatica == true){
-            console.log('Cron running');
-            const job_lunvie = CronJob.from({
-                cronTime: data.actualizacion_cron_lunesaviernes,
-                onTick: function () {
-                    jsontosheet();
-                    actualizadoWeb();
-                    console.log('Actualizado Web');                
-                },
-                onComplete: true,
-                start: true,
-                timeZone: 'America/Buenos_Aires'    
-            });
-            const job_sab = CronJob.from({
-                cronTime: data.actualizacion_cron_sabados,
-                onTick: function () {
-                    jsontosheet();
-                    actualizadoWeb();
-                    console.log('Actualizado Web');
-                },
-                onComplete: true,
-                start: true,
-                timeZone: "America/Buenos_Aires"
-            });
-        } else {
-            console.log('Cron stopping')
-        }
-    })
-
-/*     if(actualizacionautomatica == false){
-        console.log('No actualizar');
-    } else {
-        const lunvie = CronJob.from({
-            cronTime: actualizacioncronlunesaviernes,
-            onTick: async function () {
-                await jsontosheet();
-                await actualizadoWeb();
-                console.log('Actualizado Web');                
-            },
-            start: true,
-            timeZone: 'America/Buenos_Aires'
-        });
-
-        const sab = CronJob.from({
-            cronTime: actualizacioncronsabados,
-            onTick: async function () {
-                await jsontosheet();
-                await actualizadoWeb();
-                console.log('Actualizado Web');
-            },
-            start: true,
-            timeZone: "America/Buenos_Aires"
-        });
-    }  */
+    const getData = (await axios.get(urlActualizacionWeb, {httpsAgent, headers: {'Authorization': `Basic ${token}`, 'Accept-Encoding': 'gzip, deflate, br'}})).data
+    var data = getData[0];
+    return data
 }
 getActualizacionWeb();
+
 
 module.exports = {
     getWebNimat,
     jsontosheet,
-    getActualizacionWeb,
-    getWebNimatCombo
+    getWebNimatCombo,
+    actualizadoWeb,
+    getActualizacionWeb
 }
