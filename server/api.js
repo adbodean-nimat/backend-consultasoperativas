@@ -1,5 +1,6 @@
 var Db = require('./dboperacion');
 var Pg = require('./dboperacion_pg');
+var DbCAD = require('./dboperacion_cad');
 var jConfig = require('./jconfig');
 var fsConfig = require('./fsconfig');
 var jsonToExcel = require('./jsontoexcel');
@@ -71,6 +72,12 @@ router.use((request, response, next) => {
     console.log('middleware');
     next();
   });
+
+router.route('/clientescad').get((request, response)=>{
+  DbCAD.getListaClientesCAD().then((data)=>{
+    response.json(data[0]);
+  })
+})
 
 router.route('/vblesentrnp/:id').get((request, response) => {
     Db.getVblesEntrNP(request.params.id).then((data) => {
@@ -260,6 +267,36 @@ router.route('/acopiocemento/:id').get((request, response)=>{
 
 router.route('/stocknpoc/calescementosplasticor').get((request, response)=>{
   Db.StockNPOC_CalesCementosPlasticor().then((data)=>{
+    response.json(data[0]);
+  })
+})
+
+router.route('/listaclientesplataforma').get((request, response)=>{
+  Db.ListaClientesPlataforma().then((data)=>{
+    response.json(data[0]);
+  })
+})
+
+router.route('/listaclientesplataformaacopios').get((request, response)=>{
+  Db.ListaClientesPlataformaAcopios().then((data)=>{
+    response.json(data[0]);
+  })
+})
+
+router.route('/listaclientesplataformactacte').get((request, response)=>{
+  Db.ListaClientesPlataformaCtaCte().then((data)=>{
+    response.json(data[0]);
+  })
+})
+
+router.route('/tiposdeclientes').get((request, response)=>{
+  Db.TiposDeClientes().then((data)=>{
+    response.json(data[0]);
+  })
+})
+
+router.route('/perfilcrediticio').get((request, response)=>{
+  Db.PerfilCrediticio().then((data)=>{
     response.json(data[0]);
   })
 })
@@ -523,6 +560,12 @@ router.route('/rubrosventas').post(Pg.createRubrosVtas)
 router.route('/rubrosventas/:id').put(Pg.updateRubrosVtas)
 router.route('/rubrosventas/:id').delete(Pg.deleteRubrosVtas)
 
+// Tabla Familias Distribuciones
+router.route('/familiadistribuciones').get(Pg.getFamiliaDist)
+router.route('/familiadistribuciones').post(Pg.createFamiliaDist)
+router.route('/familiadistribuciones/:id').put(Pg.updateFamiliaDist)
+router.route('/familiadistribuciones/:id').delete(Pg.deleteFamiliaDist)
+
 // Tabla Familias Articulos Distribución
 router.route('/familiaartdistribucion').get(Pg.getFamArtDist)
 router.route('/familiaartdistribucion/:id').get(Pg.getFamArtDistByCod)
@@ -575,6 +618,12 @@ router.route('/calescementosplasticor').get(Pg.getCalesCementosPlasticor)
 router.route('/calescementosplasticor').post(Pg.createCalesCementosPlasticor)
 router.route('/calescementosplasticor/:id').put(Pg.updateCalesCementosPlasticor)
 router.route('/calescementosplasticor/:id').delete(Pg.deleteCalesCementosPlasticor)
+
+// Tabla Filtro Clientes Cta Cte
+router.route('/filtroclientesplataforma').get(Pg.getClientesCtaCte)
+router.route('/filtroclientesplataforma').post(Pg.createClientesCtaCte)
+router.route('/filtroclientesplataforma/:id').put(Pg.updateClientesCtaCte)
+router.route('/filtroclientesplataforma/:id').delete(Pg.deleteClientesCtaCte)
 
 const port = 8090;
 

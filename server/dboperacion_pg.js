@@ -1,4 +1,3 @@
-const { now } = require('lodash');
 var configpg = require('./dbconfig_pg.js');
 const Pool = require('pg').Pool
 const pool = new Pool(configpg);
@@ -562,11 +561,11 @@ const getSetsVentasByCod = (request, response) => {
 
 const updateSetsVentas = (request, response) => {
     const id = parseInt(request.params.id)
-    const {cod_set_art, nombre_set_art} = request.body
+    const {nombre_set_art} = request.body
 
     pool.query(
-        'UPDATE public.sets_de_ventas SET cod_set_art = $1, nombre_set_art = $2 WHERE id = $3',
-        [cod_set_art, nombre_set_art, id], (error, results) => {
+        'UPDATE public.sets_de_ventas SET nombre_set_art = $1 WHERE id = $2',
+        [nombre_set_art, id], (error, results) => {
             if (error){
                 throw error
             }
@@ -576,11 +575,11 @@ const updateSetsVentas = (request, response) => {
 }
 
 const createSetsVentas = (request, response) => {
-    const {cod_set_art, nombre_set_art} = request.body
+    const {nombre_set_art} = request.body
 
     pool.query(
-        'INSERT INTO public.sets_de_ventas (cod_set_art, nombre_set_art) VALUES ($1, $2) RETURNING *', 
-        [cod_set_art, nombre_set_art], (error, results) => {
+        'INSERT INTO public.sets_de_ventas (nombre_set_art) VALUES ($1) RETURNING *', 
+        [nombre_set_art], (error, results) => {
         if (error){
             throw error
         }
@@ -622,12 +621,11 @@ const getFamiliaArtById = (request, response) => {
 
 const updateFamiliaArt = (request, response) => {
     const id = parseInt(request.params.id)
-    const {cod_fami_art, nombre_fami_art, nro_orden_de_la_fami, set_de_la_familia} = request.body
+    const {nombre_fami_art, nro_orden_de_la_fami, set_ventas} = request.body
 
     pool.query(
-        'UPDATE public.familias_de_articulos SET id= $1, cod_fami_art= $2, nombre_fami_art= $3, nro_orden_de_la_fami= $4, set_de_la_familia= $5 WHERE id = $1;',
-        /* 'UPDATE public.familias_de_articulos SET cod_fami_art = $1, nombre_fami_art = $2, nro_orden_de_la_fami =$3, set_de_la_familia = $4 WHERE id = $5', */
-        [id, cod_fami_art, nombre_fami_art, nro_orden_de_la_fami, set_de_la_familia], (error, results) => {
+        'UPDATE public.familias_de_articulos SET id= $1, nombre_fami_art= $2, nro_orden_de_la_fami= $3, set_ventas = $4 WHERE id = $1;',
+        [id, nombre_fami_art, nro_orden_de_la_fami, set_ventas], (error, results) => {
             if (error){
                 throw error
             }
@@ -637,11 +635,11 @@ const updateFamiliaArt = (request, response) => {
 }
 
 const createFamiliaArt = (request, response) => {
-    const {cod_fami_art, nombre_fami_art, nro_orden_de_la_fami, set_de_la_familia} = request.body
+    const {nombre_fami_art, nro_orden_de_la_fami, set_ventas} = request.body
 
     pool.query(
-        'INSERT INTO public.familias_de_articulos (cod_fami_art, nombre_fami_art, nro_orden_de_la_fami, set_de_la_familia) VALUES ($1, $2, $3, $4)',
-        [cod_fami_art, nombre_fami_art, nro_orden_de_la_fami, set_de_la_familia], (error, results) => {
+        'INSERT INTO public.familias_de_articulos (nombre_fami_art, nro_orden_de_la_fami, set_ventas) VALUES ($1, $2, $3)',
+        [nombre_fami_art, nro_orden_de_la_fami, set_ventas], (error, results) => {
         if (error){
             throw error
         }
@@ -686,7 +684,7 @@ const updateVincularArtFamilia = (request, response) => {
     const {cod_art, cod_familia, orden_art_familia} = request.body
 
     pool.query(
-        'UPDATE public.vincular_articulos_a_familia SET  cod_art = $1, cod_familia =$2, orden_art_familia = $3 WHERE cod = $4',
+        'UPDATE public.vincular_articulos_a_familia SET cod_art = $1 , cod_familia = $2 , orden_art_familia = $3 WHERE cod = $4',
         [cod_art, cod_familia, orden_art_familia, id], (error, results) => {
             if (error){
                 throw error
@@ -833,6 +831,55 @@ const deleteRubrosVtas = (request, response) => {
     const id = parseInt(request.params.id)
 
     pool.query('DELETE FROM public.rubros_ventas WHERE id = $1', [id], (error, results) => {
+        if (error){
+            throw error
+        }
+        response.status(200).send(`Eliminado correctamente`)
+    })
+}
+
+// Tabla Familia Distribución {mejorado}
+const getFamiliaDist = (request, response) => {
+    pool.query('SELECT * FROM public.familias_distribuciones', (error, results) =>{
+        if (error){
+            throw error
+        }
+        response.status(200).json(results.rows)
+    })
+}
+
+const updateFamiliaDist = (request, response) => {
+    const id = parseInt(request.params.id)
+    const {nombre_familia, orden_familia} = request.body
+
+    pool.query(
+        'UPDATE public.familias_distribuciones SET "nombre_familia" = $1, "orden_familia" = $2 WHERE id = $3',
+        [nombre_familia, orden_familia, id ], (error, results) => {
+            if (error){
+                throw error
+            }
+            response.status(200).send(`Modificado correctamente`)
+        }
+    )
+}
+
+const createFamiliaDist = (request, response) => {
+    const {nombre_familia, orden_familia} = request.body
+
+    pool.query(
+        'INSERT INTO public.familias_distribuciones ("nombre_familia", "orden_familia") VALUES ($1, $2)', 
+        [nombre_familia, orden_familia], (error, results) => {
+        if (error){
+            throw error
+        }
+        response.status(201).send(`Agregar correctamente`)
+    })
+}
+
+const deleteFamiliaDist = (request, response) => {
+    const id = parseInt(request.params.id)
+
+    pool.query('DELETE FROM public.familias_distribuciones WHERE id = $1', [id], (error, results) => {
         if (error){
             throw error
         }
@@ -1347,6 +1394,55 @@ const deleteCalesCementosPlasticor = (request, response) => {
     })
 }
 
+// Filtro Clientes Cta Cte Plataforma
+const getClientesCtaCte = (request, response) => {
+    pool.query('SELECT * FROM public.filtro_clientes_plataforma', (error, results) =>{
+        if (error){
+            throw error
+        }
+        response.status(200).json(results.rows)
+    })
+}
+
+const updateClientesCtaCte = (request, response) => {
+    const id = parseInt(request.params.id)
+    const {tipo_de_cliente, perfil_crediticio} = request.body
+
+    pool.query(
+        'UPDATE public.filtro_clientes_plataforma SET "tipo_de_cliente" = $1::json , "perfil_crediticio" = $2::json WHERE id = $3',
+        [tipo_de_cliente, perfil_crediticio, id ], (error, results) => {
+            if (error){
+                throw error
+            }
+            response.status(200).send(`Modificado correctamente`)
+        }
+    )
+}
+
+const createClientesCtaCte = (request, response) => {
+    const {tipo_de_cliente, perfil_crediticio} = request.body
+
+    pool.query(
+        'INSERT INTO public.filtro_clientes_plataforma("tipo_de_cliente", "perfil_crediticio") VALUES ($1, $2)', 
+        [tipo_de_cliente, perfil_crediticio], (error, results) => {
+        if (error){
+            throw error
+        }
+        response.status(201).send(`Agregar correctamente`)
+    })
+}
+
+const deleteClientesCtaCte = (request, response) => {
+    const id = parseInt(request.params.id)
+
+    pool.query('DELETE FROM public.filtro_clientes_plataforma WHERE id = $1', [id], (error, results) => {
+        if (error){
+            throw error
+        }
+        response.status(200).send(`Eliminado correctamente`)
+    })
+}
+
 module.exports = {
     getDeposANoConsiderar, getDeposANoConsiderarByCod, createDepos, updateDepos, deleteDepos,
     getNPaConsiderar, getNPaConsiderarByCod, createNP, updateNP, deleteNP,
@@ -1362,6 +1458,7 @@ module.exports = {
     getVincularArtFamilia, getVincularArtFamiliaByCod, updateVincularArtFamilia, createVincularArtFamilia, deleteVincularArtFamilia,
     getProductosDistribucion, getProductosDistribucionByCod, updateProductosDistribucion, createProductosDistribucion, deleteProductosDistribucion,
     getRubrosVtas, getRubrosVtasByCod, updateRubrosVtas, createRubrosVtas, deleteRubrosVtas,
+    getFamiliaDist, updateFamiliaDist, createFamiliaDist, deleteFamiliaDist,
     getFamArtDist, getFamArtDistByCod, updateFamArtDist, createFamArtDist, deleteFamArtDist,
     getCartelManual, getCartelManualbyId, updateCartelManual, createCartelManual, deleteCartelManual,
     getDespositoNoAConsiderarParaStockFisico, updateDespositoNoAConsiderarParaStockFisico, createDespositoNoAConsiderarParaStockFisico, deleteDespositoNoAConsiderarParaStockFisico,
@@ -1370,5 +1467,6 @@ module.exports = {
     getActualizacionWeb, UpdateActualizacionWeb, CreateActualizacionWeb, deleteActualizacionWeb, UpdateActualizacionWebNow, UpdateActualizacionWebCron, UpdateActualizacionWebChecked,
     getComprobantesAOmitir, updateComprobantesAOmitir, createComprobantesAOmitir, deleteComprobantesAOmitir,
     getRemitosVtas, updateRemitosVtas, createRemitosVtas, deleteRemitosVtas,
-    getCalesCementosPlasticor, updateCalesCementosPlasticor, createCalesCementosPlasticor, deleteCalesCementosPlasticor
+    getCalesCementosPlasticor, updateCalesCementosPlasticor, createCalesCementosPlasticor, deleteCalesCementosPlasticor,
+    getClientesCtaCte, updateClientesCtaCte, createClientesCtaCte, deleteClientesCtaCte
 }

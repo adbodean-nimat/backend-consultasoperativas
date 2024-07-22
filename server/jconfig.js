@@ -118,7 +118,43 @@ async function getFamiliaArts() {
     let response = await Promise.all(endpoints4.map((endpoint4) => axios.get(endpoint4,{httpsAgent, headers: {'Authorization': `Basic ${token}`,'Accept-Encoding': 'gzip, deflate, br'}}))).then(
         ([{data: firstResponse}, {data: secundResponse}, {data: threeResponse}]) => {
 
-            var joined = firstResponse.map(function(e) {
+            var result = []
+            var result2 = []
+
+            for (var i=0; i<firstResponse.length; i++) {
+                for (var j=0; j<secundResponse.length; j++) {
+                    if (firstResponse[i].cod_familia == secundResponse[j].id){
+                        result.push({
+                            cod: firstResponse[i].cod,
+                            cod_art: firstResponse[i].cod_art,
+                            cod_familia: firstResponse[i].cod_familia,
+                            orden_art_familia: firstResponse[i].orden_art_familia,
+                            nombre_fami_art: secundResponse[j].nombre_fami_art,
+                            nro_orden_de_la_fami: secundResponse[j].nro_orden_de_la_fami,
+                            set_ventas: secundResponse[j].set_ventas
+                        });
+                    }
+                }
+            }
+
+            for (var x=0; x<result.length; x++) {
+                for (var v=0; v<threeResponse.length; v++) {
+                    if (result[x].set_ventas == threeResponse[v].id) {
+                        result2.push({
+                            cod: result[x].cod,
+                            cod_art: result[x].cod_art,
+                            cod_familia: result[x].cod_familia,
+                            orden_art_familia: result[x].orden_art_familia,
+                            nombre_fami_art: result[x].nombre_fami_art,
+                            nro_orden_de_la_fami: result[x].nro_orden_de_la_fami,
+                            set_ventas: result[x].set_ventas,
+                            nombre_set_art: threeResponse[v].nombre_set_art
+                        })
+                    }
+                }
+            }
+
+            /* var joined = firstResponse.map(function(e) {
                 return Object.assign({}, e,
                     secundResponse.reduce(function(acc, val) {
                         if (val.cod_fami_art == e.cod_familia) {
@@ -137,8 +173,8 @@ async function getFamiliaArts() {
                             return acc2
                         }})
                 )
-            })
-            return joined2
+            }) */
+            return result2
         } 
     ).catch(function (error) {
         console.log(error);
@@ -149,20 +185,35 @@ async function getFamiliaArts() {
 async function getFamiliaArts2() {
     let endpoints4 = [
         `${process.env.URL_API}` + 'productospdistribucion',
-        `${process.env.URL_API}` + 'familiaartdistribucion',
-        `${process.env.URL_API}` + 'setsdeventas',
+        `${process.env.URL_API}` + 'familiadistribuciones'
       ];
     let response = await Promise.all(endpoints4.map((endpoint4) => axios.get(endpoint4,{httpsAgent, headers: {'Authorization': `Basic ${token}`,'Accept-Encoding': 'gzip, deflate, br'}}))).then(
-        ([{data: firstResponse}, {data: secundResponse}, {data: threeResponse}]) => {
-            var joined = firstResponse.map(function(e) {
+        ([{data: firstResponse}, {data: secundResponse}]) => {
+            var result = []
+            for (var i=0; i<firstResponse.length; i++) {
+                for (var j=0; j<secundResponse.length; j++) {
+                    if (firstResponse[i].Cod_Familia_producto == secundResponse[j].id){
+                        result.push({
+                            id: firstResponse[i].id,
+                            Codigo_producto: firstResponse[i].Codigo_producto,
+                            Orden_producto: firstResponse[i].Orden_producto,
+                            Cod_Familia_producto: firstResponse[i].Cod_Familia_producto,
+                            nombre_familia: secundResponse[j].nombre_familia,
+                            orden_familia: secundResponse[j].orden_familia
+                        });
+                    }
+                }
+            }
+
+            /* var joined = firstResponse.map(function(e) {
                 return Object.assign({}, e,
                     secundResponse.reduce(function(acc, val) {
-                        if (val.cod_familia_art == e.Cod_Familia_producto) {
+                        if (val.id == e.Cod_Familia_producto) {
                             return val
                         } else {
                             return acc
                         }}),  
-                )
+                );
             });
             var joined2 = joined.map(function(e){
                 return Object.assign({}, e,
@@ -173,8 +224,9 @@ async function getFamiliaArts2() {
                             return acc2
                         }})
                 )
-            })
-            return joined2
+            }) */
+
+            return result
         } 
     ).catch(function (error) {
         console.log(error);
@@ -197,9 +249,9 @@ async function getVN_1() {
                             ARVE_RUBRO_VENTA: secundResponse[j].ARVE_RUBRO_VENTA, 
                             RUBV_NOMBRE: secundResponse[j].RUBV_NOMBRE,
                             cod_art: firstResponse[i].cod_art,
-                            cod_set_art: firstResponse[i].cod_set_art,
+                            set_ventas: firstResponse[i].set_ventas,
                             nombre_set_art: firstResponse[i].nombre_set_art,
-                            cod_fami_art: firstResponse[i].cod_fami_art,
+                            cod_familia: firstResponse[i].cod_familia,
                             nombre_fami_art: firstResponse[i].nombre_fami_art,
                             nro_orden_de_la_fami: firstResponse[i].nro_orden_de_la_fami,
                             orden_art_familia: firstResponse[i].orden_art_familia,
@@ -252,11 +304,11 @@ async function getVN_2() {
                             ARVE_RUBRO_VENTA: secundResponse[j].ARVE_RUBRO_VENTA, 
                             RUBV_NOMBRE: secundResponse[j].RUBV_NOMBRE,
                             Orden_producto: firstResponse[i].Orden_producto,
-                            cod_set_art: firstResponse[i].cod_set_art,
-                            nombre_set_art: firstResponse[i].nombre_set_art,
-                            cod_familia_art: firstResponse[i].cod_familia_art,
-                            nombre_familia_art: firstResponse[i].nombre_familia_art,
-                            nro_orden_familia: firstResponse[i].nro_orden_familia,
+                            cod_set_art: '',
+                            nombre_set_art: '',
+                            cod_familia_art: firstResponse[i].id,
+                            nombre_familia_art: firstResponse[i].nombre_familia,
+                            nro_orden_familia: firstResponse[i].orden_familia,
                             ARTS_ARTICULO: secundResponse[j].ARTS_ARTICULO,
                             ARTS_ARTICULO_EMP: secundResponse[j].ARTS_ARTICULO_EMP,
                             ARTS_NOMBRE: secundResponse[j].ARTS_NOMBRE,
