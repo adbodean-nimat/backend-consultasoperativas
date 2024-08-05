@@ -301,6 +301,12 @@ router.route('/perfilcrediticio').get((request, response)=>{
   })
 })
 
+router.route('/npconproblemaei/:id').get((request, response)=>{
+  Db.NP_Problema_EI(request.params.id).then((data)=>{
+    response.json(data[0]);
+  })
+})
+
 router.route('/listabreveusointerno').get((request, response) => {
   jConfig.getListadePrecioBUI2().then((data)=>{
     response.json(data);
