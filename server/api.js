@@ -116,15 +116,15 @@ router.route('/listaprecioscostoreposicion').get((request, response)=> {
 })
 
 router.route('/control').get((request, response) => {
-    Db.getControl().then((data) => {
-        response.json(data[0]);
-    })
+  Db.getControl().then((data) => {
+    response.json(data[0]);
   })
+})
 
 router.route('/control/:id').get((request, response) => {
-    Db.getOrder(request.params.id).then((data) => {
-      response.json(data[0]);
-    })
+  Db.getOrder(request.params.id).then((data) => {
+    response.json(data[0]);
+  })
 })
 
 router.route('/listadeclientes').get((request, response) => {
@@ -235,6 +235,24 @@ router.route('/stocarts').get((request, response)=>{
   })
 })
 
+router.route('/stockartsall').get((request, response)=>{
+  Db.getStocArtsAll().then((data)=>{
+    response.json(data[0]);
+  })
+})
+
+router.route('/stockartsclasif5').get((request, response)=>{
+  Db.getStocArtsClasif5().then((data)=>{
+    response.json(data[0]);
+  })
+})
+
+router.route('/stockartsclasif6').get((request, response)=>{
+  Db.getStocArtsClasif6().then((data)=>{
+    response.json(data[0]);
+  })
+})
+
 router.route('/lpvnrubrosvtasacopio').get((request, response)=>{
  Db.getRubrosVtaAcopio().then((data)=>{
   response.json(data[0])
@@ -307,6 +325,34 @@ router.route('/npconproblemaei/:id').get((request, response)=>{
   })
 })
 
+router.route('/ncinformesacindarptf').get((request, response)=>{
+  Db.NCInformesAcindarPTF().then((data)=>{
+    response.json(data[0]);
+  })
+})
+
+router.route('/informesacindarptf').get((request, response)=>{
+  Db.InformesAcindarPTF().then((data)=>{
+    response.json(data[0]);
+  })
+})
+
+router.route('/informesacindarptfentrefechas').get((request,response)=>{
+  const getDate = request.body
+  Db.InformesAcindarPTFDate(getDate).then((data)=>{
+    response.json(data[0]);
+  })
+})
+
+router.route('/ncinformesacindarptfentrefechas').get((request, response)=>{
+  const getDate = request.body
+  Db.NCInformesAcindarPTFDate(getDate).then((data)=>{
+    response.json(data[0]);
+  })
+})
+
+
+
 router.route('/listabreveusointerno').get((request, response) => {
   jConfig.getListadePrecioBUI2().then((data)=>{
     response.json(data);
@@ -361,6 +407,30 @@ router.route('/planillaimportarstockprecio').get((request, response)=>{
   })
 })
 
+router.route('/informesacindar').get((request, response)=>{
+  jConfig.getInformesAcindar().then((data)=>{
+    response.json(data);
+  })
+})
+
+router.route('/informesacindarentrefechas/').get((request, response)=>{
+  const getDatesDesde = request.query.fechadesde
+  const getDatesHasta = request.query.fechahasta
+  const getDates = {fechadesde: getDatesDesde, fechahasta: getDatesHasta}
+  jConfig.getInformesAcindarEntreFechas(getDates).then((data)=>{
+    response.json(data);
+  })
+})
+
+router.route('/informesacindarentrefechasexportar/').get((request, response)=>{
+  const getDatesDesde = request.query.fechadesde
+  const getDatesHasta = request.query.fechahasta
+  const getDates = {fechadesde: getDatesDesde, fechahasta: getDatesHasta}
+  jConfig.getInformesAcindarEntreFechasExportar(getDates).then((data)=>{
+    response.json(data);
+  })
+})
+
 router.route('/planillaimportarweb').get((request, response)=>{
   jsonToExcel.getWebNimat().then((data)=>{
     response.json(data);
@@ -379,11 +449,37 @@ router.route('/jsontosheet').get((request,response)=>{
   })
 })
 
+router.route('/jsontosheet2').get((request, response)=>{
+  jsonToExcel.jsontosheet2().then((data)=>{
+    response.status(200).send('Generado correctamente');
+  })
+})
+
+router.route('/jsontosheet3/').get((request, response)=>{
+  const getDatesDesde = request.query.fechadesde
+  const getDatesHasta = request.query.fechahasta
+  const getDates = {fechadesde: getDatesDesde, fechahasta: getDatesHasta}
+  jsonToExcel.jsontosheet3(getDates).then((data)=>{
+    response.status(200).send('Generado correctamente');
+  })
+})
+
 router.route('/jsontosheetdownload').get((request, response)=>{
   const routeDropbox = `${process.env.URL_DROPBOX}`
   const filePath = path.join(routeDropbox, '/Importar_AgileWorks_M2.xlsx');
   response.download(filePath);
 });
+
+/* router.route('/jsontotxtdownload').get((request, response)=>{
+  const date = new Date();
+  const month = date.getMonth();
+  const monthNumbers = ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"];
+  const folder = `${process.env.URL_DIR}/`+ new Date().getFullYear() +'.'+ monthNumbers[month]
+  const filePath = path.join(folder, '/Archivo.txt');
+  if (!fs.existsSync(filePath)) {
+    return response.download(filePath);  
+  }
+}); */
 
 async function getActualizadoWeb(){
   try{
@@ -630,6 +726,30 @@ router.route('/filtroclientesplataforma').get(Pg.getClientesCtaCte)
 router.route('/filtroclientesplataforma').post(Pg.createClientesCtaCte)
 router.route('/filtroclientesplataforma/:id').put(Pg.updateClientesCtaCte)
 router.route('/filtroclientesplataforma/:id').delete(Pg.deleteClientesCtaCte)
+
+// Tabla Acindar Clasif. Clientes
+router.route('/acindarclasifclientes').get(Pg.getAcindarClasifClientes)
+router.route('/acindarclasifclientes').post(Pg.createClasifClientes)
+router.route('/acindarclasifclientes/:id').put(Pg.updateClasifClientes)
+router.route('/acindarclasifclientes/:id').delete(Pg.deleteClasifClientes)
+
+// Tabla Acindar Comprobantes
+router.route('/acindarcomprobantes').get(Pg.getAcindarComprobantes)
+router.route('/acindarcomprobantes').post(Pg.createAcindarComprobantes)
+router.route('/acindarcomprobantes/:id').put(Pg.updateAcindarComprobantes)
+router.route('/acindarcomprobantes/:id').delete(Pg.deleteAcindarComprobantes)
+
+// Tabla Acindar Equival. Cod. y factor cant.
+router.route('/acindarequivalcodfactorcant').get(Pg.getAcindarEquivalCodFactorCant)
+router.route('/acindarequivalcodfactorcant').post(Pg.createAcindarEquivalCodFactorCant)
+router.route('/acindarequivalcodfactorcant/:id').put(Pg.updateAcindarEquivalCodFactorCant)
+router.route('/acindarequivalcodfactorcant/:id').delete(Pg.deleteAcindarEquivalCodFactorCant)
+
+// Tabla Filtro Acindar Plataforma
+router.route('/filtroacindarplataforma').get(Pg.getFiltroAcindarPTF)
+router.route('/filtroacindarplataforma').post(Pg.createFiltroAcindarPTF)
+router.route('/filtroacindarplataforma/:id').put(Pg.updateFiltroAcindarPTF)
+router.route('/filtroacindarplataforma/:id').delete(Pg.deleteFiltroAcindarPTF)
 
 const port = 8090;
 

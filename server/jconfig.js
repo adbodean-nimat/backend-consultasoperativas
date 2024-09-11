@@ -1,7 +1,7 @@
 require('dotenv').config();
+var Db = require('./dboperacion');
 const https = require('https');
 const axios = require('axios');
-const _ = require('lodash');
 const httpsAgent = new https.Agent({ rejectUnauthorized: false }); 
 const token = process.env.JWT_TOKEN
 
@@ -499,6 +499,274 @@ async function getPlanillaImportarStock(){
     return response
 }
 
+async function getInformesAcindar(){
+    let endpoints = [
+        `${process.env.URL_API}` + 'informesacindarptf',
+        `${process.env.URL_API}` + 'acindarclasifclientes',
+        `${process.env.URL_API}` + 'acindarcomprobantes',
+        `${process.env.URL_API}` + 'acindarequivalcodfactorcant',
+        `${process.env.URL_API}` + 'ncinformesacindarptf'
+    ]
+    let response = await Promise.all(endpoints.map((endpoint)=> axios.get(endpoint,{httpsAgent, headers: {'Authorization': `Basic ${token}`}}))).then(
+        ([{data: data1}, {data: data2}, {data: data3}, {data: data4}, {data: data5}])=>{
+            var results = [];
+            for(var i = 0; i < data1.length; i++){
+                for(var j = 0; j < data2.length; j++){
+                    for (var k = 0; k < data3.length; k++){
+                        if(data1[i].CLIE_CLASIF_1.trim() == data2[j].clasif_1_ptf && data1[i].Tipo_cpbte == data3[k].comprobante_ptf){
+                            var nro_doc_referencia_tipo = data3.filter(item => item.comprobante_ptf == (data5.filter(item => item.CVCL_NUMERO_CVCL == data1[i].Nro_cpbte && item.CVCL_SUCURSAL_IMP == data1[i].Sucursal && item.CVRF_RENGLON_CVRF == data1[i].CVRF_RENGLON_CVRF).map(data => data.NCFA_TIPO_FC_ANTIC))).map(data => data.comprobante_acindar)
+                            var tipo_doc_referencia = data3.filter(item => item.comprobante_ptf == (data5.filter(item => item.CVCL_NUMERO_CVCL == data1[i].Nro_cpbte && item.CVCL_SUCURSAL_IMP == data1[i].Sucursal && item.CVRF_RENGLON_CVRF == data1[i].CVRF_RENGLON_CVRF).map(data => data.NCFA_TIPO_FC_ANTIC))).map(data => data.tipo_doc_legal)
+                            var nro_doc_referencia_sucursal = data5.filter(item => item.CVCL_NUMERO_CVCL == data1[i].Nro_cpbte && item.CVCL_SUCURSAL_IMP == data1[i].Sucursal && item.CVRF_RENGLON_CVRF == data1[i].CVRF_RENGLON_CVRF).map(data => data.NCFA_SUCURSAL_FC_ANTIC)
+                            var nro_doc_referencia_numero = data5.filter(item => item.CVCL_NUMERO_CVCL == data1[i].Nro_cpbte && item.CVCL_SUCURSAL_IMP == data1[i].Sucursal && item.CVRF_RENGLON_CVRF == data1[i].CVRF_RENGLON_CVRF).map(data => data.NCFA_NUMERO_FC_ANTIC)
+                            var nro_doc_referencia_item = data5.filter(item => item.CVCL_NUMERO_CVCL == data1[i].Nro_cpbte && item.CVCL_SUCURSAL_IMP == data1[i].Sucursal && item.CVRF_RENGLON_CVRF == data1[i].CVRF_RENGLON_CVRF).map(data => data.NCFA_RENGLON_FC_ANTIC)
+                            var fecha_doc_referencia = data5.filter(item => item.CVCL_NUMERO_CVCL == data1[i].Nro_cpbte && item.CVCL_SUCURSAL_IMP == data1[i].Sucursal && item.CVRF_RENGLON_CVRF == data1[i].CVRF_RENGLON_CVRF).map(data => data.CVCL_FECHA_EMI)
+                            
+                            var nro_doc_referencia = nro_doc_referencia_tipo + '-' + (
+                            nro_doc_referencia_sucursal.toString().length == 1 ? '00' + nro_doc_referencia_sucursal : 
+                            nro_doc_referencia_sucursal.toString().length == 2 ? '0' + nro_doc_referencia_sucursal : 
+                            nro_doc_referencia_sucursal.toString().length == 3 ? nro_doc_referencia_sucursal : 
+                            nro_doc_referencia_sucursal.toString().length == 0 ? '' : '')
+                            + '-' + (
+                            nro_doc_referencia_numero.toString().length == 1 ? '000000' + nro_doc_referencia_numero : 
+                            nro_doc_referencia_numero.toString().length == 2 ? '000000' + nro_doc_referencia_numero : 
+                            nro_doc_referencia_numero.toString().length == 3 ? '00000' + nro_doc_referencia_numero : 
+                            nro_doc_referencia_numero.toString().length == 4 ? '0000' + nro_doc_referencia_numero : 
+                            nro_doc_referencia_numero.toString().length == 5 ? '000' + nro_doc_referencia_numero : 
+                            nro_doc_referencia_numero.toString().length == 6 ? '00' + nro_doc_referencia_numero : 
+                            nro_doc_referencia_numero.toString().length == 7 ? '0' + nro_doc_referencia_numero : 
+                            nro_doc_referencia_numero.toString().length == 8 ? nro_doc_referencia_numero : 
+                            nro_doc_referencia_numero.toString().length == 0 ? '' : '')
+
+                            const cantidadxfactor = (data1[i].Cant * (data4.filter(item => item.codigo_ptf == data1[i].ARTS_ARTICULO_EMP).map(data => data.factor_cant)))
+                            const codigoAcindar = data4.filter(item => item.codigo_ptf == data1[i].ARTS_ARTICULO_EMP).map(data => data.codigo_acindar)
+                            results.push({
+                                DEA: 'PRD',
+                                SUCURSAL: '1',
+                                NRO_DOC_LEGAL: data3[k].comprobante_acindar + '-' + data1[i].Comprobante.substring(0,4) + '-' + data1[i].Comprobante.substring(9),
+                                TIPO_DOC_LEGAL: data3[k].tipo_doc_legal,
+                                TIPO_DE_TRANSACCION: data3[k].tipo_de_transaccion,
+                                ITEM_DOC_LEGAL: data1[i].CVRF_RENGLON_CVRF,
+                                FECHA_DOC_LEGAL: data1[i].CVCL_FECHA_EMI,
+                                NRO_DOC_REFERENCIA: nro_doc_referencia == "--" ? '': nro_doc_referencia,
+                                TIPO_DOC_REF: tipo_doc_referencia.toString(),
+                                ITEM_DOC_REF: nro_doc_referencia_item.toString(),
+                                FECHA_DOC_REF: fecha_doc_referencia.toString(),
+                                CUIT: data1[i].CLIE_CUIT,
+                                NRO_INTERNO_CLIENTE: data1[i].CVCL_CLIENTE,
+                                RAZON_SOCIAL: data1[i].CLIE_NOMBRE.trim(),
+                                SEGMENTO: data2[j].segmento_cliente_acindar,
+                                DIRECCION: data1[i].CLIE_DOMICILIO,
+                                CIUDAD: data1[i].CLIE_LOCALIDAD,
+                                PROVINCIA: data1[i].PCIA_NOMBRE,
+                                CODIGO_ART: codigoAcindar,
+                                DESCRIPCION: data1[i].ARTS_NOMBRE,
+                                UMV: data1[i].CVRF_UNIMED,
+                                CANTIDAD: cantidadxfactor.toPrecision(),
+                                MONTO: data1[i].Subtotal_item_SI_a_infomar_a_Acindar,
+                                FECHA_COSTO: data1[i].Fecha_Costo,
+                                DESCRIPCION_COND_VTA: data1[i].Nombre_Cond_Vta,
+                                DIAS: data1[i].DIAS_COND_VTA,
+                                OBSERVACION: data2[j].observacion
+                            })
+                        }
+                    }
+                    
+                }
+            }
+            return results
+        }
+    )
+    return response
+}
+
+async function getInformesAcindarEntreFechas(getDates){
+    try{
+        var data1 = [];
+        var data5 = [];
+        let getData1 = await Db.InformesAcindarPTFDate(getDates).then((response)=>data1.push(response))
+        let getData2 = await Db.NCInformesAcindarPTFDate(getDates).then((response)=>data5.push(response))
+        
+        let endpoints = [
+            `${process.env.URL_API}` + 'acindarclasifclientes',
+            `${process.env.URL_API}` + 'acindarcomprobantes',
+            `${process.env.URL_API}` + 'acindarequivalcodfactorcant',
+            `${process.env.URL_API}` + 'stockartsall'
+        ]
+
+        let response = await Promise.all(endpoints.map((endpoint)=> axios.get(endpoint,{httpsAgent, headers: {'Authorization': `Basic ${token}`}}))).then(
+            ([{data: data2},{data: data3},{data: data4},{data: data6}])=>{
+                var results = [];
+                for(var i = 0; i < data1[0][0].length; i++){
+                    for(var j = 0; j < data2.length; j++){
+                        for (var k = 0; k < data3.length; k++){
+                            if(data1[0][0][i].CLIE_CLASIF_1.trim() == data2[j].clasif_1_ptf && data1[0][0][i].Tipo_cpbte == data3[k].comprobante_ptf){
+                                var nro_doc_referencia_tipo = data3.filter(item => item.comprobante_ptf == (data5[0][0].filter(item => item.CVCL_NUMERO_CVCL == data1[0][0][i].Nro_cpbte && item.CVCL_SUCURSAL_IMP == data1[0][0][i].Sucursal && item.CVRF_RENGLON_CVRF == data1[0][0][i].CVRF_RENGLON_CVRF).map(data => data.NCFA_TIPO_FC_ANTIC))).map(data => data.comprobante_acindar)
+                                var tipo_doc_referencia = data3.filter(item => item.comprobante_ptf == (data5[0][0].filter(item => item.CVCL_NUMERO_CVCL == data1[0][0][i].Nro_cpbte && item.CVCL_SUCURSAL_IMP == data1[0][0][i].Sucursal && item.CVRF_RENGLON_CVRF == data1[0][0][i].CVRF_RENGLON_CVRF).map(data => data.NCFA_TIPO_FC_ANTIC))).map(data => data.tipo_doc_legal)
+                                var nro_doc_referencia_sucursal = data5[0][0].filter(item => item.CVCL_NUMERO_CVCL == data1[0][0][i].Nro_cpbte && item.CVCL_SUCURSAL_IMP == data1[0][0][i].Sucursal && item.CVRF_RENGLON_CVRF == data1[0][0][i].CVRF_RENGLON_CVRF).map(data => data.NCFA_SUCURSAL_FC_ANTIC)
+                                var nro_doc_referencia_numero = data5[0][0].filter(item => item.CVCL_NUMERO_CVCL == data1[0][0][i].Nro_cpbte && item.CVCL_SUCURSAL_IMP == data1[0][0][i].Sucursal && item.CVRF_RENGLON_CVRF == data1[0][0][i].CVRF_RENGLON_CVRF).map(data => data.NCFA_NUMERO_FC_ANTIC)
+                                var nro_doc_referencia_item = data5[0][0].filter(item => item.CVCL_NUMERO_CVCL == data1[0][0][i].Nro_cpbte && item.CVCL_SUCURSAL_IMP == data1[0][0][i].Sucursal && item.CVRF_RENGLON_CVRF == data1[0][0][i].CVRF_RENGLON_CVRF).map(data => data.NCFA_RENGLON_FC_ANTIC)
+                                var fecha_doc_referencia = data5[0][0].filter(item => item.CVCL_NUMERO_CVCL == data1[0][0][i].Nro_cpbte && item.CVCL_SUCURSAL_IMP == data1[0][0][i].Sucursal && item.CVRF_RENGLON_CVRF == data1[0][0][i].CVRF_RENGLON_CVRF).map(data => data.CVCL_FECHA_EMI)
+                                
+                                var nro_doc_referencia = nro_doc_referencia_tipo + '-' + (
+                                nro_doc_referencia_sucursal.toString().length == 1 ? '00' + nro_doc_referencia_sucursal : 
+                                nro_doc_referencia_sucursal.toString().length == 2 ? '0' + nro_doc_referencia_sucursal : 
+                                nro_doc_referencia_sucursal.toString().length == 3 ? nro_doc_referencia_sucursal : 
+                                nro_doc_referencia_sucursal.toString().length == 0 ? '' : '')
+                                + '-' + (
+                                nro_doc_referencia_numero.toString().length == 1 ? '000000' + nro_doc_referencia_numero : 
+                                nro_doc_referencia_numero.toString().length == 2 ? '000000' + nro_doc_referencia_numero : 
+                                nro_doc_referencia_numero.toString().length == 3 ? '00000' + nro_doc_referencia_numero : 
+                                nro_doc_referencia_numero.toString().length == 4 ? '0000' + nro_doc_referencia_numero : 
+                                nro_doc_referencia_numero.toString().length == 5 ? '000' + nro_doc_referencia_numero : 
+                                nro_doc_referencia_numero.toString().length == 6 ? '00' + nro_doc_referencia_numero : 
+                                nro_doc_referencia_numero.toString().length == 7 ? '0' + nro_doc_referencia_numero : 
+                                nro_doc_referencia_numero.toString().length == 8 ? nro_doc_referencia_numero : 
+                                nro_doc_referencia_numero.toString().length == 0 ? '' : '')
+
+                                const cantidadxfactor = (data1[0][0][i].Cant * (data4.filter(item => item.codigo_ptf == data1[0][0][i].ARTS_ARTICULO_EMP).map(data => data.factor_cant)));
+                                const codigoAcindar = data4.filter(item => item.codigo_ptf == data1[0][0][i].ARTS_ARTICULO_EMP).map(data => data.codigo_acindar);
+                                const nombrePTF = data6.filter(item => item.ARTS_ARTICULO_EMP == codigoAcindar).map(data => data.ARTS_NOMBRE)
+                                const montoDecimal = data1[0][0][i].Subtotal_item_SI_a_infomar_a_Acindar
+                                const montoSIDecimal = data1[0][0][i].Subtotal_item_SI
+                                results.push({
+                                    DEA: 'PRD',
+                                    SUCURSAL: '1',
+                                    NRO_DOC_LEGAL: data3[k].comprobante_acindar + '-' + data1[0][0][i].Comprobante.substring(0,4) + '-' + data1[0][0][i].Comprobante.substring(9),
+                                    TIPO_DOC_LEGAL: data3[k].tipo_doc_legal,
+                                    TIPO_DE_TRANSACCION: data3[k].tipo_de_transaccion,
+                                    ITEM_DOC_LEGAL: data1[0][0][i].CVRF_RENGLON_CVRF,
+                                    FECHA_DOC_LEGAL: data1[0][0][i].CVCL_FECHA_EMI,
+                                    NRO_DOC_REFERENCIA: nro_doc_referencia == "--" ? '': nro_doc_referencia,
+                                    TIPO_DOC_REF: tipo_doc_referencia.toString(),
+                                    ITEM_DOC_REF: nro_doc_referencia_item.toString(),
+                                    FECHA_DOC_REF: fecha_doc_referencia.toString(),
+                                    CUIT: data1[0][0][i].CLIE_CUIT,
+                                    NRO_INTERNO_CLIENTE: data1[0][0][i].CVCL_CLIENTE,
+                                    RAZON_SOCIAL: data1[0][0][i].CLIE_NOMBRE.replace(/\s+/g, ' '),
+                                    SEGMENTO: data2[j].segmento_cliente_acindar,
+                                    DIRECCION: data1[0][0][i].CLIE_DOMICILIO,
+                                    CIUDAD: data1[0][0][i].CLIE_LOCALIDAD,
+                                    PROVINCIA: data1[0][0][i].PCIA_NOMBRE,
+                                    CODIGO_ART: codigoAcindar,
+                                    DESCRIPCION: data1[0][0][i].ARTS_NOMBRE !== nombrePTF.toString() ? nombrePTF.toString() : data1[0][0][i].ARTS_NOMBRE,
+                                    UMV: data1[0][0][i].CVRF_UNIMED,
+                                    CANTIDAD: cantidadxfactor.toPrecision(),
+                                    CANTIDAD_ING: data1[0][0][i].Cant,
+                                    SUBTOTAL_ITEM_SI: montoSIDecimal.toFixed(2),
+                                    MONTO: montoDecimal.toFixed(2),
+                                    FECHA_COSTO: data1[0][0][i].Fecha_Costo,
+                                    DESCRIPCION_COND_VTA: data1[0][0][i].Nombre_Cond_Vta,
+                                    DIAS: data1[0][0][i].DIAS_COND_VTA,
+                                    OBSERVACION: data2[j].observacion
+                                })
+                            }
+                        }
+                        
+                    }
+                } 
+                return results
+            }
+        )
+        return response
+    }
+    catch(e){
+        console.log(e)
+    }
+}
+
+async function getInformesAcindarEntreFechasExportar(getDates){
+    try{
+        var data1 = [];
+        var data5 = [];
+        let getData1 = await Db.InformesAcindarPTFDate(getDates).then((response)=>data1.push(response))
+        let getData2 = await Db.NCInformesAcindarPTFDate(getDates).then((response)=>data5.push(response))
+        
+        let endpoints = [
+            `${process.env.URL_API}` + 'acindarclasifclientes',
+            `${process.env.URL_API}` + 'acindarcomprobantes',
+            `${process.env.URL_API}` + 'acindarequivalcodfactorcant',
+            `${process.env.URL_API}` + 'stockartsall'
+        ]
+
+        let response = await Promise.all(endpoints.map((endpoint)=> axios.get(endpoint,{httpsAgent, headers: {'Authorization': `Basic ${token}`}}))).then(
+            ([{data: data2},{data: data3},{data: data4},{data: data6}])=>{
+                var results = [];
+                for(var i = 0; i < data1[0][0].length; i++){
+                    for(var j = 0; j < data2.length; j++){
+                        for (var k = 0; k < data3.length; k++){
+                            if(data1[0][0][i].CLIE_CLASIF_1.trim() == data2[j].clasif_1_ptf && data1[0][0][i].Tipo_cpbte == data3[k].comprobante_ptf){
+                                var nro_doc_referencia_tipo = data3.filter(item => item.comprobante_ptf == (data5[0][0].filter(item => item.CVCL_NUMERO_CVCL == data1[0][0][i].Nro_cpbte && item.CVCL_SUCURSAL_IMP == data1[0][0][i].Sucursal && item.CVRF_RENGLON_CVRF == data1[0][0][i].CVRF_RENGLON_CVRF).map(data => data.NCFA_TIPO_FC_ANTIC))).map(data => data.comprobante_acindar)
+                                var tipo_doc_referencia = data3.filter(item => item.comprobante_ptf == (data5[0][0].filter(item => item.CVCL_NUMERO_CVCL == data1[0][0][i].Nro_cpbte && item.CVCL_SUCURSAL_IMP == data1[0][0][i].Sucursal && item.CVRF_RENGLON_CVRF == data1[0][0][i].CVRF_RENGLON_CVRF).map(data => data.NCFA_TIPO_FC_ANTIC))).map(data => data.tipo_doc_legal)
+                                var nro_doc_referencia_sucursal = data5[0][0].filter(item => item.CVCL_NUMERO_CVCL == data1[0][0][i].Nro_cpbte && item.CVCL_SUCURSAL_IMP == data1[0][0][i].Sucursal && item.CVRF_RENGLON_CVRF == data1[0][0][i].CVRF_RENGLON_CVRF).map(data => data.NCFA_SUCURSAL_FC_ANTIC)
+                                var nro_doc_referencia_numero = data5[0][0].filter(item => item.CVCL_NUMERO_CVCL == data1[0][0][i].Nro_cpbte && item.CVCL_SUCURSAL_IMP == data1[0][0][i].Sucursal && item.CVRF_RENGLON_CVRF == data1[0][0][i].CVRF_RENGLON_CVRF).map(data => data.NCFA_NUMERO_FC_ANTIC)
+                                var nro_doc_referencia_item = data5[0][0].filter(item => item.CVCL_NUMERO_CVCL == data1[0][0][i].Nro_cpbte && item.CVCL_SUCURSAL_IMP == data1[0][0][i].Sucursal && item.CVRF_RENGLON_CVRF == data1[0][0][i].CVRF_RENGLON_CVRF).map(data => data.NCFA_RENGLON_FC_ANTIC)
+                                var fecha_doc_referencia = data5[0][0].filter(item => item.CVCL_NUMERO_CVCL == data1[0][0][i].Nro_cpbte && item.CVCL_SUCURSAL_IMP == data1[0][0][i].Sucursal && item.CVRF_RENGLON_CVRF == data1[0][0][i].CVRF_RENGLON_CVRF).map(data => data.CVCL_FECHA_EMI)
+                                
+                                var nro_doc_referencia = nro_doc_referencia_tipo + '-' + (
+                                nro_doc_referencia_sucursal.toString().length == 1 ? '00' + nro_doc_referencia_sucursal : 
+                                nro_doc_referencia_sucursal.toString().length == 2 ? '0' + nro_doc_referencia_sucursal : 
+                                nro_doc_referencia_sucursal.toString().length == 3 ? nro_doc_referencia_sucursal : 
+                                nro_doc_referencia_sucursal.toString().length == 0 ? '' : '')
+                                + '-' + (
+                                nro_doc_referencia_numero.toString().length == 1 ? '000000' + nro_doc_referencia_numero : 
+                                nro_doc_referencia_numero.toString().length == 2 ? '000000' + nro_doc_referencia_numero : 
+                                nro_doc_referencia_numero.toString().length == 3 ? '00000' + nro_doc_referencia_numero : 
+                                nro_doc_referencia_numero.toString().length == 4 ? '0000' + nro_doc_referencia_numero : 
+                                nro_doc_referencia_numero.toString().length == 5 ? '000' + nro_doc_referencia_numero : 
+                                nro_doc_referencia_numero.toString().length == 6 ? '00' + nro_doc_referencia_numero : 
+                                nro_doc_referencia_numero.toString().length == 7 ? '0' + nro_doc_referencia_numero : 
+                                nro_doc_referencia_numero.toString().length == 8 ? nro_doc_referencia_numero : 
+                                nro_doc_referencia_numero.toString().length == 0 ? '' : '')
+
+                                const cantidadxfactor = (data1[0][0][i].Cant * (data4.filter(item => item.codigo_ptf == data1[0][0][i].ARTS_ARTICULO_EMP).map(data => data.factor_cant)));
+                                const codigoAcindar = data4.filter(item => item.codigo_ptf == data1[0][0][i].ARTS_ARTICULO_EMP).map(data => data.codigo_acindar);
+                                const nombrePTF = data6.filter(item => item.ARTS_ARTICULO_EMP == codigoAcindar).map(data => data.ARTS_NOMBRE);
+                                const montoDecimal = data1[0][0][i].Subtotal_item_SI_a_infomar_a_Acindar
+                                const montoSIDecimal = data1[0][0][i].Subtotal_item_SI
+                                results.push({
+                                    DEA: 'PRD',
+                                    SUCURSAL: '1',
+                                    NRO_DOC_LEGAL: data3[k].comprobante_acindar.replace(/\./g, '') + '-' + data1[0][0][i].Comprobante.substring(0,4).replace(/\./g, '') + '-' + data1[0][0][i].Comprobante.substring(9).replace(/\./g, ''),
+                                    TIPO_DOC_LEGAL: data3[k].tipo_doc_legal.replace(/\./g, ''),
+                                    TIPO_DE_TRANSACCION: data3[k].tipo_de_transaccion.replace(/\./g, ''),
+                                    ITEM_DOC_LEGAL: data1[0][0][i].CVRF_RENGLON_CVRF,
+                                    FECHA_DOC_LEGAL: data1[0][0][i].CVCL_FECHA_EMI.replace(/\./g, ''),
+                                    NRO_DOC_REFERENCIA: nro_doc_referencia == "--" ? '': nro_doc_referencia.replace(/\./g, ''),
+                                    TIPO_DOC_REF: tipo_doc_referencia.toString().replace(/\./g, ''),
+                                    ITEM_DOC_REF: nro_doc_referencia_item.toString().replace(/\./g, ''),
+                                    FECHA_DOC_REF: fecha_doc_referencia.toString().replace(/\./g, ''),
+                                    CUIT: data1[0][0][i].CLIE_CUIT.replace(/\./g, ''),
+                                    NRO_INTERNO_CLIENTE: data1[0][0][i].CVCL_CLIENTE,
+                                    RAZON_SOCIAL: data1[0][0][i].CLIE_NOMBRE.trim().replace(/\./g, ''),
+                                    SEGMENTO: data2[j].segmento_cliente_acindar.replace(/\./g, ''),
+                                    DIRECCION: data1[0][0][i].CLIE_DOMICILIO.replace(/\./g, ''),
+                                    CIUDAD: data1[0][0][i].CLIE_LOCALIDAD.replace(/\./g, ''),
+                                    PROVINCIA: data1[0][0][i].PCIA_NOMBRE.replace(/\./g, ''),
+                                    CODIGO_ART: codigoAcindar.toString().replace(/\./g, ''),
+                                    DESCRIPCION: data1[0][0][i].ARTS_NOMBRE !== nombrePTF.toString() ? nombrePTF.toString().replace(/\./g, '') : data1[0][0][i].ARTS_NOMBRE.replace(/\./g, ''),
+                                    UMV: data1[0][0][i].CVRF_UNIMED.replace(/\./g, ''),
+                                    CANTIDAD: cantidadxfactor.toPrecision().replace(/\./g, ','),
+                                    MONTO: Number(montoDecimal).toFixed(2).replace(/\./g, ','),
+                                    FECHA_COSTO: data1[0][0][i].Fecha_Costo.replace(/\./g, ''),
+                                    DESCRIPCION_COND_VTA: data1[0][0][i].Nombre_Cond_Vta.replace(/\./g, ''),
+                                    DIAS: data1[0][0][i].DIAS_COND_VTA,
+                                    OBSERVACION: data2[j].observacion.replace(/\./g, '')
+                                })
+                            }
+                        }
+                        
+                    }
+                } 
+                return results
+            }
+        )
+        return response
+    }
+    catch(e){
+        console.log(e)
+    }
+}
+
 /* async function getListaStock() {
     let endpoints = [
         `${process.env.URL_API}` + 'depositoanoconsiderarparastockfisico',
@@ -574,5 +842,8 @@ module.exports = {
     getVN_1,
     getVN_2,
     getLPDistribucion,
-    getPlanillaImportarStock
+    getPlanillaImportarStock,
+    getInformesAcindar,
+    getInformesAcindarEntreFechas,
+    getInformesAcindarEntreFechasExportar
     };

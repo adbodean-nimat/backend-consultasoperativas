@@ -1443,6 +1443,202 @@ const deleteClientesCtaCte = (request, response) => {
     })
 }
 
+// Informes Acindar - Clasif. Clientes
+const getAcindarClasifClientes = (request, response) => {
+    pool.query('SELECT * FROM public.acindar_clasif_clientes', (error, results)=>{
+        if (error){
+            throw error
+        }
+        response.status(200).json(results.rows)
+    })
+}
+
+const createClasifClientes = (request, response) => {
+    const {clasif_1_ptf, segmento_cliente_acindar, descrip_segmento, observacion} = request.body
+
+    pool.query(
+        'INSERT INTO public.acindar_clasif_clientes(clasif_1_ptf, segmento_cliente_acindar, descrip_segmento, observacion) VALUES ($1, $2, $3, $4);', 
+        [clasif_1_ptf, segmento_cliente_acindar, descrip_segmento, observacion], (error, results) => {
+        if (error){
+            throw error
+        }
+        response.status(201).send(`Agregar correctamente`)
+    })
+}
+
+const updateClasifClientes = (request, response) => {
+    const id = parseInt(request.params.id)
+    const {clasif_1_ptf, segmento_cliente_acindar, descrip_segmento, observacion} = request.body
+
+    pool.query(
+        'UPDATE public.acindar_clasif_clientes SET id= $5, clasif_1_ptf= $1, segmento_cliente_acindar= $2, descrip_segmento= $3, observacion= $4 WHERE id = $5',
+        [clasif_1_ptf, segmento_cliente_acindar, descrip_segmento, observacion, id ], (error, results) => {
+            if (error){
+                throw error
+            }
+            response.status(200).send(`Modificado correctamente`)
+        }
+    )
+}
+
+const deleteClasifClientes = (request, response) => {
+    const id = parseInt(request.params.id)
+
+    pool.query('DELETE FROM public.acindar_clasif_clientes WHERE id = $1', [id], (error, results) => {
+        if (error){
+            throw error
+        }
+        response.status(200).send(`Eliminado correctamente`)
+    })
+}
+
+// Informes Acindar - Comprobantes
+const getAcindarComprobantes = (request, response) => {
+    pool.query('SELECT * FROM public.acindar_comprobantes', (error, results)=>{
+        if (error){
+            throw error
+        }
+        response.status(200).json(results.rows)
+    })
+}
+
+const createAcindarComprobantes = (request, response) => {
+    const {comprobante_ptf, tipo_de_transaccion, comprobante_acindar, tipo_doc_legal} = request.body
+
+    pool.query(
+        'INSERT INTO public.acindar_comprobantes(comprobante_ptf, tipo_de_transaccion, comprobante_acindar, tipo_doc_legal) VALUES ($1, $2, $3, $4);', 
+        [comprobante_ptf, tipo_de_transaccion, comprobante_acindar, tipo_doc_legal], (error, results) => {
+        if (error){
+            throw error
+        }
+        response.status(201).send(`Agregar correctamente`)
+    })
+}
+
+const updateAcindarComprobantes = (request, response) => {
+    const id = parseInt(request.params.id)
+    const {comprobante_ptf, tipo_de_transaccion, comprobante_acindar, tipo_doc_legal} = request.body
+
+    pool.query(
+        'UPDATE public.acindar_comprobantes	SET id= $5, comprobante_ptf= $1, tipo_de_transaccion= $2, comprobante_acindar= $3 , tipo_doc_legal= $4 WHERE id= $5',
+        [comprobante_ptf, tipo_de_transaccion, comprobante_acindar, tipo_doc_legal, id ], (error, results) => {
+            if (error){
+                throw error
+            }
+            response.status(200).send(`Modificado correctamente`)
+        }
+    )
+}
+
+const deleteAcindarComprobantes = (request, response) => {
+    const id = parseInt(request.params.id)
+
+    pool.query('DELETE FROM public.acindar_comprobantes WHERE id = $1', [id], (error, results) => {
+        if (error){
+            throw error
+        }
+        response.status(200).send(`Eliminado correctamente`)
+    })
+}
+
+// Informes Acindar - Equival. Cod. y Factor Cant.
+const getAcindarEquivalCodFactorCant = (request, response) => {
+    pool.query('SELECT * FROM public.acindar_equivalcod_factorcant', (error, results)=>{
+        if (error){
+            throw error
+        }
+        response.status(200).json(results.rows)
+    })
+}
+
+const createAcindarEquivalCodFactorCant = (request, response) => {
+    const {codigo_ptf, codigo_acindar, factor_cant} = request.body
+
+    pool.query(
+        'INSERT INTO public.acindar_equivalcod_factorcant(codigo_ptf, codigo_acindar, factor_cant) VALUES ($1, $2, $3);', 
+        [codigo_ptf, codigo_acindar, factor_cant], (error, results) => {
+        if (error){
+            throw error
+        }
+        response.status(201).send(`Agregar correctamente`)
+    })
+}
+
+const updateAcindarEquivalCodFactorCant = (request, response) => {
+    const id = parseInt(request.params.id)
+    const {codigo_ptf, codigo_acindar, factor_cant} = request.body
+
+    pool.query(
+        'UPDATE public.acindar_equivalcod_factorcant SET id= $4, codigo_ptf= $1, codigo_acindar= $2, factor_cant= $3 WHERE id= $4',
+        [codigo_ptf, codigo_acindar, factor_cant, id ], (error, results) => {
+            if (error){
+                throw error
+            }
+            response.status(200).send(`Modificado correctamente`)
+        }
+    )
+}
+
+const deleteAcindarEquivalCodFactorCant = (request, response) => {
+    const id = parseInt(request.params.id)
+
+    pool.query('DELETE FROM public.acindar_equivalcod_factorcant WHERE id = $1', [id], (error, results) => {
+        if (error){
+            throw error
+        }
+        response.status(200).send(`Eliminado correctamente`)
+    })
+}
+
+// Filtro Acindar Plataforma
+const getFiltroAcindarPTF = (request, response) => {
+    pool.query('SELECT * FROM public.acindar_filtro_plataforma', (error, results) =>{
+        if (error){
+            throw error
+        }
+        response.status(200).json(results.rows)
+    })
+}
+
+const updateFiltroAcindarPTF = (request, response) => {
+    const id = parseInt(request.params.id)
+    const {clasif6_inc, clasif5_exc} = request.body
+
+    pool.query(
+        'UPDATE public.acindar_filtro_plataforma SET "clasif6_inc" = $1::json , "clasif5_exc" = $2::json WHERE id = $3',
+        [clasif6_inc, clasif5_exc, id ], (error, results) => {
+            if (error){
+                throw error
+            }
+            response.status(200).send(`Modificado correctamente`)
+        }
+    )
+}
+
+const createFiltroAcindarPTF = (request, response) => {
+    const {clasif6_inc, clasif5_exc} = request.body
+
+    pool.query(
+        'INSERT INTO public.acindar_filtro_plataforma("clasif6_inc", "clasif5_exc") VALUES ($1, $2)', 
+        [clasif6_inc, clasif5_exc], (error, results) => {
+        if (error){
+            throw error
+        }
+        response.status(201).send(`Agregar correctamente`)
+    })
+}
+
+const deleteFiltroAcindarPTF = (request, response) => {
+    const id = parseInt(request.params.id)
+
+    pool.query('DELETE FROM public.acindar_filtro_plataforma WHERE id = $1', [id], (error, results) => {
+        if (error){
+            throw error
+        }
+        response.status(200).send(`Eliminado correctamente`)
+    })
+}
+
 module.exports = {
     getDeposANoConsiderar, getDeposANoConsiderarByCod, createDepos, updateDepos, deleteDepos,
     getNPaConsiderar, getNPaConsiderarByCod, createNP, updateNP, deleteNP,
@@ -1468,5 +1664,9 @@ module.exports = {
     getComprobantesAOmitir, updateComprobantesAOmitir, createComprobantesAOmitir, deleteComprobantesAOmitir,
     getRemitosVtas, updateRemitosVtas, createRemitosVtas, deleteRemitosVtas,
     getCalesCementosPlasticor, updateCalesCementosPlasticor, createCalesCementosPlasticor, deleteCalesCementosPlasticor,
-    getClientesCtaCte, updateClientesCtaCte, createClientesCtaCte, deleteClientesCtaCte
+    getClientesCtaCte, updateClientesCtaCte, createClientesCtaCte, deleteClientesCtaCte, 
+    getAcindarClasifClientes, updateClasifClientes, createClasifClientes, deleteClasifClientes,
+    getAcindarComprobantes, updateAcindarComprobantes, createAcindarComprobantes, deleteAcindarComprobantes,
+    getAcindarEquivalCodFactorCant, updateAcindarEquivalCodFactorCant, createAcindarEquivalCodFactorCant, deleteAcindarEquivalCodFactorCant,
+    getFiltroAcindarPTF, updateFiltroAcindarPTF, createFiltroAcindarPTF, deleteFiltroAcindarPTF
 }

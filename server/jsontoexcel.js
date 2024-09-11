@@ -2,10 +2,12 @@ require('dotenv').config();
 const xlsx = require('xlsx');
 const zlib = require('zlib');
 const path = require('path');
+const fs = require('fs');
 const https = require('https');
 const axios = require('axios');
 const httpsAgent = new https.Agent({ rejectUnauthorized: false }); 
 const token = process.env.JWT_TOKEN
+const querystring = require('querystring');
 var CronJob = require('cron').CronJob
 
 async function getWebNimat(){
@@ -206,10 +208,90 @@ async function getActualizacionWeb() {
 getActualizacionWeb();
 
 
+async function jsontosheet2(){
+    try{
+        let url = `${process.env.URL_API}` + 'informesacindar';
+        const raw_data = (await axios(url, {httpsAgent, headers: {'Authorization': `Basic ${token}`,'Accept-Encoding': 'gzip, deflate, br'}})).data;
+
+        const date = new Date();
+        const month = date.getMonth();
+        const monthNumbers = ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"];
+        const folder = `${process.env.URL_DIR}/`+ new Date().getFullYear() +'.'+ monthNumbers[month - 1]
+        if (!fs.existsSync(folder)) {
+            fs.mkdirSync(folder);
+          }
+        const routePath = path.normalize(folder);
+        const filePathXSLS = path.join(folder, '/Exportar Acindar.xlsx');
+        const filePathCSV = path.join(folder, '/Archivo.csv');
+        const filePathTXT = path.join(folder, '/Archivo.txt');
+        const workSheet = xlsx.utils.json_to_sheet(raw_data, {dense: true});
+        const wb = xlsx.utils.book_new();
+        xlsx.CFB.utils.use_zlib(zlib);
+        xlsx.utils.book_append_sheet(wb, workSheet, "Hoja1");
+        xlsx.utils.sheet_add_aoa(workSheet, [["DEA","SUCURSAL","Nº DOC LEGAL","TIPO DOC LEGAL","TIPO DE TRANSACCION","ITEM DOC LEGAL","FECHA DOC LEGAL","Nº DOC REFERENCIA","TIPO DOC REF","ITEM DOC REF","FECHA DOC REF","CUIT CLIENTE","N°INTERNO CLIENTE","RAZON SOCIAL","SEGMENTO","DIRECCION","CIUDAD","PROVINCIA","CODIGO ART","DESCRIPCION","UMV","CANTIDAD","MONTO","FECHA COSTO","DESCRIPCION COND VTA","DIAS","OBSERVACION"]], { origin: "A1" });
+        const sorkCSV = xlsx.utils.sheet_to_csv(workSheet, {FS: ";"});
+        xlsx.writeFile(wb, filePathXSLS, {bookType: 'xlsx'});
+        //xlsx.writeFile(wb, filePathCSV, {bookType: "csv", FS: ";"});
+        //xlsx.writeFile(wb, filePathCSV);
+        fs.writeFileSync(filePathTXT, sorkCSV);
+        fs.writeFileSync(filePathCSV, sorkCSV);
+    }
+    catch(error){
+        console.error(error);
+    }    
+}
+
+async function jsontosheet3(getDates){
+    try{
+        var queryParams = querystring.stringify(getDates)
+        let url = `${process.env.URL_API}` + 'informesacindarentrefechasexportar?'+queryParams;
+        const raw_data = (await axios(url, {httpsAgent, headers: {'Authorization': `Basic ${token}`}})).data;
+        const date1 = getDates.fechadesde
+        const date2 = getDates.fechahasta
+        const month = date1.substring(5,7);
+        const year = date1.substring(0,4);
+        const monthNumbers = ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"];
+        const folder = `${process.env.URL_DIR}/`+ year +'.'+ month
+        if (!fs.existsSync(folder)) {
+            fs.mkdirSync(folder);
+          }
+        const routePath = path.normalize(folder);
+        const filePathXSLS = path.join(folder, '/Achivo.xlsx');
+        const filePathCSV = path.join(folder, '/Archivo.csv');
+        const filePathTXT = path.join(folder, '/Archivo.txt');
+        const workSheet = xlsx.utils.json_to_sheet(raw_data);
+        const wb = xlsx.utils.book_new();
+        xlsx.CFB.utils.use_zlib(zlib);
+        xlsx.utils.book_append_sheet(wb, workSheet, "Hoja1");
+        xlsx.utils.sheet_add_aoa(workSheet, [["DEA","SUCURSAL","Nº DOC LEGAL","TIPO DOC LEGAL","TIPO DE TRANSACCION","ITEM DOC LEGAL","FECHA DOC LEGAL","Nº DOC REFERENCIA","TIPO DOC REF","ITEM DOC REF","FECHA DOC REF","CUIT CLIENTE","Nº INTERNO CLIENTE","RAZON SOCIAL","SEGMENTO","DIRECCION","CIUDAD","PROVINCIA","CODIGO ART","DESCRIPCION","UMV","CANTIDAD","MONTO","FECHA COSTO","DESCRIPCION COND VTA","DIAS","OBSERVACION"]], { origin: "A1" });
+        const sorkCSV = xlsx.utils.sheet_to_csv(workSheet, {FS: ";"});
+        xlsx.writeFile(wb, filePathXSLS, {bookType: 'xlsx'});
+        //xlsx.writeFile(wb, filePathCSV);
+        fs.writeFileSync(filePathTXT, sorkCSV);
+        fs.writeFileSync(filePathCSV, sorkCSV);
+    }
+    catch(error){
+        console.error(error);
+    }    
+}
+
+new CronJob(
+    "0 0 6 1 1-12 *",
+    function(){
+      jsontosheet2();
+      console.log('Generado correctamente');                
+    },
+    null,
+    true,
+    'America/Buenos_Aires'    
+);
+
 module.exports = {
     getWebNimat,
     jsontosheet,
     getWebNimatCombo,
     actualizadoWeb,
-    getActualizacionWeb
+    getActualizacionWeb,
+    jsontosheet2,
+    jsontosheet3
 }

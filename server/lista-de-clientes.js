@@ -1,4 +1,4 @@
-class  ListadeClientes{
+class ListadeClientes{
     constructor(Fecha_alta_cliente,Nro_cliente,Nombre_cliente,Cod_domic,Fax_celular,Verificacion,Telefono,Observ_domicilio,Cobrador,Vendedor,Auditoria,Nombre_Usuario){
       this.Fecha_alta_cliente = Fecha_alta_cliente;
       this.Nro_cliente = Nro_cliente;
