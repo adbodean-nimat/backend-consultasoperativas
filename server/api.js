@@ -4,6 +4,7 @@ var DbCAD = require('./dboperacion_cad');
 var jConfig = require('./jconfig');
 var fsConfig = require('./fsconfig');
 var jsonToExcel = require('./jsontoexcel');
+var jsonToTXT = require('./jsontotxt');
 var express = require('express');
 var bodyParser = require('body-parser');
 var cors = require('cors');
@@ -460,6 +461,12 @@ router.route('/jsontosheet3/').get((request, response)=>{
   const getDatesHasta = request.query.fechahasta
   const getDates = {fechadesde: getDatesDesde, fechahasta: getDatesHasta}
   jsonToExcel.jsontosheet3(getDates).then((data)=>{
+    response.status(200).send('Generado correctamente');
+  })
+})
+
+router.route('/nuevosusuarioscad').get((request, response)=>{
+  jsonToTXT.jsontotxt().then((data)=>{
     response.status(200).send('Generado correctamente');
   })
 })

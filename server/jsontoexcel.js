@@ -216,7 +216,7 @@ async function jsontosheet2(){
         const date = new Date();
         const month = date.getMonth();
         const monthNumbers = ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"];
-        const folder = `${process.env.URL_DIR}/`+ new Date().getFullYear() +'.'+ monthNumbers[month - 1]
+        const folder = `${process.env.URL_DIR_ACINDAR}/`+ new Date().getFullYear() +'.'+ monthNumbers[month - 1]
         if (!fs.existsSync(folder)) {
             fs.mkdirSync(folder);
           }
@@ -251,7 +251,7 @@ async function jsontosheet3(getDates){
         const month = date1.substring(5,7);
         const year = date1.substring(0,4);
         const monthNumbers = ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"];
-        const folder = `${process.env.URL_DIR}/`+ year +'.'+ month
+        const folder = `${process.env.URL_DIR_ACINDAR}/`+ year +'.'+ month
         if (!fs.existsSync(folder)) {
             fs.mkdirSync(folder);
           }

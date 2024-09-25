@@ -554,7 +554,7 @@ async function ListaClientesPlataforma(){
   try{
     let pool = await sql.connect(config.plataforma);
     let listaClientesPlataforma = await pool.request()
-    .query("SELECT CCOB_CLIE.CLIE_CLIENTE ,CCOB_CLIE.CLIE_NOMBRE ,CCOB_CLIE.CLIE_EMAIL FROM CCOB_CLIE WITH(NOLOCK) WHERE CCOB_CLIE.CLIE_TIPO_CLI IN ('REC', 'GEN') AND CCOB_CLIE.CLIE_FECHA_BAJA IS NULL");
+    .query("SELECT CCOB_CLIE.CLIE_CLIENTE ,CCOB_CLIE.CLIE_NOMBRE ,CCOB_CLIE.CLIE_EMAIL, CCOB_CLIE.CLIE_CUIT FROM CCOB_CLIE WITH(NOLOCK) WHERE CCOB_CLIE.CLIE_TIPO_CLI IN ('REC', 'GEN') AND CCOB_CLIE.CLIE_FECHA_BAJA IS NULL");
     return listaClientesPlataforma.recordsets
   }
   catch(error){
