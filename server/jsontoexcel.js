@@ -221,7 +221,7 @@ async function jsontosheet2(){
             fs.mkdirSync(folder);
           }
         const routePath = path.normalize(folder);
-        const filePathXSLS = path.join(folder, '/Exportar Acindar.xlsx');
+        const filePathXSLS = path.join(folder, '/Archivo.xlsx');
         const filePathCSV = path.join(folder, '/Archivo.csv');
         const filePathTXT = path.join(folder, '/Archivo.txt');
         const workSheet = xlsx.utils.json_to_sheet(raw_data, {dense: true});
@@ -256,7 +256,7 @@ async function jsontosheet3(getDates){
             fs.mkdirSync(folder);
           }
         const routePath = path.normalize(folder);
-        const filePathXSLS = path.join(folder, '/Achivo.xlsx');
+        const filePathXSLS = path.join(folder, '/Archivo.xlsx');
         const filePathCSV = path.join(folder, '/Archivo.csv');
         const filePathTXT = path.join(folder, '/Archivo.txt');
         const workSheet = xlsx.utils.json_to_sheet(raw_data);
