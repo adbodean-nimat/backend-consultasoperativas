@@ -1639,6 +1639,16 @@ const deleteFiltroAcindarPTF = (request, response) => {
     })
 }
 
+// Costo Financiero - VISA MASTERCARD NATIVA
+const getCostoFinancieroVISAMASTERNATIVA = (request, response) => {
+    pool.query('SELECT * FROM public.costo_financiacion_visa_master_nativa', (error, results) =>{
+        if (error){
+            throw error
+        }
+        response.status(200).json(results.rows)
+    })
+}
+
 module.exports = {
     getDeposANoConsiderar, getDeposANoConsiderarByCod, createDepos, updateDepos, deleteDepos,
     getNPaConsiderar, getNPaConsiderarByCod, createNP, updateNP, deleteNP,
@@ -1668,5 +1678,6 @@ module.exports = {
     getAcindarClasifClientes, updateClasifClientes, createClasifClientes, deleteClasifClientes,
     getAcindarComprobantes, updateAcindarComprobantes, createAcindarComprobantes, deleteAcindarComprobantes,
     getAcindarEquivalCodFactorCant, updateAcindarEquivalCodFactorCant, createAcindarEquivalCodFactorCant, deleteAcindarEquivalCodFactorCant,
-    getFiltroAcindarPTF, updateFiltroAcindarPTF, createFiltroAcindarPTF, deleteFiltroAcindarPTF
+    getFiltroAcindarPTF, updateFiltroAcindarPTF, createFiltroAcindarPTF, deleteFiltroAcindarPTF,
+    getCostoFinancieroVISAMASTERNATIVA
 }

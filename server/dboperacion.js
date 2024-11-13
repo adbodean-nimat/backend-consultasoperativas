@@ -714,6 +714,21 @@ async function NCInformesAcindarPTFDate(getDates){
   }
 }
 
+async function getCheckQR(getData){
+  try{
+    //console.log(getData)
+    let pool = await sql.connect(config.plataforma);
+    let ListaQR = await pool.request()
+    .input('fechaemision', sql.Date, getData.fechaemision)
+    .input('qr', sql.VarChar(20), getData.qr)
+    .query("SELECT dbo.VENT_NPCA.NPCA_DIVISION_NPCA ,dbo.VENT_NPCA.NPCA_TIPO_NPCA ,dbo.VENT_NPCA.NPCA_NUMERO_NPCA ,dbo.VENT_NPCA.NPCA_FECHA_EMI ,dbo.VENT_NPCA.NPCA_CLIENTE ,dbo.CCOB_CLIE.CLIE_NOMBRE ,dbo.VENT_NPCA.NPCA_REFERENCIA ,dbo.VENT_NPCF.NPCF_SUCURSAL_CVCL ,dbo.VENT_NPCF.NPCF_TIPO_CVCL ,dbo.VENT_NPCF.NPCF_NUMERO_CVCL FROM(dbo.VENT_NPCA INNER JOIN dbo.CCOB_CLIE ON dbo.VENT_NPCA.NPCA_CLIENTE = dbo.CCOB_CLIE.CLIE_CLIENTE) INNER JOIN dbo.VENT_NPCF ON (dbo.VENT_NPCA.NPCA_NUMERO_NPCA = dbo.VENT_NPCF.NPCF_NUMERO_NPCA) AND (dbo.VENT_NPCA.NPCA_TIPO_NPCA = dbo.VENT_NPCF.NPCF_TIPO_NPCA) AND (dbo.VENT_NPCA.NPCA_DIVISION_NPCA = dbo.VENT_NPCF.NPCF_DIVISION_NPCA) WHERE ((dbo.VENT_NPCA.NPCA_REFERENCIA) LIKE '%' + @qr + '%') GROUP BY dbo.VENT_NPCA.NPCA_DIVISION_NPCA ,dbo.VENT_NPCA.NPCA_TIPO_NPCA ,dbo.VENT_NPCA.NPCA_NUMERO_NPCA ,dbo.VENT_NPCA.NPCA_FECHA_EMI ,dbo.VENT_NPCA.NPCA_CLIENTE ,dbo.CCOB_CLIE.CLIE_NOMBRE ,dbo.VENT_NPCA.NPCA_REFERENCIA ,dbo.VENT_NPCF.NPCF_SUCURSAL_CVCL ,dbo.VENT_NPCF.NPCF_TIPO_CVCL ,dbo.VENT_NPCF.NPCF_NUMERO_CVCL ,dbo.VENT_NPCF.NPCF_SIGNO HAVING (((dbo.VENT_NPCA.NPCA_FECHA_EMI) = @fechaemision) AND ((dbo.VENT_NPCF.NPCF_SIGNO) = 'S')) ");
+    return ListaQR.recordsets
+  }
+  catch(error){
+    console.log(error)
+  }
+}
+
  /*  async function getComboWeb(){
     try {
       const NPaConsiderar = Array[0].map(x => `'${x}'`);
@@ -777,5 +792,6 @@ async function NCInformesAcindarPTFDate(getDates){
     NCInformesAcindarPTFDate: NCInformesAcindarPTFDate,
     getStocArtsAll: getStocArtsAll,
     getStocArtsClasif5: getStocArtsClasif5,
-    getStocArtsClasif6: getStocArtsClasif6
+    getStocArtsClasif6: getStocArtsClasif6,
+    getCheckQR: getCheckQR
   }

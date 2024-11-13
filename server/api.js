@@ -352,7 +352,13 @@ router.route('/ncinformesacindarptfentrefechas').get((request, response)=>{
   })
 })
 
-
+router.route('/consultaporqr').get((request, response)=>{
+  const getData = {fechaemision: request.query.fechaemision, qr: request.query.qr}
+  console.log(getData)
+  Db.getCheckQR(getData).then((data)=>{
+    response.json(data[0]);
+  })
+})
 
 router.route('/listabreveusointerno').get((request, response) => {
   jConfig.getListadePrecioBUI2().then((data)=>{
@@ -757,6 +763,9 @@ router.route('/filtroacindarplataforma').get(Pg.getFiltroAcindarPTF)
 router.route('/filtroacindarplataforma').post(Pg.createFiltroAcindarPTF)
 router.route('/filtroacindarplataforma/:id').put(Pg.updateFiltroAcindarPTF)
 router.route('/filtroacindarplataforma/:id').delete(Pg.deleteFiltroAcindarPTF)
+
+// Costo Financiero
+router.route('/visa-master-nativa').get(Pg.getCostoFinancieroVISAMASTERNATIVA)
 
 const port = 8090;
 
