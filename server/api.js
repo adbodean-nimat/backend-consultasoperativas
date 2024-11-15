@@ -354,7 +354,6 @@ router.route('/ncinformesacindarptfentrefechas').get((request, response)=>{
 
 router.route('/consultaporqr').get((request, response)=>{
   const getData = {fechaemision: request.query.fechaemision, qr: request.query.qr}
-  console.log(getData)
   Db.getCheckQR(getData).then((data)=>{
     response.json(data[0]);
   })
