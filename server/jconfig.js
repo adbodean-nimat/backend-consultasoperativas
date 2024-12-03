@@ -437,7 +437,7 @@ async function getPlanillaImportarStock(){
                             ManageInventoryMethod: firstResponse[i].ManageInventoryMethod,
                             StockQuantity: secundResponse[j].Uni_M2_Disp,
                             DisplayStockAvailability: secundResponse[j].ARTS_CLASIF_8 == "0130" && secundResponse[j].Uni_M2_Disp == 0 ? "FALSE" : firstResponse[i].SKU.substring(0,3)=="811" ? "TRUE" : "TRUE",
-                            DisplayStockQuantity: firstResponse[i].SKU.substring(0,2)=="91" ? "FALSE" : "TRUE",
+                            DisplayStockQuantity: "TRUE",
                             NotifyAdminForQuantityBelow: firstResponse[i].NotifyAdminForQuantityBelow,
                             BackorderMode: firstResponse[i].BackorderMode,
                             OrderMinimumQuantity: firstResponse[i].OrderMinimumQuantity,

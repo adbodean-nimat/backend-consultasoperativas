@@ -1639,15 +1639,56 @@ const deleteFiltroAcindarPTF = (request, response) => {
     })
 }
 
-// Costo Financiero - VISA MASTERCARD NATIVA
-const getCostoFinancieroVISAMASTERNATIVA = (request, response) => {
-    pool.query('SELECT * FROM public.costo_financiacion_visa_master_nativa', (error, results) =>{
+// Arts Clasif. 5 Stock Manual - WEB 
+const getArtsClasif5StockManual = (request, response) => {
+    pool.query('SELECT * FROM public.clasif_arts_5_stock_manual', (error, results) =>{
         if (error){
             throw error
         }
         response.status(200).json(results.rows)
     })
 }
+
+const updateArtsClasif5StockManual = (request, response) => {
+    const id = parseInt(request.params.id)
+    const {arts_clasif_5, stock_manual} = request.body
+
+    pool.query(
+        'UPDATE public.clasif_arts_5_stock_manual SET arts_clasif_5 = $1::jsonb[] , stock_manual = $2 WHERE id = $3',
+        [arts_clasif_5, stock_manual, id ], (error, results) => {
+            if (error){
+                throw error
+            }
+            response.status(200).send(`Modificado correctamente`)
+        }
+    )
+}
+
+const createArtsClasif5StockManual = (request, response) => {
+    const {arts_clasif_5, stock_manual} = request.body
+
+    pool.query(
+        'INSERT INTO public.clasif_arts_5_stock_manual(arts_clasif_5, stock_manual) VALUES ($1, $2)', 
+        [arts_clasif_5, stock_manual], (error, results) => {
+        if (error){
+            throw error
+        }
+        response.status(201).send(`Agregar correctamente`)
+    })
+}
+
+const deleteArtsClasif5StockManual = (request, response) => {
+    const id = parseInt(request.params.id)
+
+    pool.query('DELETE FROM public.clasif_arts_5_stock_manual WHERE id = $1', [id], (error, results) => {
+        if (error){
+            throw error
+        }
+        response.status(200).send(`Eliminado correctamente`)
+    })
+}
+
+
 
 module.exports = {
     getDeposANoConsiderar, getDeposANoConsiderarByCod, createDepos, updateDepos, deleteDepos,
@@ -1679,5 +1720,5 @@ module.exports = {
     getAcindarComprobantes, updateAcindarComprobantes, createAcindarComprobantes, deleteAcindarComprobantes,
     getAcindarEquivalCodFactorCant, updateAcindarEquivalCodFactorCant, createAcindarEquivalCodFactorCant, deleteAcindarEquivalCodFactorCant,
     getFiltroAcindarPTF, updateFiltroAcindarPTF, createFiltroAcindarPTF, deleteFiltroAcindarPTF,
-    getCostoFinancieroVISAMASTERNATIVA
+    getArtsClasif5StockManual, updateArtsClasif5StockManual, createArtsClasif5StockManual, deleteArtsClasif5StockManual
 }

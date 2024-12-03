@@ -763,8 +763,11 @@ router.route('/filtroacindarplataforma').post(Pg.createFiltroAcindarPTF)
 router.route('/filtroacindarplataforma/:id').put(Pg.updateFiltroAcindarPTF)
 router.route('/filtroacindarplataforma/:id').delete(Pg.deleteFiltroAcindarPTF)
 
-// Costo Financiero
-router.route('/visa-master-nativa').get(Pg.getCostoFinancieroVISAMASTERNATIVA)
+// Tabla Arts Clasif. 5 - Stock Manual (WEB)
+router.route('/artsclasif5stockmanual').get(Pg.getArtsClasif5StockManual)
+router.route('/artsclasif5stockmanual').post(Pg.createArtsClasif5StockManual)
+router.route('/artsclasif5stockmanual/:id').put(Pg.updateArtsClasif5StockManual)
+router.route('/artsclasif5stockmanual/:id').delete(Pg.deleteArtsClasif5StockManual)
 
 const port = 8090;
 
