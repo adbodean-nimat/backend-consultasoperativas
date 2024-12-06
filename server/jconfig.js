@@ -510,17 +510,45 @@ async function getInformesAcindar(){
     ]
     let response = await Promise.all(endpoints.map((endpoint)=> axios.get(endpoint,{httpsAgent, headers: {'Authorization': `Basic ${token}`}}))).then(
         ([{data: data1}, {data: data2}, {data: data3}, {data: data4}, {data: data5},{data: data6}])=>{
+            let getData5 = []
+
+            data5.forEach((e) => {({
+                    CVCL_TIPO_VAR,
+                    CVCL_SUCURSAL_IMP,
+                    CVCL_NUMERO_CVCL,
+                    CVRF_RENGLON_CVRF,
+                    CVCL_FECHA_EMI,
+                    ARTS_ARTICULO_EMP,
+                    ARTS_NOMBRE,
+                    ...VENT_NCFA
+                } = e)
+                    let d = getData5.find((x) => e.CVCL_NUMERO_CVCL == x.CVCL_NUMERO_CVCL && e.CVRF_RENGLON_CVRF == x.CVRF_RENGLON_CVRF)
+                if (d) {
+                    d.VENT_NCFA.push(VENT_NCFA)
+                } else {
+                    getData5.push({
+                        CVCL_TIPO_VAR,
+                        CVCL_SUCURSAL_IMP,
+                        CVCL_NUMERO_CVCL,
+                        CVRF_RENGLON_CVRF,
+                        CVCL_FECHA_EMI,
+                        ARTS_ARTICULO_EMP,
+                        ARTS_NOMBRE,
+                        VENT_NCFA: [VENT_NCFA]
+                    })
+                }
+            })
             var results = [];
             for(var i = 0; i < data1.length; i++){
                 for(var j = 0; j < data2.length; j++){
                     for (var k = 0; k < data3.length; k++){
                         if(data1[i].CLIE_CLASIF_1.trim() == data2[j].clasif_1_ptf && data1[i].Tipo_cpbte == data3[k].comprobante_ptf){
-                            var nro_doc_referencia_tipo = data3.filter(item => item.comprobante_ptf == (data5.filter(item => item.CVCL_NUMERO_CVCL == data1[i].Nro_cpbte && item.CVCL_SUCURSAL_IMP == data1[i].Sucursal && item.CVRF_RENGLON_CVRF == data1[i].CVRF_RENGLON_CVRF).map(data => data.NCFA_TIPO_FC_ANTIC))).map(data => data.comprobante_acindar)
-                            var tipo_doc_referencia = data3.filter(item => item.comprobante_ptf == (data5.filter(item => item.CVCL_NUMERO_CVCL == data1[i].Nro_cpbte && item.CVCL_SUCURSAL_IMP == data1[i].Sucursal && item.CVRF_RENGLON_CVRF == data1[i].CVRF_RENGLON_CVRF).map(data => data.NCFA_TIPO_FC_ANTIC))).map(data => data.tipo_doc_legal)
-                            var nro_doc_referencia_sucursal = data5.filter(item => item.CVCL_NUMERO_CVCL == data1[i].Nro_cpbte && item.CVCL_SUCURSAL_IMP == data1[i].Sucursal && item.CVRF_RENGLON_CVRF == data1[i].CVRF_RENGLON_CVRF).map(data => data.NCFA_SUCURSAL_FC_ANTIC)
-                            var nro_doc_referencia_numero = data5.filter(item => item.CVCL_NUMERO_CVCL == data1[i].Nro_cpbte && item.CVCL_SUCURSAL_IMP == data1[i].Sucursal && item.CVRF_RENGLON_CVRF == data1[i].CVRF_RENGLON_CVRF).map(data => data.NCFA_NUMERO_FC_ANTIC)
-                            var nro_doc_referencia_item = data5.filter(item => item.CVCL_NUMERO_CVCL == data1[i].Nro_cpbte && item.CVCL_SUCURSAL_IMP == data1[i].Sucursal && item.CVRF_RENGLON_CVRF == data1[i].CVRF_RENGLON_CVRF).map(data => data.NCFA_RENGLON_FC_ANTIC)
-                            var fecha_doc_referencia = data5.filter(item => item.CVCL_NUMERO_CVCL == data1[i].Nro_cpbte && item.CVCL_SUCURSAL_IMP == data1[i].Sucursal && item.CVRF_RENGLON_CVRF == data1[i].CVRF_RENGLON_CVRF).map(data => data.CVCL_FECHA_EMI)
+                            var nro_doc_referencia_tipo = data3.filter(item => item.comprobante_ptf == (getData5.filter(item => item.CVCL_NUMERO_CVCL == data1[i].Nro_cpbte && item.CVCL_SUCURSAL_IMP == data1[i].Sucursal && item.CVRF_RENGLON_CVRF == data1[i].CVRF_RENGLON_CVRF).map(data => data.VENT_NCFA[0].NCFA_TIPO_FC_ANTIC))).map(data => data.comprobante_acindar)
+                            var tipo_doc_referencia = data3.filter(item => item.comprobante_ptf == (getData5.filter(item => item.CVCL_NUMERO_CVCL == data1[i].Nro_cpbte && item.CVCL_SUCURSAL_IMP == data1[i].Sucursal && item.CVRF_RENGLON_CVRF == data1[i].CVRF_RENGLON_CVRF).map(data => data.VENT_NCFA[0].NCFA_TIPO_FC_ANTIC))).map(data => data.tipo_doc_legal)
+                            var nro_doc_referencia_sucursal = getData5.filter(item => item.CVCL_NUMERO_CVCL == data1[i].Nro_cpbte && item.CVCL_SUCURSAL_IMP == data1[i].Sucursal && item.CVRF_RENGLON_CVRF == data1[i].CVRF_RENGLON_CVRF).map(data => data.VENT_NCFA[0].NCFA_SUCURSAL_FC_ANTIC)
+                            var nro_doc_referencia_numero = getData5.filter(item => item.CVCL_NUMERO_CVCL == data1[i].Nro_cpbte && item.CVCL_SUCURSAL_IMP == data1[i].Sucursal && item.CVRF_RENGLON_CVRF == data1[i].CVRF_RENGLON_CVRF).map(data => data.VENT_NCFA[0].NCFA_NUMERO_FC_ANTIC)
+                            var nro_doc_referencia_item = getData5.filter(item => item.CVCL_NUMERO_CVCL == data1[i].Nro_cpbte && item.CVCL_SUCURSAL_IMP == data1[i].Sucursal && item.CVRF_RENGLON_CVRF == data1[i].CVRF_RENGLON_CVRF).map(data => data.VENT_NCFA[0].NCFA_RENGLON_FC_ANTIC)
+                            var fecha_doc_referencia = getData5.filter(item => item.CVCL_NUMERO_CVCL == data1[i].Nro_cpbte && item.CVCL_SUCURSAL_IMP == data1[i].Sucursal && item.CVRF_RENGLON_CVRF == data1[i].CVRF_RENGLON_CVRF).map(data => data.CVCL_FECHA_EMI)
                             
                             var nro_doc_referencia = nro_doc_referencia_tipo + '-' + (
                             nro_doc_referencia_sucursal.toString().length == 1 ? '00' + nro_doc_referencia_sucursal : 
@@ -590,6 +618,36 @@ async function getInformesAcindarEntreFechas(getDates){
         let getData1 = await Db.InformesAcindarPTFDate(getDates).then((response)=>data1.push(response))
         let getData2 = await Db.NCInformesAcindarPTFDate(getDates).then((response)=>data5.push(response))
         
+        let getData5 = []
+
+        data5[0][0].forEach((e) => {
+        ({
+            CVCL_TIPO_VAR,
+            CVCL_SUCURSAL_IMP,
+            CVCL_NUMERO_CVCL,
+            CVRF_RENGLON_CVRF,
+            CVCL_FECHA_EMI,
+            ARTS_ARTICULO_EMP,
+            ARTS_NOMBRE,
+            ...VENT_NCFA
+        } = e)
+        let d = getData5.find((x) => e.CVCL_NUMERO_CVCL == x.CVCL_NUMERO_CVCL && e.CVRF_RENGLON_CVRF == x.CVRF_RENGLON_CVRF)
+        if (d) {
+            d.VENT_NCFA.push(VENT_NCFA)
+        } else {
+            getData5.push({
+                CVCL_TIPO_VAR,
+                CVCL_SUCURSAL_IMP,
+                CVCL_NUMERO_CVCL,
+                CVRF_RENGLON_CVRF,
+                CVCL_FECHA_EMI,
+                ARTS_ARTICULO_EMP,
+                ARTS_NOMBRE,
+                VENT_NCFA: [VENT_NCFA]
+            })
+        }
+        })
+        
         let endpoints = [
             `${process.env.URL_API}` + 'acindarclasifclientes',
             `${process.env.URL_API}` + 'acindarcomprobantes',
@@ -604,12 +662,12 @@ async function getInformesAcindarEntreFechas(getDates){
                     for(var j = 0; j < data2.length; j++){
                         for (var k = 0; k < data3.length; k++){
                             if(data1[0][0][i].CLIE_CLASIF_1.trim() == data2[j].clasif_1_ptf && data1[0][0][i].Tipo_cpbte == data3[k].comprobante_ptf){
-                                var nro_doc_referencia_tipo = data3.filter(item => item.comprobante_ptf == (data5[0][0].filter(item => item.CVCL_NUMERO_CVCL == data1[0][0][i].Nro_cpbte && item.CVCL_SUCURSAL_IMP == data1[0][0][i].Sucursal && item.CVRF_RENGLON_CVRF == data1[0][0][i].CVRF_RENGLON_CVRF).map(data => data.NCFA_TIPO_FC_ANTIC))).map(data => data.comprobante_acindar)
-                                var tipo_doc_referencia = data3.filter(item => item.comprobante_ptf == (data5[0][0].filter(item => item.CVCL_NUMERO_CVCL == data1[0][0][i].Nro_cpbte && item.CVCL_SUCURSAL_IMP == data1[0][0][i].Sucursal && item.CVRF_RENGLON_CVRF == data1[0][0][i].CVRF_RENGLON_CVRF).map(data => data.NCFA_TIPO_FC_ANTIC))).map(data => data.tipo_doc_legal)
-                                var nro_doc_referencia_sucursal = data5[0][0].filter(item => item.CVCL_NUMERO_CVCL == data1[0][0][i].Nro_cpbte && item.CVCL_SUCURSAL_IMP == data1[0][0][i].Sucursal && item.CVRF_RENGLON_CVRF == data1[0][0][i].CVRF_RENGLON_CVRF).map(data => data.NCFA_SUCURSAL_FC_ANTIC)
-                                var nro_doc_referencia_numero = data5[0][0].filter(item => item.CVCL_NUMERO_CVCL == data1[0][0][i].Nro_cpbte && item.CVCL_SUCURSAL_IMP == data1[0][0][i].Sucursal && item.CVRF_RENGLON_CVRF == data1[0][0][i].CVRF_RENGLON_CVRF).map(data => data.NCFA_NUMERO_FC_ANTIC)
-                                var nro_doc_referencia_item = data5[0][0].filter(item => item.CVCL_NUMERO_CVCL == data1[0][0][i].Nro_cpbte && item.CVCL_SUCURSAL_IMP == data1[0][0][i].Sucursal && item.CVRF_RENGLON_CVRF == data1[0][0][i].CVRF_RENGLON_CVRF).map(data => data.NCFA_RENGLON_FC_ANTIC)
-                                var fecha_doc_referencia = data5[0][0].filter(item => item.CVCL_NUMERO_CVCL == data1[0][0][i].Nro_cpbte && item.CVCL_SUCURSAL_IMP == data1[0][0][i].Sucursal && item.CVRF_RENGLON_CVRF == data1[0][0][i].CVRF_RENGLON_CVRF).map(data => data.CVCL_FECHA_EMI)
+                                var nro_doc_referencia_tipo = data3.filter(item => item.comprobante_ptf == (getData5.filter(item => item.CVCL_NUMERO_CVCL == data1[0][0][i].Nro_cpbte && item.CVCL_SUCURSAL_IMP == data1[0][0][i].Sucursal && item.CVRF_RENGLON_CVRF == data1[0][0][i].CVRF_RENGLON_CVRF).map(data => data.VENT_NCFA[0].NCFA_TIPO_FC_ANTIC))).map(data => data.comprobante_acindar)
+                                var tipo_doc_referencia = data3.filter(item => item.comprobante_ptf == (getData5.filter(item => item.CVCL_NUMERO_CVCL == data1[0][0][i].Nro_cpbte && item.CVCL_SUCURSAL_IMP == data1[0][0][i].Sucursal && item.CVRF_RENGLON_CVRF == data1[0][0][i].CVRF_RENGLON_CVRF).map(data => data.VENT_NCFA[0].NCFA_TIPO_FC_ANTIC))).map(data => data.tipo_doc_legal)
+                                var nro_doc_referencia_sucursal = getData5.filter(item => item.CVCL_NUMERO_CVCL == data1[0][0][i].Nro_cpbte && item.CVCL_SUCURSAL_IMP == data1[0][0][i].Sucursal && item.CVRF_RENGLON_CVRF == data1[0][0][i].CVRF_RENGLON_CVRF).map(data => data.VENT_NCFA[0].NCFA_SUCURSAL_FC_ANTIC)
+                                var nro_doc_referencia_numero = getData5.filter(item => item.CVCL_NUMERO_CVCL == data1[0][0][i].Nro_cpbte && item.CVCL_SUCURSAL_IMP == data1[0][0][i].Sucursal && item.CVRF_RENGLON_CVRF == data1[0][0][i].CVRF_RENGLON_CVRF).map(data => data.VENT_NCFA[0].NCFA_NUMERO_FC_ANTIC)
+                                var nro_doc_referencia_item = getData5.filter(item => item.CVCL_NUMERO_CVCL == data1[0][0][i].Nro_cpbte && item.CVCL_SUCURSAL_IMP == data1[0][0][i].Sucursal && item.CVRF_RENGLON_CVRF == data1[0][0][i].CVRF_RENGLON_CVRF).map(data => data.VENT_NCFA[0].NCFA_RENGLON_FC_ANTIC)
+                                var fecha_doc_referencia = getData5.filter(item => item.CVCL_NUMERO_CVCL == data1[0][0][i].Nro_cpbte && item.CVCL_SUCURSAL_IMP == data1[0][0][i].Sucursal && item.CVRF_RENGLON_CVRF == data1[0][0][i].CVRF_RENGLON_CVRF).map(data => data.CVCL_FECHA_EMI)
                                 
                                 var nro_doc_referencia = nro_doc_referencia_tipo + '-' + (
                                 nro_doc_referencia_sucursal.toString().length == 1 ? '00' + nro_doc_referencia_sucursal : 
@@ -641,9 +699,9 @@ async function getInformesAcindarEntreFechas(getDates){
                                     ITEM_DOC_LEGAL: data1[0][0][i].CVRF_RENGLON_CVRF,
                                     FECHA_DOC_LEGAL: data1[0][0][i].CVCL_FECHA_EMI,
                                     NRO_DOC_REFERENCIA: nro_doc_referencia == "--" ? '': nro_doc_referencia,
-                                    TIPO_DOC_REF: tipo_doc_referencia.toString(),
-                                    ITEM_DOC_REF: nro_doc_referencia_item.toString(),
-                                    FECHA_DOC_REF: fecha_doc_referencia.toString(),
+                                    TIPO_DOC_REF: tipo_doc_referencia,
+                                    ITEM_DOC_REF: nro_doc_referencia_item,
+                                    FECHA_DOC_REF: fecha_doc_referencia,
                                     CUIT: data1[0][0][i].CLIE_CUIT,
                                     NRO_INTERNO_CLIENTE: data1[0][0][i].CVCL_CLIENTE,
                                     RAZON_SOCIAL: data1[0][0][i].CLIE_NOMBRE.replace(/\s+/g, ' '),
@@ -684,6 +742,36 @@ async function getInformesAcindarEntreFechasExportar(getDates){
         var data5 = [];
         let getData1 = await Db.InformesAcindarPTFDate(getDates).then((response)=>data1.push(response))
         let getData2 = await Db.NCInformesAcindarPTFDate(getDates).then((response)=>data5.push(response))
+
+        let getData5 = []
+
+        data5[0][0].forEach((e) => {
+        ({
+            CVCL_TIPO_VAR,
+            CVCL_SUCURSAL_IMP,
+            CVCL_NUMERO_CVCL,
+            CVRF_RENGLON_CVRF,
+            CVCL_FECHA_EMI,
+            ARTS_ARTICULO_EMP,
+            ARTS_NOMBRE,
+            ...VENT_NCFA
+        } = e)
+        let d = getData5.find((x) => e.CVCL_NUMERO_CVCL == x.CVCL_NUMERO_CVCL && e.CVRF_RENGLON_CVRF == x.CVRF_RENGLON_CVRF)
+        if (d) {
+            d.VENT_NCFA.push(VENT_NCFA)
+        } else {
+            getData5.push({
+                CVCL_TIPO_VAR,
+                CVCL_SUCURSAL_IMP,
+                CVCL_NUMERO_CVCL,
+                CVRF_RENGLON_CVRF,
+                CVCL_FECHA_EMI,
+                ARTS_ARTICULO_EMP,
+                ARTS_NOMBRE,
+                VENT_NCFA: [VENT_NCFA]
+            })
+        }
+        })
         
         let endpoints = [
             `${process.env.URL_API}` + 'acindarclasifclientes',
@@ -699,12 +787,12 @@ async function getInformesAcindarEntreFechasExportar(getDates){
                     for(var j = 0; j < data2.length; j++){
                         for (var k = 0; k < data3.length; k++){
                             if(data1[0][0][i].CLIE_CLASIF_1.trim() == data2[j].clasif_1_ptf && data1[0][0][i].Tipo_cpbte == data3[k].comprobante_ptf){
-                                var nro_doc_referencia_tipo = data3.filter(item => item.comprobante_ptf == (data5[0][0].filter(item => item.CVCL_NUMERO_CVCL == data1[0][0][i].Nro_cpbte && item.CVCL_SUCURSAL_IMP == data1[0][0][i].Sucursal && item.CVRF_RENGLON_CVRF == data1[0][0][i].CVRF_RENGLON_CVRF).map(data => data.NCFA_TIPO_FC_ANTIC))).map(data => data.comprobante_acindar)
-                                var tipo_doc_referencia = data3.filter(item => item.comprobante_ptf == (data5[0][0].filter(item => item.CVCL_NUMERO_CVCL == data1[0][0][i].Nro_cpbte && item.CVCL_SUCURSAL_IMP == data1[0][0][i].Sucursal && item.CVRF_RENGLON_CVRF == data1[0][0][i].CVRF_RENGLON_CVRF).map(data => data.NCFA_TIPO_FC_ANTIC))).map(data => data.tipo_doc_legal)
-                                var nro_doc_referencia_sucursal = data5[0][0].filter(item => item.CVCL_NUMERO_CVCL == data1[0][0][i].Nro_cpbte && item.CVCL_SUCURSAL_IMP == data1[0][0][i].Sucursal && item.CVRF_RENGLON_CVRF == data1[0][0][i].CVRF_RENGLON_CVRF).map(data => data.NCFA_SUCURSAL_FC_ANTIC)
-                                var nro_doc_referencia_numero = data5[0][0].filter(item => item.CVCL_NUMERO_CVCL == data1[0][0][i].Nro_cpbte && item.CVCL_SUCURSAL_IMP == data1[0][0][i].Sucursal && item.CVRF_RENGLON_CVRF == data1[0][0][i].CVRF_RENGLON_CVRF).map(data => data.NCFA_NUMERO_FC_ANTIC)
-                                var nro_doc_referencia_item = data5[0][0].filter(item => item.CVCL_NUMERO_CVCL == data1[0][0][i].Nro_cpbte && item.CVCL_SUCURSAL_IMP == data1[0][0][i].Sucursal && item.CVRF_RENGLON_CVRF == data1[0][0][i].CVRF_RENGLON_CVRF).map(data => data.NCFA_RENGLON_FC_ANTIC)
-                                var fecha_doc_referencia = data5[0][0].filter(item => item.CVCL_NUMERO_CVCL == data1[0][0][i].Nro_cpbte && item.CVCL_SUCURSAL_IMP == data1[0][0][i].Sucursal && item.CVRF_RENGLON_CVRF == data1[0][0][i].CVRF_RENGLON_CVRF).map(data => data.CVCL_FECHA_EMI)
+                                var nro_doc_referencia_tipo = data3.filter(item => item.comprobante_ptf == (getData5.filter(item => item.CVCL_NUMERO_CVCL == data1[0][0][i].Nro_cpbte && item.CVCL_SUCURSAL_IMP == data1[0][0][i].Sucursal && item.CVRF_RENGLON_CVRF == data1[0][0][i].CVRF_RENGLON_CVRF).map(data => data.VENT_NCFA[0].NCFA_TIPO_FC_ANTIC))).map(data => data.comprobante_acindar)
+                                var tipo_doc_referencia = data3.filter(item => item.comprobante_ptf == (getData5.filter(item => item.CVCL_NUMERO_CVCL == data1[0][0][i].Nro_cpbte && item.CVCL_SUCURSAL_IMP == data1[0][0][i].Sucursal && item.CVRF_RENGLON_CVRF == data1[0][0][i].CVRF_RENGLON_CVRF).map(data => data.VENT_NCFA[0].NCFA_TIPO_FC_ANTIC))).map(data => data.tipo_doc_legal)
+                                var nro_doc_referencia_sucursal = getData5.filter(item => item.CVCL_NUMERO_CVCL == data1[0][0][i].Nro_cpbte && item.CVCL_SUCURSAL_IMP == data1[0][0][i].Sucursal && item.CVRF_RENGLON_CVRF == data1[0][0][i].CVRF_RENGLON_CVRF).map(data => data.VENT_NCFA[0].NCFA_SUCURSAL_FC_ANTIC)
+                                var nro_doc_referencia_numero = getData5.filter(item => item.CVCL_NUMERO_CVCL == data1[0][0][i].Nro_cpbte && item.CVCL_SUCURSAL_IMP == data1[0][0][i].Sucursal && item.CVRF_RENGLON_CVRF == data1[0][0][i].CVRF_RENGLON_CVRF).map(data => data.VENT_NCFA[0].NCFA_NUMERO_FC_ANTIC)
+                                var nro_doc_referencia_item = getData5.filter(item => item.CVCL_NUMERO_CVCL == data1[0][0][i].Nro_cpbte && item.CVCL_SUCURSAL_IMP == data1[0][0][i].Sucursal && item.CVRF_RENGLON_CVRF == data1[0][0][i].CVRF_RENGLON_CVRF).map(data => data.VENT_NCFA[0].NCFA_RENGLON_FC_ANTIC)
+                                var fecha_doc_referencia = getData5.filter(item => item.CVCL_NUMERO_CVCL == data1[0][0][i].Nro_cpbte && item.CVCL_SUCURSAL_IMP == data1[0][0][i].Sucursal && item.CVRF_RENGLON_CVRF == data1[0][0][i].CVRF_RENGLON_CVRF).map(data => data.CVCL_FECHA_EMI)
                                 
                                 var nro_doc_referencia = nro_doc_referencia_tipo + '-' + (
                                 nro_doc_referencia_sucursal.toString().length == 1 ? '00' + nro_doc_referencia_sucursal : 
