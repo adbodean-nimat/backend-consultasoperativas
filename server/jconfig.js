@@ -1,5 +1,6 @@
 require('dotenv').config();
 var Db = require('./dboperacion');
+var Pg = require('./dboperacion_pg');
 const https = require('https');
 const axios = require('axios');
 const httpsAgent = new https.Agent({ rejectUnauthorized: false }); 
@@ -404,9 +405,11 @@ async function getPlanillaImportarStock(){
         `${process.env.URL_API}` + 'planillaimportar',
         `${process.env.URL_API}` + 'stockfisicoydispon',
         `${process.env.URL_API}` + 'listadeprecioweb',
+        `${process.env.URL_API}` + 'artsclasif5alconsultar',
       ];
       let response = await Promise.all(endpoints4.map((endpoint4) => axios.get(endpoint4,{httpsAgent, headers: {'Authorization': `Basic ${token}`,'Accept-Encoding': 'gzip, deflate, br'}}))).then(
-        ([{data: firstResponse}, {data: secundResponse}, {data: threeResponse}]) => {
+        ([{data: firstResponse}, {data: secundResponse}, {data: threeResponse}, {data: fourResponse}]) => {
+            console.log(fourResponse)
             var results = [];
             for (var i=0; i<firstResponse.length; i++) {
                 for (var j=0; j<secundResponse.length; j++) {
@@ -415,6 +418,7 @@ async function getPlanillaImportarStock(){
                             ProductType: firstResponse[i].ProductType,
                             Name: firstResponse[i].Name,
                             ShortDescription: secundResponse[j].ARTS_CLASIF_8 == "0130" && secundResponse[j].Uni_M2_Disp == 0 ? "<strong>Producto sin stock. Disponible a pedido de cliente. Antes de comprar, consultanos por el plazo de entrega.</strong>" :
+                                              fourResponse.filter(item => secundResponse[j].ARTS_CLASIF_5 == item.arts_clasif_5[0]['input']) && secundResponse[j].Uni_M2_Disp == 0 ? "<strong>"+fourResponse.map(data => data.descripcion)[0] + "<a class='navigation-block__link navigation-block__link--whatsapp' href='https://wa.me/"+fourResponse.map(data => data.whatsapp.replace('+', '')) +"'>"+ fourResponse.map(data => data.whatsapp) +"</a></strong>" :
                                               secundResponse[j].ARTS_CLASIF_8 == "0180" ? "<strong>Discontinuado. Venta hasta agotar stock.</strong>" :
                                               secundResponse[j].ARTS_CLASIF_8 == "0190" ? "<strong>Discontinuado. Venta hasta agotar stock.</strong>" :
                                               secundResponse[j].ARTS_CLASIF_8 == "0004" ? "<strong>* Antes de la compra leé las Recomendaciones para la Colocación de Cerámicas y Porcelanatos, <a style='color: green' href='https://www.nimat.com.ar/Content/Images/uploaded/pdf/Recomendacionesparaceramicasyterminaciones.pdf'>ver aquí</a>.</strong>" :
@@ -436,7 +440,9 @@ async function getPlanillaImportarStock(){
                             IsShipEnabled: firstResponse[i].IsShipEnabled,
                             ManageInventoryMethod: firstResponse[i].ManageInventoryMethod,
                             StockQuantity: secundResponse[j].Uni_M2_Disp,
-                            DisplayStockAvailability: secundResponse[j].ARTS_CLASIF_8 == "0130" && secundResponse[j].Uni_M2_Disp == 0 ? "FALSE" : firstResponse[i].SKU.substring(0,3)=="811" ? "TRUE" : "TRUE",
+                            DisplayStockAvailability: secundResponse[j].ARTS_CLASIF_8 == "0130" && secundResponse[j].Uni_M2_Disp == 0 ? "FALSE" : 
+                                                      fourResponse.filter(item => secundResponse[j].ARTS_CLASIF_5 == item.arts_clasif_5[0]['input']) && secundResponse[j].Uni_M2_Disp == 0 ? 'FALSE' :
+                                                      firstResponse[i].SKU.substring(0,3)=="811" ? "TRUE" : "TRUE",
                             DisplayStockQuantity: "TRUE",
                             NotifyAdminForQuantityBelow: firstResponse[i].NotifyAdminForQuantityBelow,
                             BackorderMode: firstResponse[i].BackorderMode,

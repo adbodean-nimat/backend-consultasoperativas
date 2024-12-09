@@ -1639,6 +1639,56 @@ const deleteFiltroAcindarPTF = (request, response) => {
     })
 }
 
+// Arts Claisf. 5 Al consultar
+const getArtsClasif5AlConsultar = (request, response) => {
+    pool.query('SELECT * FROM public.clasif_arts_5_al_consultar', (error, results) =>{
+        if (error){
+            throw error
+        }
+        response.status(200).json(results.rows)
+    })
+}
+
+const updateArtsClasif5AlConsultar = (request, response) => {
+    const id = parseInt(request.params.id)
+    const {arts_clasif_5, descripcion, whatsapp} = request.body
+
+    pool.query(
+        'UPDATE public.clasif_arts_5_al_consultar SET arts_clasif_5 = $1::jsonb[] , descripcion = $2, whatsapp = $3 WHERE id = $4',
+        [arts_clasif_5, descripcion, whatsapp, id ], (error, results) => {
+            if (error){
+                throw error
+            }
+            response.status(200).send(`Modificado correctamente`)
+        }
+    )
+}
+
+const createArtsClasif5AlConsultar = (request, response) => {
+    const {arts_clasif_5, descripcion, whatsapp} = request.body
+
+    pool.query(
+        'INSERT INTO public.clasif_arts_5_al_consultar(arts_clasif_5, descripcion, whatsapp) VALUES ($1, $2, $3)', 
+        [arts_clasif_5, descripcion, whatsapp], (error, results) => {
+        if (error){
+            throw error
+        }
+        response.status(201).send(`Agregar correctamente`)
+    })
+}
+
+const deleteArtsClasif5AlConsultar = (request, response) => {
+    const id = parseInt(request.params.id)
+
+    pool.query('DELETE FROM public.clasif_arts_5_al_consultar WHERE id = $1', [id], (error, results) => {
+        if (error){
+            throw error
+        }
+        response.status(200).send(`Eliminado correctamente`)
+    })
+}
+
+
 // Arts Clasif. 5 Stock Manual - WEB 
 const getArtsClasif5StockManual = (request, response) => {
     pool.query('SELECT * FROM public.clasif_arts_5_stock_manual', (error, results) =>{
@@ -1720,5 +1770,6 @@ module.exports = {
     getAcindarComprobantes, updateAcindarComprobantes, createAcindarComprobantes, deleteAcindarComprobantes,
     getAcindarEquivalCodFactorCant, updateAcindarEquivalCodFactorCant, createAcindarEquivalCodFactorCant, deleteAcindarEquivalCodFactorCant,
     getFiltroAcindarPTF, updateFiltroAcindarPTF, createFiltroAcindarPTF, deleteFiltroAcindarPTF,
-    getArtsClasif5StockManual, updateArtsClasif5StockManual, createArtsClasif5StockManual, deleteArtsClasif5StockManual
+    getArtsClasif5StockManual, updateArtsClasif5StockManual, createArtsClasif5StockManual, deleteArtsClasif5StockManual,
+    getArtsClasif5AlConsultar, updateArtsClasif5AlConsultar, createArtsClasif5AlConsultar, deleteArtsClasif5AlConsultar
 }

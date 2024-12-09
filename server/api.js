@@ -769,6 +769,12 @@ router.route('/artsclasif5stockmanual').post(Pg.createArtsClasif5StockManual)
 router.route('/artsclasif5stockmanual/:id').put(Pg.updateArtsClasif5StockManual)
 router.route('/artsclasif5stockmanual/:id').delete(Pg.deleteArtsClasif5StockManual)
 
+// Tabla Arts Clasif. 5 - Al consultar (WEB)
+router.route('/artsclasif5alconsultar').get(Pg.getArtsClasif5AlConsultar)
+router.route('/artsclasif5alconsultar').post(Pg.createArtsClasif5AlConsultar)
+router.route('/artsclasif5alconsultar/:id').put(Pg.updateArtsClasif5AlConsultar)
+router.route('/artsclasif5alconsultar/:id').delete(Pg.deleteArtsClasif5AlConsultar)
+
 const port = 8090;
 
 const httpsServer = https.createServer(httpsOptions, app)
