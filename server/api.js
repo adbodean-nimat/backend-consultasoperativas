@@ -359,6 +359,13 @@ router.route('/consultaporqr').get((request, response)=>{
   })
 })
 
+router.route('/consultaordenescompraultfecharemi').get((request, response)=>{
+  const getData = {fechadesde: request.query.fechadesde, difdias: request.query.difdias}
+  Db.ConsultaOrdenesCompraFechaUltRem(getData).then((data)=>{
+    response.json(data[0]);
+  })
+})
+
 router.route('/listabreveusointerno').get((request, response) => {
   jConfig.getListadePrecioBUI2().then((data)=>{
     response.json(data);
