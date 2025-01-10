@@ -517,7 +517,6 @@ async function getInformesAcindar(){
     let response = await Promise.all(endpoints.map((endpoint)=> axios.get(endpoint,{httpsAgent, headers: {'Authorization': `Basic ${token}`}}))).then(
         ([{data: data1}, {data: data2}, {data: data3}, {data: data4}, {data: data5},{data: data6}])=>{
             let getData5 = []
-
             data5.forEach((e) => {({
                     CVCL_TIPO_VAR,
                     CVCL_SUCURSAL_IMP,
@@ -544,6 +543,7 @@ async function getInformesAcindar(){
                     })
                 }
             })
+            /* console.log(getData5.map(data => data.VENT_NCFA)) */
             var results = [];
             for(var i = 0; i < data1.length; i++){
                 for(var j = 0; j < data2.length; j++){
@@ -552,25 +552,58 @@ async function getInformesAcindar(){
                             var nro_doc_referencia_tipo = data3.filter(item => item.comprobante_ptf == (getData5.filter(item => item.CVCL_NUMERO_CVCL == data1[i].Nro_cpbte && item.CVCL_SUCURSAL_IMP == data1[i].Sucursal && item.CVRF_RENGLON_CVRF == data1[i].CVRF_RENGLON_CVRF).map(data => data.VENT_NCFA[0].NCFA_TIPO_FC_ANTIC))).map(data => data.comprobante_acindar)
                             var tipo_doc_referencia = data3.filter(item => item.comprobante_ptf == (getData5.filter(item => item.CVCL_NUMERO_CVCL == data1[i].Nro_cpbte && item.CVCL_SUCURSAL_IMP == data1[i].Sucursal && item.CVRF_RENGLON_CVRF == data1[i].CVRF_RENGLON_CVRF).map(data => data.VENT_NCFA[0].NCFA_TIPO_FC_ANTIC))).map(data => data.tipo_doc_legal)
                             var nro_doc_referencia_sucursal = getData5.filter(item => item.CVCL_NUMERO_CVCL == data1[i].Nro_cpbte && item.CVCL_SUCURSAL_IMP == data1[i].Sucursal && item.CVRF_RENGLON_CVRF == data1[i].CVRF_RENGLON_CVRF).map(data => data.VENT_NCFA[0].NCFA_SUCURSAL_FC_ANTIC)
-                            var nro_doc_referencia_numero = getData5.filter(item => item.CVCL_NUMERO_CVCL == data1[i].Nro_cpbte && item.CVCL_SUCURSAL_IMP == data1[i].Sucursal && item.CVRF_RENGLON_CVRF == data1[i].CVRF_RENGLON_CVRF).map(data => data.VENT_NCFA[0].NCFA_NUMERO_FC_ANTIC)
+                            var nro_doc_referencia_numero = getData5.filter(item => item.CVCL_NUMERO_CVCL == data1[i].Nro_cpbte && item.CVCL_SUCURSAL_IMP == data1[i].Sucursal && item.CVRF_RENGLON_CVRF == data1[i].CVRF_RENGLON_CVRF).map(data => data.VENT_NCFA.map(data => data.NCFA_NUMERO_FC_ANTIC))
                             var nro_doc_referencia_item = getData5.filter(item => item.CVCL_NUMERO_CVCL == data1[i].Nro_cpbte && item.CVCL_SUCURSAL_IMP == data1[i].Sucursal && item.CVRF_RENGLON_CVRF == data1[i].CVRF_RENGLON_CVRF).map(data => data.VENT_NCFA[0].NCFA_RENGLON_FC_ANTIC)
                             var fecha_doc_referencia = getData5.filter(item => item.CVCL_NUMERO_CVCL == data1[i].Nro_cpbte && item.CVCL_SUCURSAL_IMP == data1[i].Sucursal && item.CVRF_RENGLON_CVRF == data1[i].CVRF_RENGLON_CVRF).map(data => data.CVCL_FECHA_EMI)
+                            var nro_doc_referencia_a_observaciones = nro_doc_referencia_numero.toString().length >= 9 ? nro_doc_referencia_numero.map(data => {
+                                const acc = [];
+                                data.forEach(i => acc.push({
+                                    data: (nro_doc_referencia_tipo + '-' + (
+                                        nro_doc_referencia_sucursal.toString().length == 1 ? '00' + nro_doc_referencia_sucursal : 
+                                        nro_doc_referencia_sucursal.toString().length == 2 ? '0' + nro_doc_referencia_sucursal : 
+                                        nro_doc_referencia_sucursal.toString().length == 3 ? nro_doc_referencia_sucursal : 
+                                        nro_doc_referencia_sucursal.toString().length == 0 ? '' : '')
+                                        + '-' + (
+                                        i.toString().length == 1 ? '000000' + i : 
+                                        i.toString().length == 2 ? '000000' + i : 
+                                        i.toString().length == 3 ? '00000' + i : 
+                                        i.toString().length == 4 ? '0000' + i : 
+                                        i.toString().length == 5 ? '000' + i : 
+                                        i.toString().length == 6 ? '00' + i : 
+                                        i.toString().length == 7 ? '0' + i : 
+                                        i.toString().length == 8 ? i : 
+                                        i.toString().length == 0 ? '' : 
+                                        ''))
+                                }));
+                                acc.shift()
+                                return acc.map(data => data.data).join(" - ")
+                                }) : ''; 
                             
                             var nro_doc_referencia = nro_doc_referencia_tipo + '-' + (
-                            nro_doc_referencia_sucursal.toString().length == 1 ? '00' + nro_doc_referencia_sucursal : 
-                            nro_doc_referencia_sucursal.toString().length == 2 ? '0' + nro_doc_referencia_sucursal : 
-                            nro_doc_referencia_sucursal.toString().length == 3 ? nro_doc_referencia_sucursal : 
-                            nro_doc_referencia_sucursal.toString().length == 0 ? '' : '')
-                            + '-' + (
-                            nro_doc_referencia_numero.toString().length == 1 ? '000000' + nro_doc_referencia_numero : 
-                            nro_doc_referencia_numero.toString().length == 2 ? '000000' + nro_doc_referencia_numero : 
-                            nro_doc_referencia_numero.toString().length == 3 ? '00000' + nro_doc_referencia_numero : 
-                            nro_doc_referencia_numero.toString().length == 4 ? '0000' + nro_doc_referencia_numero : 
-                            nro_doc_referencia_numero.toString().length == 5 ? '000' + nro_doc_referencia_numero : 
-                            nro_doc_referencia_numero.toString().length == 6 ? '00' + nro_doc_referencia_numero : 
-                            nro_doc_referencia_numero.toString().length == 7 ? '0' + nro_doc_referencia_numero : 
-                            nro_doc_referencia_numero.toString().length == 8 ? nro_doc_referencia_numero : 
-                            nro_doc_referencia_numero.toString().length == 0 ? '' : '')
+                                nro_doc_referencia_sucursal.toString().length == 1 ? '00' + nro_doc_referencia_sucursal : 
+                                nro_doc_referencia_sucursal.toString().length == 2 ? '0' + nro_doc_referencia_sucursal : 
+                                nro_doc_referencia_sucursal.toString().length == 3 ? nro_doc_referencia_sucursal : 
+                                nro_doc_referencia_sucursal.toString().length == 0 ? '' : '')
+                                + '-' + (
+                                nro_doc_referencia_numero.toString().length == 1 ? '000000' + nro_doc_referencia_numero : 
+                                nro_doc_referencia_numero.toString().length == 2 ? '000000' + nro_doc_referencia_numero : 
+                                nro_doc_referencia_numero.toString().length == 3 ? '00000' + nro_doc_referencia_numero : 
+                                nro_doc_referencia_numero.toString().length == 4 ? '0000' + nro_doc_referencia_numero : 
+                                nro_doc_referencia_numero.toString().length == 5 ? '000' + nro_doc_referencia_numero : 
+                                nro_doc_referencia_numero.toString().length == 6 ? '00' + nro_doc_referencia_numero : 
+                                nro_doc_referencia_numero.toString().length == 7 ? '0' + nro_doc_referencia_numero : 
+                                nro_doc_referencia_numero.toString().length == 8 ? nro_doc_referencia_numero : 
+                                nro_doc_referencia_numero.toString().length >= 9 ? nro_doc_referencia_numero.map(data => 
+                                    data[0].toString().length == 1 ? '000000' + data[0] : 
+                                    data[0].toString().length == 2 ? '000000' + data[0] : 
+                                    data[0].toString().length == 3 ? '00000' + data[0] : 
+                                    data[0].toString().length == 4 ? '0000' + data[0] : 
+                                    data[0].toString().length == 5 ? '000' + data[0] : 
+                                    data[0].toString().length == 6 ? '00' + data[0] : 
+                                    data[0].toString().length == 7 ? '0' + data[0] : 
+                                    data[0].toString().length == 8 ? data : '' ) : 
+                                nro_doc_referencia_numero.toString().length == 0 ? '' : '')
+
 
                             const cantidadxfactor = (data1[i].Cant * (data4.filter(item => item.codigo_ptf == data1[i].ARTS_ARTICULO_EMP).map(data => data.factor_cant)));
                             const codigoAcindar = data4.filter(item => item.codigo_ptf == data1[i].ARTS_ARTICULO_EMP).map(data => data.codigo_acindar);
@@ -585,7 +618,7 @@ async function getInformesAcindar(){
                                 TIPO_DE_TRANSACCION: data3[k].tipo_de_transaccion.replace(/\./g, ''),
                                 ITEM_DOC_LEGAL: data1[i].CVRF_RENGLON_CVRF,
                                 FECHA_DOC_LEGAL: data1[i].CVCL_FECHA_EMI.replace(/\./g, ''),
-                                NRO_DOC_REFERENCIA: nro_doc_referencia == "--" ? '': nro_doc_referencia.replace(/\./g, ''),
+                                NRO_DOC_REFERENCIA: nro_doc_referencia == "--" ? '': nro_doc_referencia.toString().replace(/\./g, ''),
                                 TIPO_DOC_REF: tipo_doc_referencia.toString().replace(/\./g, ''),
                                 ITEM_DOC_REF: nro_doc_referencia_item.toString().replace(/\./g, ''),
                                 FECHA_DOC_REF: fecha_doc_referencia.toString().replace(/\./g, ''),
@@ -604,7 +637,7 @@ async function getInformesAcindar(){
                                 FECHA_COSTO: data1[i].Fecha_Costo.replace(/\./g, ''),
                                 DESCRIPCION_COND_VTA: data1[i].Nombre_Cond_Vta.replace(/\./g, ''),
                                 DIAS: data1[i].DIAS_COND_VTA,
-                                OBSERVACION: data2[j].observacion.replace(/\./g, '')
+                                OBSERVACION: nro_doc_referencia_a_observaciones.toString().length > 1 && data2[j].observacion.toString().length > 1 ? data2[j].observacion +', Otros DOC REFERENCIA: '+ nro_doc_referencia_a_observaciones.toString().replace(/\./g, '') : nro_doc_referencia_a_observaciones.toString().length > 1 ? 'Otros DOC REFERENCIA: '+ nro_doc_referencia_a_observaciones.toString().replace(/\./g, '') : data2[j].observacion 
                             })
                         }
                     }
@@ -671,25 +704,59 @@ async function getInformesAcindarEntreFechas(getDates){
                                 var nro_doc_referencia_tipo = data3.filter(item => item.comprobante_ptf == (getData5.filter(item => item.CVCL_NUMERO_CVCL == data1[0][0][i].Nro_cpbte && item.CVCL_SUCURSAL_IMP == data1[0][0][i].Sucursal && item.CVRF_RENGLON_CVRF == data1[0][0][i].CVRF_RENGLON_CVRF).map(data => data.VENT_NCFA[0].NCFA_TIPO_FC_ANTIC))).map(data => data.comprobante_acindar)
                                 var tipo_doc_referencia = data3.filter(item => item.comprobante_ptf == (getData5.filter(item => item.CVCL_NUMERO_CVCL == data1[0][0][i].Nro_cpbte && item.CVCL_SUCURSAL_IMP == data1[0][0][i].Sucursal && item.CVRF_RENGLON_CVRF == data1[0][0][i].CVRF_RENGLON_CVRF).map(data => data.VENT_NCFA[0].NCFA_TIPO_FC_ANTIC))).map(data => data.tipo_doc_legal)
                                 var nro_doc_referencia_sucursal = getData5.filter(item => item.CVCL_NUMERO_CVCL == data1[0][0][i].Nro_cpbte && item.CVCL_SUCURSAL_IMP == data1[0][0][i].Sucursal && item.CVRF_RENGLON_CVRF == data1[0][0][i].CVRF_RENGLON_CVRF).map(data => data.VENT_NCFA[0].NCFA_SUCURSAL_FC_ANTIC)
-                                var nro_doc_referencia_numero = getData5.filter(item => item.CVCL_NUMERO_CVCL == data1[0][0][i].Nro_cpbte && item.CVCL_SUCURSAL_IMP == data1[0][0][i].Sucursal && item.CVRF_RENGLON_CVRF == data1[0][0][i].CVRF_RENGLON_CVRF).map(data => data.VENT_NCFA[0].NCFA_NUMERO_FC_ANTIC)
+                                var nro_doc_referencia_numero = getData5.filter(item => item.CVCL_NUMERO_CVCL == data1[0][0][i].Nro_cpbte && item.CVCL_SUCURSAL_IMP == data1[0][0][i].Sucursal && item.CVRF_RENGLON_CVRF == data1[0][0][i].CVRF_RENGLON_CVRF).map(data => data.VENT_NCFA.map(data => data.NCFA_NUMERO_FC_ANTIC))
                                 var nro_doc_referencia_item = getData5.filter(item => item.CVCL_NUMERO_CVCL == data1[0][0][i].Nro_cpbte && item.CVCL_SUCURSAL_IMP == data1[0][0][i].Sucursal && item.CVRF_RENGLON_CVRF == data1[0][0][i].CVRF_RENGLON_CVRF).map(data => data.VENT_NCFA[0].NCFA_RENGLON_FC_ANTIC)
                                 var fecha_doc_referencia = getData5.filter(item => item.CVCL_NUMERO_CVCL == data1[0][0][i].Nro_cpbte && item.CVCL_SUCURSAL_IMP == data1[0][0][i].Sucursal && item.CVRF_RENGLON_CVRF == data1[0][0][i].CVRF_RENGLON_CVRF).map(data => data.CVCL_FECHA_EMI)
+                                var nro_doc_referencia_a_observaciones = nro_doc_referencia_numero.toString().length >= 9 ? nro_doc_referencia_numero.map(data => {
+                                    const acc = [];
+                                    data.forEach(i => acc.push({
+                                        data: (nro_doc_referencia_tipo + '-' + (
+                                            nro_doc_referencia_sucursal.toString().length == 1 ? '00' + nro_doc_referencia_sucursal : 
+                                            nro_doc_referencia_sucursal.toString().length == 2 ? '0' + nro_doc_referencia_sucursal : 
+                                            nro_doc_referencia_sucursal.toString().length == 3 ? nro_doc_referencia_sucursal : 
+                                            nro_doc_referencia_sucursal.toString().length == 0 ? '' : '')
+                                            + '-' + (
+                                            i.toString().length == 1 ? '000000' + i : 
+                                            i.toString().length == 2 ? '000000' + i : 
+                                            i.toString().length == 3 ? '00000' + i : 
+                                            i.toString().length == 4 ? '0000' + i : 
+                                            i.toString().length == 5 ? '000' + i : 
+                                            i.toString().length == 6 ? '00' + i : 
+                                            i.toString().length == 7 ? '0' + i : 
+                                            i.toString().length == 8 ? i : 
+                                            i.toString().length == 0 ? '' : 
+                                            ''))
+                                    }));
+                                    acc.shift()
+                                    return acc.map(data => data.data).join(" - ")
+                                    }) : ''; 
                                 
                                 var nro_doc_referencia = nro_doc_referencia_tipo + '-' + (
-                                nro_doc_referencia_sucursal.toString().length == 1 ? '00' + nro_doc_referencia_sucursal : 
-                                nro_doc_referencia_sucursal.toString().length == 2 ? '0' + nro_doc_referencia_sucursal : 
-                                nro_doc_referencia_sucursal.toString().length == 3 ? nro_doc_referencia_sucursal : 
-                                nro_doc_referencia_sucursal.toString().length == 0 ? '' : '')
-                                + '-' + (
-                                nro_doc_referencia_numero.toString().length == 1 ? '000000' + nro_doc_referencia_numero : 
-                                nro_doc_referencia_numero.toString().length == 2 ? '000000' + nro_doc_referencia_numero : 
-                                nro_doc_referencia_numero.toString().length == 3 ? '00000' + nro_doc_referencia_numero : 
-                                nro_doc_referencia_numero.toString().length == 4 ? '0000' + nro_doc_referencia_numero : 
-                                nro_doc_referencia_numero.toString().length == 5 ? '000' + nro_doc_referencia_numero : 
-                                nro_doc_referencia_numero.toString().length == 6 ? '00' + nro_doc_referencia_numero : 
-                                nro_doc_referencia_numero.toString().length == 7 ? '0' + nro_doc_referencia_numero : 
-                                nro_doc_referencia_numero.toString().length == 8 ? nro_doc_referencia_numero : 
-                                nro_doc_referencia_numero.toString().length == 0 ? '' : '')
+                                    nro_doc_referencia_sucursal.toString().length == 1 ? '00' + nro_doc_referencia_sucursal : 
+                                    nro_doc_referencia_sucursal.toString().length == 2 ? '0' + nro_doc_referencia_sucursal : 
+                                    nro_doc_referencia_sucursal.toString().length == 3 ? nro_doc_referencia_sucursal : 
+                                    nro_doc_referencia_sucursal.toString().length == 0 ? '' : '')
+                                    + '-' + (
+                                    nro_doc_referencia_numero.toString().length == 1 ? '000000' + nro_doc_referencia_numero : 
+                                    nro_doc_referencia_numero.toString().length == 2 ? '000000' + nro_doc_referencia_numero : 
+                                    nro_doc_referencia_numero.toString().length == 3 ? '00000' + nro_doc_referencia_numero : 
+                                    nro_doc_referencia_numero.toString().length == 4 ? '0000' + nro_doc_referencia_numero : 
+                                    nro_doc_referencia_numero.toString().length == 5 ? '000' + nro_doc_referencia_numero : 
+                                    nro_doc_referencia_numero.toString().length == 6 ? '00' + nro_doc_referencia_numero : 
+                                    nro_doc_referencia_numero.toString().length == 7 ? '0' + nro_doc_referencia_numero : 
+                                    nro_doc_referencia_numero.toString().length == 8 ? nro_doc_referencia_numero : 
+                                    nro_doc_referencia_numero.toString().length >= 9 ? nro_doc_referencia_numero.map(data => 
+                                        data[0].toString().length == 1 ? '000000' + data[0] : 
+                                        data[0].toString().length == 2 ? '000000' + data[0] : 
+                                        data[0].toString().length == 3 ? '00000' + data[0] : 
+                                        data[0].toString().length == 4 ? '0000' + data[0] : 
+                                        data[0].toString().length == 5 ? '000' + data[0] : 
+                                        data[0].toString().length == 6 ? '00' + data[0] : 
+                                        data[0].toString().length == 7 ? '0' + data[0] : 
+                                        data[0].toString().length == 8 ? data : '' ) : 
+                                    nro_doc_referencia_numero.toString().length == 0 ? '' : '')
+    
+
 
                                 const cantidadxfactor = (data1[0][0][i].Cant * (data4.filter(item => item.codigo_ptf == data1[0][0][i].ARTS_ARTICULO_EMP).map(data => data.factor_cant)));
                                 const codigoAcindar = data4.filter(item => item.codigo_ptf == data1[0][0][i].ARTS_ARTICULO_EMP).map(data => data.codigo_acindar);
@@ -725,7 +792,7 @@ async function getInformesAcindarEntreFechas(getDates){
                                     FECHA_COSTO: data1[0][0][i].Fecha_Costo,
                                     DESCRIPCION_COND_VTA: data1[0][0][i].Nombre_Cond_Vta,
                                     DIAS: data1[0][0][i].DIAS_COND_VTA,
-                                    OBSERVACION: data2[j].observacion
+                                    OBSERVACION: nro_doc_referencia_a_observaciones.toString().length > 1 && data2[j].observacion.toString().length > 1 ? data2[j].observacion +', Otros DOC REFERENCIA: '+ nro_doc_referencia_a_observaciones.toString().replace(/\./g, '') : nro_doc_referencia_a_observaciones.toString().length > 1 ? 'Otros DOC REFERENCIA: '+ nro_doc_referencia_a_observaciones.toString().replace(/\./g, '') : data2[j].observacion 
                                 })
                             }
                         }
@@ -797,24 +864,58 @@ async function getInformesAcindarEntreFechasExportar(getDates){
                                 var tipo_doc_referencia = data3.filter(item => item.comprobante_ptf == (getData5.filter(item => item.CVCL_NUMERO_CVCL == data1[0][0][i].Nro_cpbte && item.CVCL_SUCURSAL_IMP == data1[0][0][i].Sucursal && item.CVRF_RENGLON_CVRF == data1[0][0][i].CVRF_RENGLON_CVRF).map(data => data.VENT_NCFA[0].NCFA_TIPO_FC_ANTIC))).map(data => data.tipo_doc_legal)
                                 var nro_doc_referencia_sucursal = getData5.filter(item => item.CVCL_NUMERO_CVCL == data1[0][0][i].Nro_cpbte && item.CVCL_SUCURSAL_IMP == data1[0][0][i].Sucursal && item.CVRF_RENGLON_CVRF == data1[0][0][i].CVRF_RENGLON_CVRF).map(data => data.VENT_NCFA[0].NCFA_SUCURSAL_FC_ANTIC)
                                 var nro_doc_referencia_numero = getData5.filter(item => item.CVCL_NUMERO_CVCL == data1[0][0][i].Nro_cpbte && item.CVCL_SUCURSAL_IMP == data1[0][0][i].Sucursal && item.CVRF_RENGLON_CVRF == data1[0][0][i].CVRF_RENGLON_CVRF).map(data => data.VENT_NCFA[0].NCFA_NUMERO_FC_ANTIC)
-                                var nro_doc_referencia_item = getData5.filter(item => item.CVCL_NUMERO_CVCL == data1[0][0][i].Nro_cpbte && item.CVCL_SUCURSAL_IMP == data1[0][0][i].Sucursal && item.CVRF_RENGLON_CVRF == data1[0][0][i].CVRF_RENGLON_CVRF).map(data => data.VENT_NCFA[0].NCFA_RENGLON_FC_ANTIC)
+                                var nro_doc_referencia_item = getData5.filter(item => item.CVCL_NUMERO_CVCL == data1[0][0][i].Nro_cpbte && item.CVCL_SUCURSAL_IMP == data1[0][0][i].Sucursal && item.CVRF_RENGLON_CVRF == data1[0][0][i].CVRF_RENGLON_CVRF).map(data => data.VENT_NCFA.map(data => data.NCFA_NUMERO_FC_ANTIC))
                                 var fecha_doc_referencia = getData5.filter(item => item.CVCL_NUMERO_CVCL == data1[0][0][i].Nro_cpbte && item.CVCL_SUCURSAL_IMP == data1[0][0][i].Sucursal && item.CVRF_RENGLON_CVRF == data1[0][0][i].CVRF_RENGLON_CVRF).map(data => data.CVCL_FECHA_EMI)
                                 
+                                var nro_doc_referencia_a_observaciones = nro_doc_referencia_numero.toString().length >= 9 ? nro_doc_referencia_numero.map(data => {
+                                    const acc = [];
+                                    data.forEach(i => acc.push({
+                                        data: (nro_doc_referencia_tipo + '-' + (
+                                            nro_doc_referencia_sucursal.toString().length == 1 ? '00' + nro_doc_referencia_sucursal : 
+                                            nro_doc_referencia_sucursal.toString().length == 2 ? '0' + nro_doc_referencia_sucursal : 
+                                            nro_doc_referencia_sucursal.toString().length == 3 ? nro_doc_referencia_sucursal : 
+                                            nro_doc_referencia_sucursal.toString().length == 0 ? '' : '')
+                                            + '-' + (
+                                            i.toString().length == 1 ? '000000' + i : 
+                                            i.toString().length == 2 ? '000000' + i : 
+                                            i.toString().length == 3 ? '00000' + i : 
+                                            i.toString().length == 4 ? '0000' + i : 
+                                            i.toString().length == 5 ? '000' + i : 
+                                            i.toString().length == 6 ? '00' + i : 
+                                            i.toString().length == 7 ? '0' + i : 
+                                            i.toString().length == 8 ? i : 
+                                            i.toString().length == 0 ? '' : 
+                                            ''))
+                                    }));
+                                    acc.shift()
+                                    return acc.map(data => data.data).join(" - ")
+                                    }) : ''; 
+                                
                                 var nro_doc_referencia = nro_doc_referencia_tipo + '-' + (
-                                nro_doc_referencia_sucursal.toString().length == 1 ? '00' + nro_doc_referencia_sucursal : 
-                                nro_doc_referencia_sucursal.toString().length == 2 ? '0' + nro_doc_referencia_sucursal : 
-                                nro_doc_referencia_sucursal.toString().length == 3 ? nro_doc_referencia_sucursal : 
-                                nro_doc_referencia_sucursal.toString().length == 0 ? '' : '')
-                                + '-' + (
-                                nro_doc_referencia_numero.toString().length == 1 ? '000000' + nro_doc_referencia_numero : 
-                                nro_doc_referencia_numero.toString().length == 2 ? '000000' + nro_doc_referencia_numero : 
-                                nro_doc_referencia_numero.toString().length == 3 ? '00000' + nro_doc_referencia_numero : 
-                                nro_doc_referencia_numero.toString().length == 4 ? '0000' + nro_doc_referencia_numero : 
-                                nro_doc_referencia_numero.toString().length == 5 ? '000' + nro_doc_referencia_numero : 
-                                nro_doc_referencia_numero.toString().length == 6 ? '00' + nro_doc_referencia_numero : 
-                                nro_doc_referencia_numero.toString().length == 7 ? '0' + nro_doc_referencia_numero : 
-                                nro_doc_referencia_numero.toString().length == 8 ? nro_doc_referencia_numero : 
-                                nro_doc_referencia_numero.toString().length == 0 ? '' : '')
+                                    nro_doc_referencia_sucursal.toString().length == 1 ? '00' + nro_doc_referencia_sucursal : 
+                                    nro_doc_referencia_sucursal.toString().length == 2 ? '0' + nro_doc_referencia_sucursal : 
+                                    nro_doc_referencia_sucursal.toString().length == 3 ? nro_doc_referencia_sucursal : 
+                                    nro_doc_referencia_sucursal.toString().length == 0 ? '' : '')
+                                    + '-' + (
+                                    nro_doc_referencia_numero.toString().length == 1 ? '000000' + nro_doc_referencia_numero : 
+                                    nro_doc_referencia_numero.toString().length == 2 ? '000000' + nro_doc_referencia_numero : 
+                                    nro_doc_referencia_numero.toString().length == 3 ? '00000' + nro_doc_referencia_numero : 
+                                    nro_doc_referencia_numero.toString().length == 4 ? '0000' + nro_doc_referencia_numero : 
+                                    nro_doc_referencia_numero.toString().length == 5 ? '000' + nro_doc_referencia_numero : 
+                                    nro_doc_referencia_numero.toString().length == 6 ? '00' + nro_doc_referencia_numero : 
+                                    nro_doc_referencia_numero.toString().length == 7 ? '0' + nro_doc_referencia_numero : 
+                                    nro_doc_referencia_numero.toString().length == 8 ? nro_doc_referencia_numero : 
+                                    nro_doc_referencia_numero.toString().length >= 9 ? nro_doc_referencia_numero.map(data => 
+                                        data[0].toString().length == 1 ? '000000' + data[0] : 
+                                        data[0].toString().length == 2 ? '000000' + data[0] : 
+                                        data[0].toString().length == 3 ? '00000' + data[0] : 
+                                        data[0].toString().length == 4 ? '0000' + data[0] : 
+                                        data[0].toString().length == 5 ? '000' + data[0] : 
+                                        data[0].toString().length == 6 ? '00' + data[0] : 
+                                        data[0].toString().length == 7 ? '0' + data[0] : 
+                                        data[0].toString().length == 8 ? data : '' ) : 
+                                    nro_doc_referencia_numero.toString().length == 0 ? '' : '')
+    
 
                                 const cantidadxfactor = (data1[0][0][i].Cant * (data4.filter(item => item.codigo_ptf == data1[0][0][i].ARTS_ARTICULO_EMP).map(data => data.factor_cant)));
                                 const codigoAcindar = data4.filter(item => item.codigo_ptf == data1[0][0][i].ARTS_ARTICULO_EMP).map(data => data.codigo_acindar);
@@ -829,7 +930,7 @@ async function getInformesAcindarEntreFechasExportar(getDates){
                                     TIPO_DE_TRANSACCION: data3[k].tipo_de_transaccion.replace(/\./g, ''),
                                     ITEM_DOC_LEGAL: data1[0][0][i].CVRF_RENGLON_CVRF,
                                     FECHA_DOC_LEGAL: data1[0][0][i].CVCL_FECHA_EMI.replace(/\./g, ''),
-                                    NRO_DOC_REFERENCIA: nro_doc_referencia == "--" ? '': nro_doc_referencia.replace(/\./g, ''),
+                                    NRO_DOC_REFERENCIA: nro_doc_referencia == "--" ? '': nro_doc_referencia.toString().replace(/\./g, ''),
                                     TIPO_DOC_REF: tipo_doc_referencia.toString().replace(/\./g, ''),
                                     ITEM_DOC_REF: nro_doc_referencia_item.toString().replace(/\./g, ''),
                                     FECHA_DOC_REF: fecha_doc_referencia.toString().replace(/\./g, ''),
@@ -848,7 +949,7 @@ async function getInformesAcindarEntreFechasExportar(getDates){
                                     FECHA_COSTO: data1[0][0][i].Fecha_Costo.replace(/\./g, ''),
                                     DESCRIPCION_COND_VTA: data1[0][0][i].Nombre_Cond_Vta.replace(/\./g, ''),
                                     DIAS: data1[0][0][i].DIAS_COND_VTA,
-                                    OBSERVACION: data2[j].observacion.replace(/\./g, '')
+                                    OBSERVACION: nro_doc_referencia_a_observaciones.toString().length > 1 && data2[j].observacion.toString().length > 1 ? data2[j].observacion +', Otros DOC REFERENCIA: '+ nro_doc_referencia_a_observaciones.toString().replace(/\./g, '') : nro_doc_referencia_a_observaciones.toString().length > 1 ? 'Otros DOC REFERENCIA: '+ nro_doc_referencia_a_observaciones.toString().replace(/\./g, '') : data2[j].observacion.replace(/\./g, '')
                                 })
                             }
                         }
