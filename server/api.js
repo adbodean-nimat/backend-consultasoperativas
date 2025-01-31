@@ -12,7 +12,6 @@ var app = express();
 var router = express.Router();
 var passport = require('passport');
 var LdapStrategy = require('passport-ldapauth');
-const zlib = require('zlib')
 var compression = require('compression');
 var CronJob = require('cron').CronJob
 const path = require('path');
@@ -45,8 +44,7 @@ passport.use(new LdapStrategy({
     bindDN: process.env.LDAP_bindDN,
     bindCredentials: process.env.LDAP_bindCredentials,
     searchBase: process.env.LDAP_searchBase,
-    searchFilter: process.env.LDAP_searchFilter,
-    includeRaw: true
+    searchFilter: process.env.LDAP_searchFilter
   }
 }))
 app.use(cors());
@@ -58,17 +56,16 @@ app.use('/api', verifyUserToken, router);
 app.post('/login', function (req, res, next){
   passport.authenticate('ldapauth', {session: false}, function(err, user, info) {
     var error = err || info
-    if (err) return res.status(500).send(err)
-    if (error) return res.status(400).json({error})
+    // console.log(user);
+    if (error) 
+      return res.status(500).json({error})
     if (!user) {
       return res.status(400).send("User Not Found")
     }
-    //res.status(200).send(user)
+    // res.status(200).send(user)
     //create token
-    
-    let avatar = user._raw.thumbnailPhoto ? Buffer.from(user._raw.thumbnailPhoto).toString('base64') : '';
     const token = jwt.sign({ user }, process.env.JWT_SECRET);
-    return res.status(200).contentType('application/json; charset=utf-8').json({"token": token, user, "avatar": avatar})
+    return res.status(200).json({"token": token, user});
   })(req, res, next)
 })
 
