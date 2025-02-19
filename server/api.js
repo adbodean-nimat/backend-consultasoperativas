@@ -22,6 +22,7 @@ const httpsOptions = {
   cert: fs.readFileSync(process.env.SSL_CERT)
 }
 const jwt = require("jsonwebtoken");
+const { get } = require('lodash');
 const verifyUserToken = (req, res, next) => {
   if (!req.headers.authorization) {
     return res.status(401).send("Solicitud no autorizada");
@@ -44,7 +45,8 @@ passport.use(new LdapStrategy({
     bindDN: process.env.LDAP_bindDN,
     bindCredentials: process.env.LDAP_bindCredentials,
     searchBase: process.env.LDAP_searchBase,
-    searchFilter: process.env.LDAP_searchFilter
+    searchFilter: process.env.LDAP_searchFilter,
+    includeRaw: true
   }
 }))
 app.use(cors());
@@ -387,6 +389,15 @@ router.route('/consultaporqr').get((request, response)=>{
 router.route('/consultaordenescompraultfecharemi').get((request, response)=>{
   const getData = {fechadesde: request.query.fechadesde, difdias: request.query.difdias}
   Db.ConsultaOrdenesCompraFechaUltRem(getData).then((data)=>{
+    response.json(data[0]);
+  })
+})
+
+router.route('/consultasaldosctacte').get((request, response)=>{
+  const getDataCliente = request.query.codcliente
+  const getDataFactura = request.query.numerofactura
+  const getData = getDataCliente ? {cliente: getDataCliente } : getDataFactura ? { factura: getDataFactura } : null
+  Db.ConsultaSaldosCtaCte(getData).then((data)=>{
     response.json(data[0]);
   })
 })
