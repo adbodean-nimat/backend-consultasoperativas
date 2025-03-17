@@ -394,11 +394,23 @@ router.route('/consultaordenescompraultfecharemi').get((request, response)=>{
 })
 
 router.route('/consultasaldosctacte').get((request, response)=>{
+  const getDataNombre = request.query.nombre
   const getDataCliente = request.query.codcliente
   const getDataFactura = request.query.numerofactura
   const getDataQR = request.query.qr
-  const getData = getDataCliente ? {cliente: getDataCliente } : getDataFactura ? { factura: getDataFactura } : getDataQR ? { qr: getDataQR } : null
+  const getData = getDataCliente ? {cliente: getDataCliente } 
+  : getDataFactura ? { factura: getDataFactura } 
+  : getDataQR ? { qr: getDataQR } 
+  : getDataNombre ? { nombre: getDataNombre } 
+  : null
   Db.ConsultaSaldosCtaCte(getData).then((data)=>{
+    response.json(data[0]);
+  })
+})
+
+router.route('/consultaclientes/:nombre').get((request, response)=>{
+  const getData = {nombre: request.params.nombre}
+  Db.ConsultasClientes(getData).then((data)=>{
     response.json(data[0]);
   })
 })

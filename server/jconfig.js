@@ -946,7 +946,7 @@ async function getInformesAcindarEntreFechasExportar(getDates){
                                     UMV: data1[0][0][i].CVRF_UNIMED.replace(/\./g, ''),
                                     CANTIDAD: cantidadxfactor.toString().replace(/\./g, ','),
                                     MONTO: montoDecimal.toLocaleString('es-AR',{maximumFractionDigits:2, useGrouping:false}),
-                                    FECHA_COSTO: data1[0][0][i].Fecha_Costo.replace(/\./g, ''),
+                                    FECHA_COSTO: data1[0][0][i].Fecha_Costo,
                                     DESCRIPCION_COND_VTA: data1[0][0][i].Nombre_Cond_Vta.replace(/\./g, ''),
                                     DIAS: data1[0][0][i].DIAS_COND_VTA,
                                     OBSERVACION: nro_doc_referencia_a_observaciones.toString().length > 1 && data2[j].observacion.toString().length > 1 ? data2[j].observacion +', Otros DOC REFERENCIA: '+ nro_doc_referencia_a_observaciones.toString().replace(/\./g, '') : nro_doc_referencia_a_observaciones.toString().length > 1 ? 'Otros DOC REFERENCIA: '+ nro_doc_referencia_a_observaciones.toString().replace(/\./g, '') : data2[j].observacion
