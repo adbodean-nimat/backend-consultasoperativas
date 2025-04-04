@@ -140,6 +140,21 @@ async function getControl() {
     }
   }
 
+  async function getListaClientes2(getData){
+    try {
+      let pool = await sql.connect(config.plataforma);
+      let lista = await pool.request()
+      .input('fechaDesde', sql.Date, getData.fechadesde)
+      .input('fechaHasta', sql.Date, getData.fechahasta)
+      .query("DECLARE @Usuario_que_dieron_alta_clientes TABLE(AUDI_FECHA datetime, AUCL_CLIENTE int, CLIE_NOMBRE varchar(30), AUDI_USUARIO varchar(8), USUA_NOMBRE varchar(30), AUDI_INSERTA decimal(1,0)) INSERT INTO @Usuario_que_dieron_alta_clientes SELECT SEGU_AUDI.AUDI_FECHA ,CCOB_AUCL.AUCL_CLIENTE ,CCOB_CLIE.CLIE_NOMBRE ,SEGU_AUDI.AUDI_USUARIO ,SEGU_USUA.USUA_NOMBRE ,SEGU_AUDI.AUDI_INSERTA FROM((SEGU_AUDI WITH (NOLOCK) INNER JOIN CCOB_AUCL WITH (NOLOCK) ON SEGU_AUDI.AUDI_AUDITOR = CCOB_AUCL.AUCL_AUDITOR) INNER JOIN SEGU_USUA WITH (NOLOCK) ON SEGU_AUDI.AUDI_USUARIO = SEGU_USUA.USUA_USUARIO) INNER JOIN CCOB_CLIE WITH (NOLOCK) ON CCOB_AUCL.AUCL_CLIENTE = CCOB_CLIE.CLIE_CLIENTE WHERE (((SEGU_AUDI.AUDI_INSERTA)=1)) SELECT FORMAT(CAST(CCOB_CLIE.CLIE_FECHA_ALTA as DATE), 'yyyy-MM-dd') AS [Fecha_alta_cliente] ,CCOB_CLIE.CLIE_CLIENTE AS [Nro_cliente] ,CCOB_CLIE.CLIE_NOMBRE AS [Nombre_cliente] ,CCOB_DCLI.DCLI_RENGLON AS [Cod_domic] ,CASE WHEN CCOB_DCLI.DCLI_FAX IS NULL THEN '' ELSE CCOB_DCLI.DCLI_FAX END AS [Fax_celular] ,IIf(ISNULL(CASE WHEN CCOB_DCLI.DCLI_FAX IS NULL THEN '' ELSE CCOB_DCLI.DCLI_FAX END,0)='','',IIF(Len(DCLI_FAX)=10,'','Completar, revisar «Fax (celular)»')) AS Verificacion ,CCOB_CLIE.CLIE_EMAIL ,CASE WHEN CCOB_CLIE.CLIE_EMAIL LIKE '%_@_%_.__%' AND PATINDEX('%[^a-z,0-9,@,.,_,\-]%', CCOB_CLIE.CLIE_EMAIL) = 0 THEN 'Tiene' ELSE 'No tiene / Revisar email' END AS [Validar_Email] ,CCOB_DCLI.DCLI_TELEFONO AS Telefono ,CCOB_DCLI.DCLI_OBSERVACION AS [Observ_domicilio] ,CCOB_CLIE.CLIE_COBRADOR AS Cobrador ,SIST_VEND.VEND_NOMBRE AS Vendedor ,[@Usuario_que_dieron_alta_clientes].AUDI_USUARIO AS [Auditoria] ,[@Usuario_que_dieron_alta_clientes].USUA_NOMBRE AS [Nombre_Usuario] FROM ((CCOB_CLIE WITH (NOLOCK) INNER JOIN CCOB_DCLI WITH (NOLOCK) ON CCOB_CLIE.CLIE_CLIENTE = CCOB_DCLI.DCLI_CLIENTE) INNER JOIN (CCOB_VECL WITH (NOLOCK) INNER JOIN SIST_VEND WITH (NOLOCK) ON CCOB_VECL.VECL_VENDEDOR = SIST_VEND.VEND_VENDEDOR) ON CCOB_CLIE.CLIE_CLIENTE = CCOB_VECL.VECL_CLIENTE) INNER JOIN @Usuario_que_dieron_alta_clientes ON CCOB_VECL.VECL_CLIENTE = [@Usuario_que_dieron_alta_clientes].AUCL_CLIENTE WHERE CCOB_CLIE.CLIE_FECHA_ALTA BETWEEN @fechaDesde AND @fechaHasta");
+      return lista.recordsets;
+    }
+    catch (error) {
+      console.log(error);
+    }
+  }
+
+
 async function getOrder(fechaAlta) {
   try {
     let  pool = await  sql.connect(config.plataforma);
@@ -818,6 +833,7 @@ async function ConsultasClientes(getData){
     getControl: getControl,
     getOrder: getOrder,
     getListaClientes: getListaClientes,
+    getListaClientes2: getListaClientes2,
     getNPpendienteEntregaContenedores: getNPpendienteEntregaContenedores,
     getListaContenedores: getListaContenedores,
     getLPPYRStock: getLPPYRStock,

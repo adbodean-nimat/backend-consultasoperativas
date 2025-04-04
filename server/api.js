@@ -161,6 +161,15 @@ router.route('/listadeclientes').get((request, response) => {
   })
 })
 
+router.route('/listadeclientes2').get((request, response) => {
+  const fdesde = request.query.fechadesde
+  const fhasta = request.query.fechahasta
+  const getData = {fechadesde: fdesde, fechahasta: fhasta}
+  Db.getListaClientes2(getData).then((data) => {
+    response.json(data[0]);
+  })
+})
+
 router.route('/listacontenedores').get((request, response)=>{
   Db.getListaContenedores().then((data)=>{
     response.json(data[0]);
