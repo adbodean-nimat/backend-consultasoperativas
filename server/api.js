@@ -291,7 +291,8 @@ router.route('/stockartsclasif6').get((request, response)=>{
 })
 
 router.route('/lpvnrubrosvtasacopio').get((request, response)=>{
- Db.getRubrosVtaAcopio().then((data)=>{
+  const getData = {PerfilComercial: request.query.perfilcomercial, fechaDesde: request.query.fechadesde}
+  Db.getRubrosVtaAcopio(getData).then((data)=>{
   response.json(data[0])
  })
 })
