@@ -15,12 +15,14 @@ var LdapStrategy = require('passport-ldapauth');
 var compression = require('compression');
 var CronJob = require('cron').CronJob
 const path = require('path');
+const http = require('http');
 const https = require('https');
 const fs = require('fs');
 const httpsOptions = {
   key: fs.readFileSync(process.env.SSL_KEY),
   cert: fs.readFileSync(process.env.SSL_CERT)
 }
+const httpsAgent = new https.Agent({ rejectUnauthorized: false }); 
 const jwt = require("jsonwebtoken");
 const { get } = require('lodash');
 const verifyUserToken = (req, res, next) => {
@@ -843,10 +845,14 @@ router.route('/artsclasif5alconsultar').post(Pg.createArtsClasif5AlConsultar)
 router.route('/artsclasif5alconsultar/:id').put(Pg.updateArtsClasif5AlConsultar)
 router.route('/artsclasif5alconsultar/:id').delete(Pg.deleteArtsClasif5AlConsultar)
 
-const port = 8090;
+const httpPort = 8099;
+const httpsPort = 8090;
 
 const httpsServer = https.createServer(httpsOptions, app)
+const httpServer = http.createServer(app)
 
-httpsServer.listen(port);
+httpServer.listen(httpPort);
+httpsServer.listen(httpsPort);
 
-console.log('API is runnning at ' + port);
+console.log('API is runnning at ' + httpsPort);
+console.log('API is runnning at ' + httpPort);
