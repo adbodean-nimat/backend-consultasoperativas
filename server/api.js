@@ -406,6 +406,21 @@ router.route('/consultaordenescompraultfecharemi').get((request, response)=>{
 })
 
 router.route('/consultasaldosctacte').get((request, response)=>{
+  const getDataNombre = request.query.nombre
+  const getDataCliente = request.query.codcliente
+  const getDataFactura = request.query.numerofactura
+  const getDataQR = request.query.qr
+  const getData = getDataCliente ? {cliente: getDataCliente } 
+  : getDataFactura ? { factura: getDataFactura } 
+  : getDataQR ? { qr: getDataQR } 
+  : getDataNombre ? { nombre: getDataNombre } 
+  : null
+  Db.ConsultaSaldosCtaCte(getData).then((data)=>{
+    response.json(data[0]);
+  })
+})
+
+router.route('/consultasaldosctacteremito').get((request, response)=>{
   const getDataRemito = request.query.remito
   const getDataNombre = request.query.nombre
   const getDataCliente = request.query.codcliente
@@ -417,7 +432,7 @@ router.route('/consultasaldosctacte').get((request, response)=>{
   : getDataNombre ? { nombre: getDataNombre } 
   : getDataRemito ? { remito: getDataRemito }
   : null
-  Db.ConsultaSaldosCtaCte(getData).then((data)=>{
+  Db.ConsultaSaldosCtaCteRemito(getData).then((data)=>{
     response.json(data[0]);
   })
 })

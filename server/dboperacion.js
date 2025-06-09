@@ -781,6 +781,28 @@ async function ConsultaSaldosCtaCte(getData){
   try{
     console.log(getData)
     let pool = await sql.connect(config.plataforma);
+    let addNombre = getData.nombre ? "AND ((CCOB_CLIE.CLIE_NOMBRE) LIKE '%"+ getData.nombre +"%')" : ''
+    let addCliente = getData.cliente ? "AND ((CCOB_CVCL.CVCL_CLIENTE) = @cliente)" : ''
+    let addFactura = getData.factura ? "AND ((CCOB_CVCL.CVCL_NUMERO_CVCL) = @factura)" : ''
+    let addQR = getData.qr ? "AND ((VENT_NPCA.NPCA_REFERENCIA) = @qr )" : ''
+    let ConsultaSaldos = await pool.request()
+    .input('nombre', sql.VarChar(30), getData.nombre)
+    .input('cliente', sql.Numeric, getData.cliente)
+    .input('factura', sql.Numeric, getData.factura)
+    .input('qr', sql.VarChar(20), getData.qr)
+    .query("SELECT CCOB_CVCL.CVCL_FECHA_EMI AS FECHA_EMI ,CCOB_CVCL.CVCL_CLIENTE ,CCOB_CLIE.CLIE_NOMBRE ,CCOB_VCTC.VCTC_NUM_CUOTA ,CCOB_VCTC.VCTC_IMP_ORI AS IMPORTE ,CCOB_VCTC.VCTC_SAL_ORI AS SALDO ,CCOB_CVCL.CVCL_DIVISION_CVCL ,CCOB_CVCL.CVCL_SUCURSAL_IMP ,CCOB_CVCL.CVCL_TIPO_VAR ,CCOB_CVCL.CVCL_NUMERO_CVCL ,VENT_NPCA.NPCA_REFERENCIA FROM(((((CCOB_CVCL WITH (NOLOCK) INNER JOIN CCOB_CLIE WITH (NOLOCK) ON CCOB_CVCL.CVCL_CLIENTE = CCOB_CLIE.CLIE_CLIENTE) INNER JOIN CCOB_CVCC WITH (NOLOCK) ON (CCOB_CVCL.CVCL_NUMERO_CVCL = CCOB_CVCC.CVCC_NUMERO_CVCL) AND (CCOB_CVCL.CVCL_TIPO_VAR = CCOB_CVCC.CVCC_TIPO_CVCL) AND (CCOB_CVCL.CVCL_SUCURSAL_IMP = CCOB_CVCC.CVCC_SUCURSAL_CVCL) AND (CCOB_CVCL.CVCL_DIVISION_CVCL = CCOB_CVCC.CVCC_DIVISION_CVCL)) LEFT JOIN CCOB_VCTC WITH (NOLOCK) ON CCOB_CVCC.CVCC_CTACTE_CTEC = CCOB_VCTC.VCTC_CTACTE_CTEC) INNER JOIN CCOB_CTEC WITH (NOLOCK) ON CCOB_CVCC.CVCC_CTACTE_CTEC = CCOB_CTEC.CTEC_CTACTE_CTEC) INNER JOIN CCOB_CPCL WITH (NOLOCK) ON CCOB_CTEC.CTEC_COND_PAGO = CCOB_CPCL.CPCL_COND_PAGO) LEFT JOIN (VENT_NPCF WITH (NOLOCK) LEFT JOIN VENT_NPCA WITH (NOLOCK) ON (VENT_NPCF.NPCF_DIVISION_NPCA = VENT_NPCA.NPCA_DIVISION_NPCA) AND (VENT_NPCF.NPCF_TIPO_NPCA = VENT_NPCA.NPCA_TIPO_NPCA) AND (VENT_NPCF.NPCF_NUMERO_NPCA = VENT_NPCA.NPCA_NUMERO_NPCA)) ON (CCOB_CVCL.CVCL_NUMERO_CVCL = VENT_NPCF.NPCF_NUMERO_CVCL) AND (CCOB_CVCL.CVCL_TIPO_VAR = VENT_NPCF.NPCF_TIPO_CVCL) AND (CCOB_CVCL.CVCL_SUCURSAL_IMP = VENT_NPCF.NPCF_SUCURSAL_CVCL) AND (CCOB_CVCL.CVCL_DIVISION_CVCL = VENT_NPCF.NPCF_DIVISION_CVCL) WHERE (CCOB_CVCL.CVCL_TIPO_VAR IN ('FCA', 'FCB', 'NCA', 'NCB', 'CCA', 'CCB')) AND (CCOB_CLIE.CLIE_CLASIF_1 NOT IN ('REA')) AND ((CCOB_VCTC.VCTC_SAL_ORI)>0)" + addCliente + addFactura + addQR + addNombre + "GROUP BY CCOB_CVCL.CVCL_FECHA_EMI ,CCOB_CVCL.CVCL_CLIENTE ,CCOB_CLIE.CLIE_NOMBRE ,CCOB_VCTC.VCTC_NUM_CUOTA ,CCOB_VCTC.VCTC_IMP_ORI ,CCOB_VCTC.VCTC_SAL_ORI ,CCOB_CVCL.CVCL_DIVISION_CVCL ,CCOB_CVCL.CVCL_SUCURSAL_IMP ,CCOB_CVCL.CVCL_TIPO_VAR ,CCOB_CVCL.CVCL_NUMERO_CVCL ,VENT_NPCA.NPCA_REFERENCIA");
+    return ConsultaSaldos.recordsets
+  }
+  catch(error){
+    console.log(error)
+
+  }
+}
+
+async function ConsultaSaldosCtaCteRemito(getData){ 
+  try{
+    console.log(getData)
+    let pool = await sql.connect(config.plataforma);
     let addRemito = getData.remito ? "AND ((dbo.STOC_MSMV.MSMV_NUMERO_MSVA) = @remito)" : ''
     let addNombre = getData.nombre ? "AND ((CCOB_CLIE.CLIE_NOMBRE) LIKE '%"+ getData.nombre +"%')" : ''
     let addCliente = getData.cliente ? "AND ((CCOB_CVCL.CVCL_CLIENTE) = @cliente)" : ''
@@ -882,5 +904,6 @@ async function ConsultasClientes(getData){
     getCheckQR: getCheckQR,
     ConsultaOrdenesCompraFechaUltRem: ConsultaOrdenesCompraFechaUltRem,
     ConsultaSaldosCtaCte: ConsultaSaldosCtaCte,
-    ConsultasClientes: ConsultasClientes
+    ConsultasClientes: ConsultasClientes,
+    ConsultaSaldosCtaCteRemito: ConsultaSaldosCtaCteRemito
   }
