@@ -202,6 +202,42 @@ router.route('/listaconstsecosql').get((request, response) => {
   })
 })
 
+router.route('/stoctiar').get((request, response) => {
+  Db.getSQL_STOC_TIAR().then((data)=> {
+    response.json(data[0]);
+  })
+})
+
+router.route('/clasificacion8').get((request, response) => {
+  Db.getSQL_STOC_CA08().then((data)=> {
+    response.json(data[0]);
+  })
+})
+
+router.route('/stocdpos').get((request, response) => { 
+  Db.getSQL_STOC_DPOS().then((data)=> {
+    response.json(data[0]);
+  }) 
+})
+
+router.route('/venttcve').get((request, response) => {
+  Db.getSQL_VENT_TCVE().then((data)=> {
+    response.json(data[0]);
+  })
+})
+
+router.route('/stoctcst').get((request, response) => {
+  Db.getSQL_STOC_TCST().then((data)=> {
+    response.json(data[0]);
+  })
+})
+
+router.route('/cpagrubc').get((request, response) => {
+  Db.getSQL_CPAG_RUBC().then((data)=> {
+    response.json(data[0]);
+  })
+})
+
 router.route('/ventdca1').get((request, response) => {
   Db.getSQL_VENT_DCA1().then((data)=> {
     response.json(data[0]);
@@ -440,6 +476,48 @@ router.route('/consultasaldosctacteremito').get((request, response)=>{
 router.route('/consultaclientes/:nombre').get((request, response)=>{
   const getData = {nombre: request.params.nombre}
   Db.ConsultasClientes(getData).then((data)=>{
+    response.json(data[0]);
+  })
+})
+
+router.route('/gdc/itemsreclamadosalproveedor').get((request, response)=>{
+  Db.gdc_itemsReclamadosAlProveedor().then((data)=>{
+    response.json(data[0]);
+  })
+})
+
+router.route('/gdc/itemsvinculadasaoc').get((request, response)=>{
+  Db.gdc_itemsVinculadasAOC().then((data)=>{
+    response.json(data[0]);
+  })
+})
+
+router.route('/gdc/infodeartquesecomprancorrientemente').get((request, response)=>{
+  const getData = { 
+    Cant_días_atrás_para_evaluar_SM4: request.query.cantdiasatrasparaevaluarsm4, 
+    Dias_hacia_atrás_fecha_de_NP: request.query.diashaciaatrasfechadeNP, 
+    Comprador: request.query.comprador,
+    Rubros: !request.query.rubros ? null : request.query.rubros}
+  Db.gdc_consolidacion(getData).then((data)=>{
+    response.json(data[0]);
+  })
+})
+
+router.route('/gdc/itemreclamadosalproveedor').get((request, response)=>{
+  Db.gdc_itemreclamadosalproveedor().then((data)=>{
+    response.json(data[0]);
+  })
+})
+
+router.route('/gdc/verartsderivados/:codigo').get((request, response)=>{
+  const getData =  {codigo: request.params.codigo}
+  Db.gdc_getArtsDerivados(getData).then((data)=>{
+    response.json(data[0]);
+  })
+})
+
+router.route('/gdc/itemsvinculadosaoc/').get((request, response)=>{
+  Db.gdc_itemsVinculadosAOC().then((data)=>{
     response.json(data[0]);
   })
 })
@@ -859,6 +937,32 @@ router.route('/artsclasif5alconsultar').get(Pg.getArtsClasif5AlConsultar)
 router.route('/artsclasif5alconsultar').post(Pg.createArtsClasif5AlConsultar)
 router.route('/artsclasif5alconsultar/:id').put(Pg.updateArtsClasif5AlConsultar)
 router.route('/artsclasif5alconsultar/:id').delete(Pg.deleteArtsClasif5AlConsultar)
+
+// Tabla Gestión de Compras
+router.route('/gdc/modosdestockminimo').get(Pg.gdc_modosdestockminimo)
+router.route('/gdc/modosdestockminimo').post(Pg.gdc_modosdestockminimocreate)
+router.route('/gdc/modosdestockminimodelete/:id').delete(Pg.gdc_modosdestockminimodelete)
+router.route('/gdc/modosdestockminimoupdate/:id').put(Pg.gdc_modosdestockminimoupdate)
+
+router.route('/gdc/clasif8artquesecompran').get(Pg.gdc_clasif8artquesecompran)
+router.route('/gdc/clasif8artquesecomprandelete/:id').delete(Pg.gdc_clasif8artquesecompranDelete)
+router.route('/gdc/clasif8artquesecompranupdate').post(Pg.gdc_clasif8artquesecompranUpdate)
+
+router.route('/gdc/deposanoconsiderarparastock').get(Pg.gdc_deposanoconsiderarparastock)
+router.route('/gdc/deposanoconsiderarparastockdelete/:id').delete(Pg.gdc_deposanoconsiderarparastockDelete)
+router.route('/gdc/deposanoconsiderarparastockupdate').post(Pg.gdc_deposanoconsiderarparastockUpdate)
+
+router.route('/gdc/npstockcomprometido').get(Pg.gdc_npstockcompromvtasespecialespendentregaaclientes)
+router.route('/gdc/npstockcomprometidodelete/:id').delete(Pg.gdc_npstockcompromvtasespecialespendentregaaclientesDelete)
+router.route('/gdc/npstockcomprometidoupdate').post(Pg.gdc_npstockcompromvtasespecialespendentregaaclientesUpdate)
+
+router.route('/gdc/chapastiposqueladefinen').get(Pg.gdc_chapastiposqueladefinen)
+router.route('/gdc/chapastiposqueladefinendelete/:id').delete(Pg.gdc_chapastiposqueladefinenDelete)
+router.route('/gdc/chapastiposqueladefinenupdate').post(Pg.gdc_chapastiposqueladefinenUpdate)
+
+router.route('/gdc/remitosdeventas').get(Pg.gdc_remitosdeventas)
+router.route('/gdc/remitosdeventasdelete/:id').delete(Pg.gdc_remitosdeventasDelete)
+router.route('/gdc/remitosdeventasupdate').post(Pg.gdc_remitosdeventasUpdate)
 
 const httpPort = 8099;
 const httpsPort = 8090;

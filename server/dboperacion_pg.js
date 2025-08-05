@@ -1738,6 +1738,235 @@ const deleteArtsClasif5StockManual = (request, response) => {
     })
 }
 
+const gdc_modosdestockminimo = (request, response) => {
+    pool.query('SELECT * FROM public.gdc_modosdestockminimo', (error, results) =>{
+        if (error){
+            throw error
+        }
+        response.status(200).json(results.rows)
+    })
+}
+
+const gdc_modosdestockminimocreate = (request, response) => {
+    const {Cod_modo_stock, Nombre_modo_stock} = request.body
+
+    pool.query(
+        'INSERT INTO public.gdc_modosdestockminimo("Cod_modo_stock", "Nombre_modo_stock") VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET "Cod_modo_stock" = $1, "Nombre_modo_stock" = $2;', 
+        [Cod_modo_stock, Nombre_modo_stock], (error, results) => {
+        if (error){
+            throw error
+        }
+        response.status(201).send(`Agregar correctamente`)
+    })
+}
+
+const gdc_modosdestockminimoupdate = (request, response) => {
+    const id = parseInt(request.params.id)
+    const {Cod_modo_stock, Nombre_modo_stock} = request.body
+
+    pool.query(
+        'UPDATE public.gdc_modosdestockminimo SET "Cod_modo_stock"= $1, "Nombre_modo_stock"= $2 WHERE id = $3;',
+        [Cod_modo_stock, Nombre_modo_stock, id ], (error, results) => {
+            if (error){
+                throw error
+            }
+            response.status(200).send(`Modificado correctamente`)
+        }
+    )
+}
+
+const gdc_modosdestockminimodelete = (request, response) => {
+    const id = parseInt(request.params.id)
+    pool.query(
+        'DELETE FROM public.gdc_modosdestockminimo WHERE id = $1;',
+        [id], (error, results) => {
+            if (error){
+                throw error
+            }
+            response.status(200).send(`Eliminado correctamente`)
+        }
+    )
+}
+
+
+const gdc_clasif8artquesecompran = (request, response) => {
+    pool.query('SELECT * FROM public.gdc_clasif8artquesecompran', (error, results) =>{
+        if (error){
+            throw error
+        }
+        response.status(200).json(results.rows)
+    })
+}
+
+const gdc_clasif8artquesecompranUpdate = (request, response) => {
+    const {id, Cod_clasif8, Nombre_clasif8, Observacion} = request.body
+
+    pool.query(
+        'INSERT INTO public.gdc_clasif8artquesecompran(id, "Cod_clasif8", "Nombre_clasif8", "Observacion") VALUES ($1, $2, $3, $4) ON CONFLICT (id) DO UPDATE SET "Cod_clasif8" = $2, "Nombre_clasif8" = $3, "Observacion" = $4;',
+        [id, Cod_clasif8, Nombre_clasif8, Observacion], (error, results) => {
+            if (error){
+                throw error
+            }
+            response.status(200).send(`Modificado correctamente`)
+        }
+    )
+}
+
+const gdc_clasif8artquesecompranDelete = (request, response) => {
+    const id = parseInt(request.params.id)
+    pool.query(
+        'DELETE FROM public.gdc_clasif8artquesecompran WHERE id = $1;',
+        [id], (error, results) => {
+            if (error){
+                throw error
+            }
+            response.status(200).send(`Eliminado correctamente`)
+        }
+    )
+}
+
+const gdc_deposanoconsiderarparastock = (request, response) => {
+    pool.query('SELECT * FROM public.gdc_deposanoconsiderarparastock', (error, results) =>{ 
+        if (error){
+            throw error
+        }
+        response.status(200).json(results.rows)
+    }   )
+}
+
+const gdc_deposanoconsiderarparastockUpdate = (request, response) => {
+    const {id, Cod_Depos, Nombre_Depos} = request.body
+
+    pool.query(
+        'INSERT INTO public.gdc_deposanoconsiderarparastock(id, "Cod_Depos", "Nombre_Depos") VALUES ($1, $2, $3) ON CONFLICT (id) DO UPDATE SET "Cod_Depos" = $2, "Nombre_Depos" = $3;',
+        [id, Cod_Depos, Nombre_Depos], (error, results) => {
+            if (error){
+                throw error
+            }
+            response.status(200).send(`Modificado correctamente`)
+        }
+    )
+}
+
+const gdc_deposanoconsiderarparastockDelete = (request, response) => {
+    const id = parseInt(request.params.id)
+    pool.query(
+        'DELETE FROM public.gdc_deposanoconsiderarparastock WHERE id = $1;',
+        [id], (error, results) => {
+            if (error){
+                throw error
+            }
+            response.status(200).send(`Eliminado correctamente`)
+        }
+    )
+}
+
+const gdc_npstockcompromvtasespecialespendentregaaclientes = (request, response) => {
+    pool.query('SELECT * FROM public."gdc_npstockcomprom-vtasespeciales-pendentregaaclientes"', (error, results) =>{
+        if (error){
+            throw error
+        }
+        response.status(200).json(results.rows)
+    })
+}
+
+const gdc_npstockcompromvtasespecialespendentregaaclientesUpdate = (request, response) => {
+    const {id, Cod_NP, Nombre_NP} = request.body
+
+    pool.query('INSERT INTO public."gdc_npstockcomprom-vtasespeciales-pendentregaaclientes"(id, "Cod_NP", "Nombre_NP") VALUES ($1, $2, $3) ON CONFLICT (id) DO UPDATE SET "Cod_NP" = $2, "Nombre_NP" = $3;',
+        [id, Cod_NP, Nombre_NP], (error, results) => {
+            if (error){
+                throw error
+            }
+            response.status(200).send(`Modificado correctamente`)
+        }
+    )
+}
+
+const gdc_npstockcompromvtasespecialespendentregaaclientesDelete = (request, response) => {
+    const id = parseInt(request.params.id)
+    pool.query(
+        'DELETE FROM public."gdc_npstockcomprom-vtasespeciales-pendentregaaclientes"	WHERE id = $1;',
+        [id], (error, results) => {
+            if (error){
+                throw error
+            }
+            response.status(200).send(`Eliminado correctamente`)
+        }
+    )
+}
+
+const gdc_chapastiposqueladefinen = (request, response) => {
+    pool.query('SELECT * FROM public.gdc_chapastiposqueladefinen', (error, results) =>{
+        if (error){
+            throw error
+        }
+        response.status(200).json(results.rows)
+    })
+}
+
+const gdc_chapastiposqueladefinenUpdate = (request, response) => {
+    const {id, Cod_tipo, Nombre_tipo} = request.body
+
+    pool.query(
+        'INSERT INTO public.gdc_chapastiposqueladefinen(id, "Cod_tipo", "Nombre_tipo") VALUES ($1, $2, $3) ON CONFLICT (id) DO UPDATE SET "Cod_tipo" = $2, "Nombre_tipo" = $3;',
+        [id, Cod_tipo, Nombre_tipo], (error, results) => {
+            if (error){
+                throw error
+            }
+            response.status(200).send(`Modificado correctamente`)
+        }
+    )
+}
+
+const gdc_chapastiposqueladefinenDelete = (request, response) => {
+    const id = parseInt(request.params.id)
+    pool.query(
+        'DELETE FROM public.gdc_chapastiposqueladefinen	WHERE id = $1;',
+        [id], (error, results) => {
+            if (error){
+                throw error
+            }
+            response.status(200).send(`Eliminado correctamente`)
+        }
+    )
+}
+
+const gdc_remitosdeventas = (request, response) => {
+    pool.query('SELECT * FROM public.gdc_remitosdeventas', (error, results) =>{
+        if (error){
+            throw error
+        }
+        response.status(200).json(results.rows)
+    })
+}
+
+const gdc_remitosdeventasUpdate = (request, response) => {
+    const {id, Cod_Comp, Nombre_Comp} = request.body
+
+    pool.query(
+        'INSERT INTO public.gdc_remitosdeventas(id, "Cod_Comp", "Nombre_Comp") VALUES ($1, $2, $3) ON CONFLICT (id) DO UPDATE SET "Cod_Comp" = $2, "Nombre_Comp" = $3;',
+        [id, Cod_Comp, Nombre_Comp], (error, results) => {
+            if (error){
+                throw error
+            }
+            response.status(200).send(`Modificado correctamente`)
+        }
+    )
+}
+
+const gdc_remitosdeventasDelete = (request, response) => {
+    const id = parseInt(request.params.id)
+    pool.query(
+        'DELETE FROM public.gdc_remitosdeventas WHERE id = $1;',
+        [id], (error, results) => {
+            if (error){
+                throw error
+            }
+            response.status(200).send(`Eliminado correctamente`)
+        }
+    )
+}
 
 
 module.exports = {
@@ -1771,5 +2000,11 @@ module.exports = {
     getAcindarEquivalCodFactorCant, updateAcindarEquivalCodFactorCant, createAcindarEquivalCodFactorCant, deleteAcindarEquivalCodFactorCant,
     getFiltroAcindarPTF, updateFiltroAcindarPTF, createFiltroAcindarPTF, deleteFiltroAcindarPTF,
     getArtsClasif5StockManual, updateArtsClasif5StockManual, createArtsClasif5StockManual, deleteArtsClasif5StockManual,
-    getArtsClasif5AlConsultar, updateArtsClasif5AlConsultar, createArtsClasif5AlConsultar, deleteArtsClasif5AlConsultar
+    getArtsClasif5AlConsultar, updateArtsClasif5AlConsultar, createArtsClasif5AlConsultar, deleteArtsClasif5AlConsultar,
+    gdc_modosdestockminimo, gdc_modosdestockminimodelete, gdc_modosdestockminimocreate, gdc_modosdestockminimoupdate,
+    gdc_clasif8artquesecompran, gdc_clasif8artquesecompranUpdate, gdc_clasif8artquesecompranDelete, 
+    gdc_deposanoconsiderarparastock, gdc_deposanoconsiderarparastockUpdate, gdc_deposanoconsiderarparastockDelete,
+    gdc_npstockcompromvtasespecialespendentregaaclientes, gdc_npstockcompromvtasespecialespendentregaaclientesUpdate, gdc_npstockcompromvtasespecialespendentregaaclientesDelete,
+    gdc_chapastiposqueladefinen, gdc_chapastiposqueladefinenUpdate, gdc_chapastiposqueladefinenDelete,
+    gdc_remitosdeventas, gdc_remitosdeventasUpdate, gdc_remitosdeventasDelete
 }
