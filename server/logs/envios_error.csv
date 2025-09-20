@@ -1,0 +1,8 @@
+date_iso,date_local,to,perfil,status,http_status,wa_code,wa_subcode,wa_type,fbtrace_id,error_message,template_name,filename,media_id
+2025-09-19T18:25:25.338Z,"19/9/2025, 03:25:25",+543455281448,REB,ENVIADO_ERROR,,,,,,to requerido,nimat_distribuciones_test,REB DISTRIBUCION.pdf,
+2025-09-19T18:29:31.428Z,"19/9/2025, 03:29:31",+543455281448,REB,ENVIADO_ERROR,,,,,,to requerido,nimat_distribuciones_test,REB DISTRIBUCION.pdf,
+2025-09-19T18:29:31.436Z,"19/9/2025, 03:29:31",+543454326820,REA,ENVIADO_ERROR,,,,,,to requerido,nimat_distribuciones_test,REA DISTRIBUCION.pdf,
+2025-09-19T18:39:45.806Z,"19/9/2025, 03:39:45",+543455281448,REA,ENVIADO_ERROR,,,,,,to requerido,nimat_distribuciones_test,REA DISTRIBUCION.pdf,
+2025-09-19T18:43:40.470Z,"19/9/2025, 03:43:40",+543454326820,REA,ENVIADO_ERROR,,,,,,to requerido,nimat_distribuciones_test,REA DISTRIBUCION.pdf,
+2025-09-19T18:45:42.886Z,"19/9/2025, 03:45:42",+543454326820,REA,ENVIADO_ERROR,,,,,,to requerido,nimat_distribuciones_test,REA DISTRIBUCION.pdf,
+2025-09-19T18:46:54.055Z,"19/9/2025, 03:46:54",+543454326820,REA,ENVIADO_ERROR,,,,,,to requerido,nimat_distribuciones_test,REA DISTRIBUCION.pdf,

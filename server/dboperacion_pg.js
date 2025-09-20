@@ -1066,6 +1066,16 @@ const getCategoriasWeb = (request, response) => {
     })
 }
 
+const getCategoriasWeb2 = async (req, res, next) => {
+    try {
+      const { rows } = await pool.query('SELECT * FROM public.categorias');
+      return rows;
+    } catch (err) {
+        console.error('Error fetching categorias:', err);
+        throw err;
+    }
+  };
+
 const updateCategoriasWeb = (request, response) => {
     const id = parseInt(request.params.id)
     const {id_categorias, nombre_categorias} = request.body
@@ -1114,6 +1124,16 @@ const getArticulosWeb = (request, response) => {
         response.status(200).json(results.rows)
     })
 }
+
+const getArticulosWeb2 = async (req, res, next) => {
+    try {
+      const { rows } = await pool.query('SELECT * FROM public.articulos');
+      return rows;
+    } catch (err) {
+        console.error('Error fetching articulos:', err);
+        throw err;
+    }
+  };
 
 const updateArticulosWeb = (request, response) => {
     const id = parseInt(request.params.id)
@@ -1968,6 +1988,107 @@ const gdc_remitosdeventasDelete = (request, response) => {
     )
 }
 
+// Tabla GDD - Gestion de Distribucion Clientes
+
+const gdd_clientes_distribuciones = (request, response) => {
+    pool.query('SELECT * FROM public.gdd_clientes_distribuciones', (error, results) =>{
+        if (error){
+            throw error
+        }
+        response.status(200).json(results.rows)
+    })
+}
+
+const gdd_clientes_distribucionesCreate = (request, response) => {
+    const {cod_cliente, nombre_cliente, perfilcomercial_cliente, domicilio_cliente, zonas_distribucion_cliente, nro_whatsapp_cliente, rubros_ventas, habilitado, localidad_cliente, provincia_cliente, nombre_zonas_distribucion_cliente} = request.body
+    pool.query(
+        'INSERT INTO public.gdd_clientes_distribuciones(cod_cliente, nombre_cliente, perfilcomercial_cliente, domicilio_cliente, zonas_distribucion_cliente, nro_whatsapp_cliente, rubros_ventas, habilitado, localidad_cliente, provincia_cliente, nombre_zonas_distribucion_cliente) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11);', 
+        [cod_cliente, nombre_cliente, perfilcomercial_cliente, domicilio_cliente, zonas_distribucion_cliente, nro_whatsapp_cliente, rubros_ventas, habilitado, localidad_cliente, provincia_cliente, nombre_zonas_distribucion_cliente], (error, results) => {
+        if (error){
+            throw error
+        }
+        response.status(201).send(`Agregar correctamente`)
+    }
+    )
+}
+
+const gdd_clientes_distribucionesUpdate = (request, response) => {
+    const {id, cod_cliente, nombre_cliente, perfilcomercial_cliente, domicilio_cliente, zonas_distribucion_cliente, nro_whatsapp_cliente, rubros_ventas, habilitado, localidad_cliente, provincia_cliente, nombre_zonas_distribucion_cliente} = request.body
+    pool.query(
+        'UPDATE public.gdd_clientes_distribuciones SET id= $1, cod_cliente=$2, nombre_cliente=$3, perfilcomercial_cliente=$4, domicilio_cliente=$5, zonas_distribucion_cliente=$6, nro_whatsapp_cliente=$7, rubros_ventas=$8, habilitado=$9, localidad_cliente=$10, provincia_cliente=$11, nombre_zonas_distribucion_cliente=$12 WHERE id = $1;',
+        [id, cod_cliente, nombre_cliente, perfilcomercial_cliente, domicilio_cliente, zonas_distribucion_cliente, nro_whatsapp_cliente, rubros_ventas, habilitado, localidad_cliente, provincia_cliente, nombre_zonas_distribucion_cliente], (error, results) => {
+            if (error){
+                throw error
+            }
+            response.status(200).send(`Modificado correctamente`)
+        }
+    )
+}
+
+const gdd_clientes_distribucionesDelete = (request, response) => {
+    const id = parseInt(request.params.id)
+    pool.query(
+        'DELETE FROM public.gdd_clientes_distribuciones WHERE id = $1;',
+        [id], (error, results) => {
+            if (error){
+                throw error
+            }   
+            response.status(200).send(`Eliminado correctamente`)
+        }
+    )
+}
+
+// Tabla GDD - Gestion de Distribucion Parametros
+
+const gdd_parametros_distribuciones = (request, response) => {
+    pool.query('SELECT * FROM public.gdd_parametros_distribuciones', (error, results) =>{
+        if (error){
+            throw error
+        }
+        response.status(200).json(results.rows)
+    })
+}
+
+const gdd_parametros_distribucionesCreate = (request, response) => {
+    const {id, perfil_comercial_defecto, dto_financiero, cant_dias_desde_cambios_precio, cant_modif_minimo} = request.body
+    pool.query(
+        'INSERT INTO public.gdd_parametros_distribuciones(id, perfil_comercial_defecto, dto_financiero, cant_dias_desde_cambios_precio, cant_modif_minimo) VALUES ($1, $2, $3, $4, $5);',
+        [id, perfil_comercial_defecto, dto_financiero, cant_dias_desde_cambios_precio, cant_modif_minimo], (error, results) => {
+        if (error){
+            throw error
+        }
+        response.status(201).send(`Agregar correctamente`)
+    }
+    )
+}
+
+const gdd_parametros_distribucionesUpdate = (request, response) => {
+    const {id, perfil_comercial_defecto, dto_financiero, cant_dias_desde_cambios_precio, cant_modif_minimo} = request.body
+    pool.query(
+        'UPDATE public.gdd_parametros_distribuciones SET id= $1, perfil_comercial_defecto=$2, dto_financiero=$3, cant_dias_desde_cambios_precio=$4, cant_modif_minimo=$5 WHERE id = $1;',
+        [id, perfil_comercial_defecto, dto_financiero, cant_dias_desde_cambios_precio, cant_modif_minimo], (error, results) => {
+            if (error){
+                throw error
+            }
+            response.status(200).send(`Modificado correctamente`)
+        }
+    )
+}
+
+const gdd_parametros_distribucionesDelete = (request, response) => {
+    const id = parseInt(request.params.id)
+    pool.query(
+        'DELETE FROM public.gdd_parametros_distribuciones WHERE id = $1;',
+        [id], (error, results) => {
+            if (error){
+                throw error
+            }
+            response.status(200).send(`Eliminado correctamente`)
+        }
+    )
+}
+
+
 
 module.exports = {
     getDeposANoConsiderar, getDeposANoConsiderarByCod, createDepos, updateDepos, deleteDepos,
@@ -2006,5 +2127,8 @@ module.exports = {
     gdc_deposanoconsiderarparastock, gdc_deposanoconsiderarparastockUpdate, gdc_deposanoconsiderarparastockDelete,
     gdc_npstockcompromvtasespecialespendentregaaclientes, gdc_npstockcompromvtasespecialespendentregaaclientesUpdate, gdc_npstockcompromvtasespecialespendentregaaclientesDelete,
     gdc_chapastiposqueladefinen, gdc_chapastiposqueladefinenUpdate, gdc_chapastiposqueladefinenDelete,
-    gdc_remitosdeventas, gdc_remitosdeventasUpdate, gdc_remitosdeventasDelete
+    gdc_remitosdeventas, gdc_remitosdeventasUpdate, gdc_remitosdeventasDelete,
+    getArticulosWeb2, getCategoriasWeb2,
+    gdd_clientes_distribuciones, gdd_clientes_distribucionesCreate, gdd_clientes_distribucionesUpdate, gdd_clientes_distribucionesDelete,
+    gdd_parametros_distribuciones, gdd_parametros_distribucionesCreate, gdd_parametros_distribucionesUpdate, gdd_parametros_distribucionesDelete
 }

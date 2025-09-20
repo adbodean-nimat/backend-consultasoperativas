@@ -409,7 +409,7 @@ async function getPlanillaImportarStock(){
       ];
       let response = await Promise.all(endpoints4.map((endpoint4) => axios.get(endpoint4,{httpsAgent, headers: {'Authorization': `Basic ${token}`,'Accept-Encoding': 'gzip, deflate, br'}}))).then(
         ([{data: firstResponse}, {data: secundResponse}, {data: threeResponse}, {data: fourResponse}]) => {
-            console.log(fourResponse)
+            //console.log(fourResponse)
             var results = [];
             for (var i=0; i<firstResponse.length; i++) {
                 for (var j=0; j<secundResponse.length; j++) {

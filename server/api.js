@@ -1,30 +1,36 @@
-var Db = require('./dboperacion');
-var Pg = require('./dboperacion_pg');
-var DbCAD = require('./dboperacion_cad');
-var jConfig = require('./jconfig');
-var fsConfig = require('./fsconfig');
-var jsonToExcel = require('./jsontoexcel');
-var jsonToTXT = require('./jsontotxt');
-var express = require('express');
-var bodyParser = require('body-parser');
-var cors = require('cors');
-var app = express();
-var router = express.Router();
-var passport = require('passport');
-var LdapStrategy = require('passport-ldapauth');
-var compression = require('compression');
-var CronJob = require('cron').CronJob
+const Db = require('./dboperacion');
+const Pg = require('./dboperacion_pg');
+const DbCAD = require('./dboperacion_cad');
+const jConfig = require('./jconfig');
+const fsConfig = require('./fsconfig');
+const jsonToExcel = require('./jsontoexcel');
+const jsonToTXT = require('./jsontotxt');
+const { enviarListaPreciosPorPerfil } = require('./whatsapp');
+const { logEnviadoOk, logErrorEnvio } = require('./whatsapp_logger.js');
+const express = require('express');
+const bodyParser = require('body-parser');
+const cors = require('cors');
+const passport = require('passport');
+const LdapStrategy = require('passport-ldapauth');
+const compression = require('compression');
+const CronJob = require('cron').CronJob
 const path = require('path');
 const http = require('http');
 const https = require('https');
 const fs = require('fs');
+const jwt = require("jsonwebtoken");
+const morgan = require('morgan');
+const rfs = require('rotating-file-stream');
+const app = express();
+const accessLogStream = rfs.createStream('api.log', {
+  interval: '1d',
+  path: path.join(__dirname, 'logs')
+})
+const router = express.Router();
 const httpsOptions = {
   key: fs.readFileSync(process.env.SSL_KEY),
   cert: fs.readFileSync(process.env.SSL_CERT)
 }
-const httpsAgent = new https.Agent({ rejectUnauthorized: false }); 
-const jwt = require("jsonwebtoken");
-const { get } = require('lodash');
 const verifyUserToken = (req, res, next) => {
   if (!req.headers.authorization) {
     return res.status(401).send("Solicitud no autorizada");
@@ -41,6 +47,7 @@ const verifyUserToken = (req, res, next) => {
     res.status(400).send("Token inválido.");
   }
 };
+app.use(morgan('combined', { stream: accessLogStream }))
 passport.use(new LdapStrategy({
   server: {
     url: process.env.LDAP_URL,
@@ -494,10 +501,10 @@ router.route('/gdc/itemsvinculadasaoc').get((request, response)=>{
 
 router.route('/gdc/infodeartquesecomprancorrientemente').get((request, response)=>{
   const getData = { 
-    Cant_días_atrás_para_evaluar_SM4: request.query.cantdiasatrasparaevaluarsm4, 
-    Dias_hacia_atrás_fecha_de_NP: request.query.diashaciaatrasfechadeNP, 
-    Comprador: request.query.comprador,
-    Rubros: !request.query.rubros ? null : request.query.rubros}
+    "Cant_días_atrás_para_evaluar_SM4": request.query.cantdiasatrasparaevaluarsm4, 
+    "Dias_hacia_atrás_fecha_de_NP": request.query.diashaciaatrasfechadeNP, 
+    "Comprador": !request.query.comprador ? null : request.query.comprador,
+    "Rubros": !request.query.rubros ? null : request.query.rubros}
   Db.gdc_consolidacion(getData).then((data)=>{
     response.json(data[0]);
   })
@@ -519,6 +526,22 @@ router.route('/gdc/verartsderivados/:codigo').get((request, response)=>{
 router.route('/gdc/itemsvinculadosaoc/').get((request, response)=>{
   Db.gdc_itemsVinculadosAOC().then((data)=>{
     response.json(data[0]);
+  })
+})
+
+router.route('/gdd/clientesdistribuciones/:codcliente').get((request, response)=>{
+  Db.getClientesDistribuciones(request.params.codcliente).then((data)=>{ 
+    response.json(data[0]);
+  })
+})
+
+router.route('/tiemposentregas').get((request, response)=>{
+  const fecha = {fechadesde: request.query.fechadesde, fechahasta: request.query.fechahasta}
+  Db.tiemposEntregas(fecha).then((data)=>{ 
+    response.json(data[0]);
+  }).catch((err)=>{
+    console.log(err)
+    response.status(500).json({error: err})
   })
 })
 
@@ -613,6 +636,7 @@ router.route('/planillaimportarwebcombo').get((request, response)=>{
 })
 
 router.route('/jsontosheet').get((request,response)=>{
+  //jsonToExcel.getFileExcelToOpenAi();
   jsonToExcel.jsontosheet().then((data)=>{
     response.status(200).send('Generado correctamente');
   })
@@ -659,13 +683,13 @@ router.route('/jsontosheetdownload').get((request, response)=>{
 async function getActualizadoWeb(){
   try{
     const data = await jsonToExcel.getActualizacionWeb();
-    console.log(data);
 
     const job_lunvie = new CronJob(
       await data.actualizacion_cron_lunesaviernes,
       function(){
         jsonToExcel.jsontosheet();
         jsonToExcel.actualizadoWeb();
+        //jsonToExcel.getFileExcelToOpenAi();
         console.log('Actualizado Web');                
       },
       null,
@@ -677,6 +701,7 @@ async function getActualizadoWeb(){
       function(){
         jsonToExcel.jsontosheet();
         jsonToExcel.actualizadoWeb();
+        //jsonToExcel.getFileExcelToOpenAi();
         console.log('Actualizado Web');
       },
       null,
@@ -963,6 +988,45 @@ router.route('/gdc/chapastiposqueladefinenupdate').post(Pg.gdc_chapastiposquelad
 router.route('/gdc/remitosdeventas').get(Pg.gdc_remitosdeventas)
 router.route('/gdc/remitosdeventasdelete/:id').delete(Pg.gdc_remitosdeventasDelete)
 router.route('/gdc/remitosdeventasupdate').post(Pg.gdc_remitosdeventasUpdate)
+
+router.route('/gdd/clientesdistribuciones').get(Pg.gdd_clientes_distribuciones)
+router.route('/gdd/clientesdistribuciones').post(Pg.gdd_clientes_distribucionesCreate)
+router.route('/gdd/clientesdistribucionesdelete/:id').delete(Pg.gdd_clientes_distribucionesDelete)
+router.route('/gdd/clientesdistribucionesupdate/:id').put(Pg.gdd_clientes_distribucionesUpdate)
+
+router.route('/gdd/parametrosdistribuciones').get(Pg.gdd_parametros_distribuciones)
+router.route('/gdd/parametrosdistribuciones').post(Pg.gdd_parametros_distribucionesCreate)
+router.route('/gdd/parametrosdistribucionesdelete/:id').delete(Pg.gdd_parametros_distribucionesDelete)
+router.route('/gdd/parametrosdistribucionesupdate/:id').put(Pg.gdd_parametros_distribucionesUpdate)
+
+router.route('/enviarxWhatsapp').post((request, response)=>{
+  const { to, perfil } = request.body || {};
+  try {
+    const out = enviarListaPreciosPorPerfil({ to, perfil });
+    const waId = out?.wa?.messages?.[0]?.id || '';
+    const filename = perfil === 'REA' ? process.env.PDF_FILENAME_REA : process.env.PDF_FILENAME_REB;
+    logEnviadoOk({
+      to: to,
+      perfil: perfil,
+      messageId: waId,
+      mediaId: out.mediaId,
+      templateName: process.env.TEMPLATE_NAME,
+      filename
+    });
+    response.status(200).json(out);
+    } catch (err) {
+    //const msg = err?.message || 'Error inesperado';
+    //const isBadReq = /E\.164|perfil inválido|Drive devolvió HTML/i.test(msg);
+    logErrorEnvio({
+      to,
+      perfil,
+      err,
+      templateName: process.env.TEMPLATE_NAME,
+      filename: perfil === 'REA' ? process.env.PDF_FILENAME_REA : process.env.PDF_FILENAME_REB
+    });
+    response.status(400).json({ ok: false, error: err?.message || 'Error' });
+    }
+})
 
 const httpPort = 8099;
 const httpsPort = 8090;
