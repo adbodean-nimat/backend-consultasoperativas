@@ -2000,10 +2000,10 @@ const gdd_clientes_distribuciones = (request, response) => {
 }
 
 const gdd_clientes_distribucionesCreate = (request, response) => {
-    const {cod_cliente, nombre_cliente, perfilcomercial_cliente, domicilio_cliente, zonas_distribucion_cliente, nro_whatsapp_cliente, rubros_ventas, habilitado, localidad_cliente, provincia_cliente, nombre_zonas_distribucion_cliente} = request.body
+    const {cod_cliente, nombre_cliente, perfilcomercial_cliente, domicilio_cliente, zonas_distribucion_cliente, nro_whatsapp_cliente, rubros_ventas, habilitado, localidad_cliente, provincia_cliente, nombre_zonas_distribucion_cliente, contacto} = request.body
     pool.query(
-        'INSERT INTO public.gdd_clientes_distribuciones(cod_cliente, nombre_cliente, perfilcomercial_cliente, domicilio_cliente, zonas_distribucion_cliente, nro_whatsapp_cliente, rubros_ventas, habilitado, localidad_cliente, provincia_cliente, nombre_zonas_distribucion_cliente) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11);', 
-        [cod_cliente, nombre_cliente, perfilcomercial_cliente, domicilio_cliente, zonas_distribucion_cliente, nro_whatsapp_cliente, rubros_ventas, habilitado, localidad_cliente, provincia_cliente, nombre_zonas_distribucion_cliente], (error, results) => {
+        'INSERT INTO public.gdd_clientes_distribuciones(cod_cliente, nombre_cliente, perfilcomercial_cliente, domicilio_cliente, zonas_distribucion_cliente, nro_whatsapp_cliente, rubros_ventas, habilitado, localidad_cliente, provincia_cliente, nombre_zonas_distribucion_cliente, contacto) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12);', 
+        [cod_cliente, nombre_cliente, perfilcomercial_cliente, domicilio_cliente, zonas_distribucion_cliente, nro_whatsapp_cliente, rubros_ventas, habilitado, localidad_cliente, provincia_cliente, nombre_zonas_distribucion_client, contacto], (error, results) => {
         if (error){
             throw error
         }
@@ -2013,10 +2013,10 @@ const gdd_clientes_distribucionesCreate = (request, response) => {
 }
 
 const gdd_clientes_distribucionesUpdate = (request, response) => {
-    const {id, cod_cliente, nombre_cliente, perfilcomercial_cliente, domicilio_cliente, zonas_distribucion_cliente, nro_whatsapp_cliente, rubros_ventas, habilitado, localidad_cliente, provincia_cliente, nombre_zonas_distribucion_cliente} = request.body
+    const {id, cod_cliente, nombre_cliente, perfilcomercial_cliente, domicilio_cliente, zonas_distribucion_cliente, nro_whatsapp_cliente, rubros_ventas, habilitado, localidad_cliente, provincia_cliente, nombre_zonas_distribucion_cliente, contacto} = request.body
     pool.query(
-        'UPDATE public.gdd_clientes_distribuciones SET id= $1, cod_cliente=$2, nombre_cliente=$3, perfilcomercial_cliente=$4, domicilio_cliente=$5, zonas_distribucion_cliente=$6, nro_whatsapp_cliente=$7, rubros_ventas=$8, habilitado=$9, localidad_cliente=$10, provincia_cliente=$11, nombre_zonas_distribucion_cliente=$12 WHERE id = $1;',
-        [id, cod_cliente, nombre_cliente, perfilcomercial_cliente, domicilio_cliente, zonas_distribucion_cliente, nro_whatsapp_cliente, rubros_ventas, habilitado, localidad_cliente, provincia_cliente, nombre_zonas_distribucion_cliente], (error, results) => {
+        'UPDATE public.gdd_clientes_distribuciones SET id= $1, cod_cliente=$2, nombre_cliente=$3, perfilcomercial_cliente=$4, domicilio_cliente=$5, zonas_distribucion_cliente=$6, nro_whatsapp_cliente=$7, rubros_ventas=$8, habilitado=$9, localidad_cliente=$10, provincia_cliente=$11, nombre_zonas_distribucion_cliente=$12, contacto=$13 WHERE id = $1;',
+        [id, cod_cliente, nombre_cliente, perfilcomercial_cliente, domicilio_cliente, zonas_distribucion_cliente, nro_whatsapp_cliente, rubros_ventas, habilitado, localidad_cliente, provincia_cliente, nombre_zonas_distribucion_cliente, contacto], (error, results) => {
             if (error){
                 throw error
             }
