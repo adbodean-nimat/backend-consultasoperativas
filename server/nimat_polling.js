@@ -108,15 +108,15 @@ const sdk = createNimatSdk({
 async function runOnceForPerfil(pf) {
   const recipients = recipientsByPerfil[pf] || [];
   if (!recipients.length) {
-    console.log(`[${pf}] No hay recipients configurados, salto.`);
+    //console.log(`[${pf}] No hay recipients configurados, salto.`);
     return { ok: true, sent: 0, reason: 'no-recipients' };
   }
-  console.log(`[${pf}] Chequeando cambios en Drive…`);
+  //console.log(`[${pf}] Chequeando cambios en Drive…`);
   const r = await sdk.sendIfChanged({ perfil: pf, recipients });
   if (r.reason === 'no-change') {
-    console.log(`[${pf}] Sin cambios → no se envía.`);
+    //console.log(`[${pf}] Sin cambios → no se envía.`);
   } else {
-    console.log(`[${pf}] Envíos realizados: ${r.sent}`);
+    //console.log(`[${pf}] Envíos realizados: ${r.sent}`);
   }
   return r;
 }
@@ -124,7 +124,7 @@ async function runOnceForPerfil(pf) {
 async function runOnce() {
   if (!dentroDeHorarioComercial()) {
     const now = new Date().toLocaleString('es-AR', { timeZone: TIMEZONE });
-    console.log(`[SKIP] Fuera de horario comercial (${now} ${TIMEZONE})`);
+    //console.log(`[SKIP] Fuera de horario comercial (${now} ${TIMEZONE})`);
     return;
   }
   await runOnceForPerfil('REA');
@@ -142,7 +142,7 @@ const TO = (process.argv.find(a => a.startsWith('--to=')) || '').split('=')[1];
       // prueba directa a una lista (coma separada) del perfil indicado
       const recs = parseRecipients(TO);
       const out = await sdk.sendIfChanged({ perfil: PF.toUpperCase(), recipients: recs });
-      console.log(JSON.stringify(out, null, 2));
+      //console.log(JSON.stringify(out, null, 2));
       return;
     }
     await runOnce();

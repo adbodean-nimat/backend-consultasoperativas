@@ -26,7 +26,7 @@ async function getListadePrecioBUI2() {
             return joined;
         } 
     ).catch(function (error) {
-        console.log(error);
+        console.error(error);
    });
     return response;  
 }
@@ -60,7 +60,7 @@ async function getConsSecoConfig() {
             return joined
         } 
     ).catch(function (error) {
-        console.log(error);
+        console.error(error);
    });
     return response;  
 }
@@ -105,7 +105,7 @@ async function getListaConstSeco() {
             return results;
         } 
     ).catch(function (error) {
-        console.log(error);
+        console.error(error);
    });
     return response;  
 }
@@ -178,7 +178,7 @@ async function getFamiliaArts() {
             return result2
         } 
     ).catch(function (error) {
-        console.log(error);
+        console.error(error);
    });
     return response;  
 }
@@ -230,7 +230,7 @@ async function getFamiliaArts2() {
             return result
         } 
     ).catch(function (error) {
-        console.log(error);
+        console.error(error);
    });
     return response;  
 }
@@ -285,7 +285,7 @@ async function getVN_1() {
             return results
         } 
     ).catch(function (error) {
-        console.log(error);
+        console.error(error);
    });
     return response  
 }
@@ -339,7 +339,7 @@ async function getVN_2() {
             return results
         } 
     ).catch(function (error) {
-        console.log(error);
+        console.error(error);
    });
     return response  
 }
@@ -395,7 +395,7 @@ async function getLPDistribucion(){
             return results;
         } 
     ).catch(function (error) {
-        console.log(error);
+        console.error(error);
    });
     return response2
 }
@@ -500,7 +500,7 @@ async function getPlanillaImportarStock(){
             return results2;
         } 
     ).catch(function (error) {
-        console.log(error);
+        console.error(error);
    });
     return response
 }
@@ -616,7 +616,7 @@ async function getInformesAcindar(){
                                 NRO_DOC_LEGAL: data3[k].comprobante_acindar.replace(/\./g, '') + '-' + data1[i].Comprobante.substring(0,4).replace(/\./g, '') + '-' + data1[i].Comprobante.substring(9).replace(/\./g, ''),
                                 TIPO_DOC_LEGAL: data3[k].tipo_doc_legal.replace(/\./g, ''),
                                 TIPO_DE_TRANSACCION: data3[k].tipo_de_transaccion.replace(/\./g, ''),
-                                ITEM_DOC_LEGAL: !data1[i].CVRF_RENGLON_CVRF ? '' : data1[i].CVRF_RENGLON_CVRF.replace(/\./g, ''),
+                                ITEM_DOC_LEGAL: data1[i].CVRF_RENGLON_CVRF,
                                 FECHA_DOC_LEGAL: data1[i].CVCL_FECHA_EMI.replace(/\./g, ''),
                                 NRO_DOC_REFERENCIA: nro_doc_referencia == "--" ? '': nro_doc_referencia.toString().replace(/\./g, ''),
                                 TIPO_DOC_REF: tipo_doc_referencia.toString().replace(/\./g, ''),
@@ -805,7 +805,7 @@ async function getInformesAcindarEntreFechas(getDates){
         return response
     }
     catch(e){
-        console.log(e)
+        console.error(e)
     }
 }
 
@@ -962,7 +962,7 @@ async function getInformesAcindarEntreFechasExportar(getDates){
         return response
     }
     catch(e){
-        console.log(e)
+        console.error(e)
     }
 }
 

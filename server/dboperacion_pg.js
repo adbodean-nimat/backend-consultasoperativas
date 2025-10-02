@@ -2003,7 +2003,7 @@ const gdd_clientes_distribucionesCreate = (request, response) => {
     const {cod_cliente, nombre_cliente, perfilcomercial_cliente, domicilio_cliente, zonas_distribucion_cliente, nro_whatsapp_cliente, rubros_ventas, habilitado, localidad_cliente, provincia_cliente, nombre_zonas_distribucion_cliente, contacto} = request.body
     pool.query(
         'INSERT INTO public.gdd_clientes_distribuciones(cod_cliente, nombre_cliente, perfilcomercial_cliente, domicilio_cliente, zonas_distribucion_cliente, nro_whatsapp_cliente, rubros_ventas, habilitado, localidad_cliente, provincia_cliente, nombre_zonas_distribucion_cliente, contacto) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12);', 
-        [cod_cliente, nombre_cliente, perfilcomercial_cliente, domicilio_cliente, zonas_distribucion_cliente, nro_whatsapp_cliente, rubros_ventas, habilitado, localidad_cliente, provincia_cliente, nombre_zonas_distribucion_client, contacto], (error, results) => {
+        [cod_cliente, nombre_cliente, perfilcomercial_cliente, domicilio_cliente, zonas_distribucion_cliente, nro_whatsapp_cliente, rubros_ventas, habilitado, localidad_cliente, provincia_cliente, nombre_zonas_distribucion_cliente, contacto], (error, results) => {
         if (error){
             throw error
         }

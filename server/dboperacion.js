@@ -14,7 +14,7 @@ async function getRubroVta(){
     return listaRubroVta.recordsets;
   }
   catch(error){
-    console.log(error);
+    console.error(error);
   }
 }
 
@@ -28,7 +28,7 @@ async function getRubrosVtaAcopio(getData){
     return listaRVAcopio.recordsets;
   }
   catch(error){
-    console.log(error);
+    console.error(error);
   }
 }
 
@@ -39,7 +39,7 @@ async function getVN_sin_dto_financ(){
     return VN_sin_dto_financ.recordsets
   }
   catch (error){
-    console.log(error);
+    console.error(error);
   }
 }
 
@@ -50,7 +50,7 @@ async function getClasificadorClientes(){
     return ClasifClientes.recordsets
   }
   catch (error){
-    console.log(error);
+    console.error(error);
   }
 }
 
@@ -61,7 +61,7 @@ async function getListaConstSecoSQL(){
     return infoLista.recordsets
   }
   catch (error){
-    console.log(error);
+    console.error(error);
   }
 }
 
@@ -72,7 +72,7 @@ async function getSQL_STOC_TIAR(){
     return infoLista.recordsets
   }
   catch (error){
-    console.log(error);
+    console.error(error);
   }
 }
 
@@ -83,7 +83,7 @@ async function getSQL_STOC_CA08(){
     return infoLista.recordsets
   }
   catch (error){
-    console.log(error);
+    console.error(error);
   }
 }
 
@@ -94,7 +94,7 @@ async function getSQL_STOC_DPOS(){
     return infoLista.recordsets
   }
   catch (error){
-    console.log(error);
+    console.error(error);
   }
 }
 
@@ -105,7 +105,7 @@ async function getSQL_VENT_TCVE(){
     return infoLista.recordsets
   }
   catch (error){
-    console.log(error);
+    console.error(error);
   }
 }
 
@@ -116,7 +116,7 @@ async function getSQL_STOC_TCST(){
     return infoLista.recordsets
   }
   catch (error){
-    console.log(error);
+    console.error(error);
   }
 }
 
@@ -127,7 +127,7 @@ async function getSQL_VENT_DCA1(){
     return infoLista.recordsets
   }
   catch (error){
-    console.log(error);
+    console.error(error);
   }
 }
 
@@ -138,7 +138,7 @@ async function getSQL_VENT_DVC1(){
     return infoLista.recordsets
   }
   catch (error){
-    console.log(error);
+    console.error(error);
   }
 }
 
@@ -149,7 +149,7 @@ async function getSQL_CPAG_RUBC(){
     return infoLista.recordsets
   }
   catch (error){
-    console.log(error);
+    console.error(error);
   }
 }
 
@@ -162,7 +162,7 @@ async function getListaPrecioBreveUsoInterno(){
     return infoLPB.recordsets
   }
   catch (error){
-    console.log(error);
+    console.error(error);
   }
 }
 
@@ -173,7 +173,7 @@ async function getListaContenedores(){
     return infoLista.recordsets;
   }
   catch (error){
-    console.log(error);
+    console.error(error);
   }
 }
 
@@ -184,7 +184,7 @@ async function getNPpendienteEntregaContenedores() {
     return infoPendiente.recordsets;
   }
   catch (error){
-    console.log(error);
+    console.error(error);
   }
 }
 
@@ -195,7 +195,7 @@ async function getControl() {
       return  info.recordsets;
     }
     catch (error) {
-      console.log(error);
+      console.error(error);
     }
   }
 
@@ -206,7 +206,7 @@ async function getControl() {
       return lista.recordsets;
     }
     catch (error) {
-      console.log(error);
+      console.error(error);
     }
   }
 
@@ -220,7 +220,7 @@ async function getListaClientes2(getData){
     return lista.recordsets;
   }
   catch (error) {
-    console.log(error);
+    console.error(error);
   }
 }
 
@@ -232,7 +232,7 @@ async function getClientesDistribuciones(idCliente) {
     .query("SELECT [CLIE_NOMBRE],[CLIE_DOMICILIO],[CLIE_LOCALIDAD],[CLIE_COD_POSTAL],[CLIE_PROVINCIA], [PCIA_NOMBRE], [CLIE_PAIS],[CLIE_CLASIF_1],[CLIE_ZONA_DISTRIB], [DIST_ZDIS].[ZDIS_NOMBRE], [CLIE_FAX] FROM [CCOB_CLIE] INNER JOIN [DIST_ZDIS] WITH(NOLOCK) ON CCOB_CLIE.CLIE_ZONA_DISTRIB = [DIST_ZDIS].ZDIS_ZONA_DISTRIB INNER JOIN [SIST_PCIA] WITH (NOLOCK) ON CCOB_CLIE.CLIE_PROVINCIA = [SIST_PCIA].PCIA_PROVINCIA WHERE CLIE_CLIENTE = @idCliente");
     return clientes.recordsets;
   } catch (error) {
-    console.log(error);
+    console.error(error);
   }
 }
 
@@ -245,7 +245,7 @@ async function getOrder(fechaAlta) {
     return  product.recordsets;
   }
   catch (error) {
-    console.log(error);
+    console.error(error);
   }
 }
 
@@ -258,7 +258,7 @@ async function getM2Saldo(M2Saldo){
     return M2xSaldo.recordsets;
   }
   catch(error){
-    console.log(error);
+    console.error(error);
   }
 }
 
@@ -271,7 +271,7 @@ async function getM2Art(M2Art){
     return M2xArt.recordsets;
   }
   catch (error){
-    console.log(error);
+    console.error(error);
   }
 }
 
@@ -284,7 +284,7 @@ async function getComboArt(comboArt){
     return ComboxArt.recordsets
   }
   catch (error){
-    console.log(error);
+    console.error(error);
   }
 }
 
@@ -298,7 +298,7 @@ async function getComboArt(comboArt){
       return VblesEntrNP.recordsets
     }
     catch (error){
-      console.log(error);
+      console.error(error);
     }
   }
 
@@ -309,7 +309,7 @@ async function getComboArt(comboArt){
       return listaprecios.recordsets;
     }
     catch (error){
-      console.log(error);
+      console.error(error);
     }
   }
 
@@ -320,7 +320,7 @@ async function getComboArt(comboArt){
       return listaprecios.recordsets;
     }
     catch (error) {
-      console.log(error);
+      console.error(error);
     }
   }
 
@@ -329,7 +329,7 @@ async function getComboArt(comboArt){
       let urlArray = `${process.env.URL_API}` + 'depositoanoconsiderarparastockfisico'
       const response = await axios.get(urlArray, {httpsAgent, headers: {'Authorization': `Bearer ${token}`}})
                                   .then(response => {results = []; data = response.data; for(var i = 0; i < data.length; i++){results.push(data[i]['codigo_deposito'])} return results })
-                                  .catch((error)=>{console.log(error)});
+                                  .catch((error)=>{console.error(error)});
       return ArrayDepositoANoConsiderar.push(response);
   }
   ArrayDeposaNoConsiderar();
@@ -342,7 +342,7 @@ async function getComboArt(comboArt){
       return listaStock.recordsets;
     }
     catch (error) {
-      console.log(error);
+      console.error(error);
     }
   }
 
@@ -354,7 +354,7 @@ async function getComboArt(comboArt){
       return listastock.recordsets;
     }
     catch(error){
-      console.log(error);
+      console.error(error);
     }
   }
 
@@ -363,7 +363,7 @@ async function getComboArt(comboArt){
       let urlArrayNPaConsiderar = `${process.env.URL_API}` + 'npaconsiderar'
       const response = await axios.get(urlArrayNPaConsiderar, {httpsAgent, headers: {'Authorization': `Bearer ${token}`}})
                                   .then(response => {results = []; data = response.data; for(var i = 0; i < data.length; i++){results.push(data[i]['cod_comp'])} return results })
-                                  .catch((error)=>{console.log(error)});
+                                  .catch((error)=>{console.error(error)});
       return Array.push(response);
   } 
   ArrayNPaConsiderar(); */
@@ -374,7 +374,7 @@ async function getComboArt(comboArt){
       let urlArrayNPaConsiderar = `${process.env.URL_API}` + 'npaconsiderar'
       await axios.get(urlArrayNPaConsiderar, {httpsAgent, headers: {'Authorization': `Bearer ${token}`}})
                                       .then(response => {results = []; data = response.data; for(var i = 0; i < data.length; i++){results.push(data[i]['cod_comp'])} return Array.push(results) })
-                                      .catch((error)=>{console.log(error)});
+                                      .catch((error)=>{console.error(error)});
       const NPaConsiderar = Array[0].map(x => `'${x}'`);
       const NPaConsiderarWithCommas = NPaConsiderar.join(',');
       let pool = await sql.connect(config.plataforma);
@@ -383,7 +383,7 @@ async function getComboArt(comboArt){
       return listaNP.recordsets;
     }
     catch(error){
-      console.log(error);
+      console.error(error);
     }
   }
 
@@ -392,7 +392,7 @@ async function getComboArt(comboArt){
   //     let urlArray = `${process.env.URL_API}` + 'artsclasif5stockmanual'
   //     const response = await axios.get(urlArray, {httpsAgent, headers: {'Authorization': `Bearer ${token}`}})
   //                                 .then(response => {results = []; data = response.data; for(var i = 0; i < data.length; i++){results.push(data[i])} return results })
-  //                                 .catch((error)=>{console.log(error)});
+  //                                 .catch((error)=>{console.error(error)});
   //     return ArrayArts.push(response);
   // } 
   // ArrayArtsClasif5StockManual();
@@ -403,7 +403,7 @@ async function getComboArt(comboArt){
       let urlArrayNPaConsiderar = `${process.env.URL_API}` + 'npaconsiderar'
       await axios.get(urlArrayNPaConsiderar, {httpsAgent, headers: {'Authorization': `Bearer ${token}`}})
                                       .then(response => {results = []; data = response.data; for(var i = 0; i < data.length; i++){results.push(data[i]['cod_comp'])} return Array.push(results) })
-                                      .catch((error)=>{console.log(error)});
+                                      .catch((error)=>{console.error(error)});
       const NPaConsiderar = Array[0].map(x => `'${x}'`);
       const NPaConsiderarWithCommas = NPaConsiderar.join(',');
       const DepositoANoConsiderar = ArrayDepositoANoConsiderar[0]
@@ -411,7 +411,7 @@ async function getComboArt(comboArt){
       let urlArray = `${process.env.URL_API}` + 'artsclasif5stockmanual'
       await axios.get(urlArray, {httpsAgent, headers: {'Authorization': `Bearer ${token}`}})
                                       .then(response => {results = []; data = response.data; for(var i = 0; i < data.length; i++){results.push(data[i])} return ArrayArts.push(results) })
-                                      .catch((error)=>{console.log(error)});
+                                      .catch((error)=>{console.error(error)});
       const ArtsClasif5 = ArrayArts[0].map(x => x.arts_clasif_5[0]['input'])
       const ArtsClasif5Stock = ArrayArts[0].map(x => x.stock_manual)[0]
       const ArtsClasif5WithCommas = ArtsClasif5[0].join(',')
@@ -422,7 +422,7 @@ async function getComboArt(comboArt){
       return stockfisico.recordsets;
     }
     catch(error){
-      console.log(error);
+      console.error(error);
     }
   }
 
@@ -433,7 +433,7 @@ async function getComboArt(comboArt){
       return listaprecio.recordsets;
     }
     catch(error){
-      console.log(error);
+      console.error(error);
     }
   }
 
@@ -444,7 +444,7 @@ async function getComboArt(comboArt){
       return listaPlanilla.recordsets;
     }
     catch(error){
-      console.log(error);
+      console.error(error);
     }
   }
 
@@ -455,7 +455,7 @@ async function getComboArt(comboArt){
       return listaArts.recordsets
     }
     catch(error){
-      console.log(error)
+      console.error(error)
     }
   }
 
@@ -475,7 +475,7 @@ async function getComboArt(comboArt){
           return Array.push(results)
         })
         .catch((error)=>{
-          console.log(error)
+          console.error(error)
         });
       const Array2 = [];
       await axios.get(urlArray, {httpsAgent, headers: {'Authorization': `Bearer ${token}`}})
@@ -490,7 +490,7 @@ async function getComboArt(comboArt){
           return Array2.push(results) 
         })
         .catch((error)=>{
-          console.log(error)
+          console.error(error)
         });
       const getListaC6 = Array;
       const ListaC6 = getListaC6.map(x => `'${x}'`);
@@ -504,7 +504,7 @@ async function getComboArt(comboArt){
       return listaStockArts.recordsets
     }
     catch(error){
-      console.log(error)
+      console.error(error)
     }
   }
 
@@ -515,7 +515,7 @@ async function getComboArt(comboArt){
       return listaStockArtsC5.recordsets
     }
     catch(error){
-      console.log(error)
+      console.error(error)
     }
   }
 
@@ -526,7 +526,7 @@ async function getComboArt(comboArt){
       return listaStockArtsC6.recordsets
     }
     catch(error){
-      console.log(error)
+      console.error(error)
     }
   }
 
@@ -535,7 +535,7 @@ async function getComboArt(comboArt){
       let urlArray = `${process.env.URL_API}` + 'deposanoconsiderar'
       const response = await axios.get(urlArray, {httpsAgent, headers: {'Authorization': `Bearer ${token}`}})
                                   .then(response => {results = []; data = response.data; for(var i = 0; i < data.length; i++){results.push(data[i]['cod_depos'])} return results })
-                                  .catch((error)=>{console.log(error)});
+                                  .catch((error)=>{console.error(error)});
       return ArrayDeposANoConsiderar.push(response);
   }
   ArrayDeposaNoConsiderar2();
@@ -546,7 +546,7 @@ async function getComboArt(comboArt){
       let urlArrayNPaConsiderar = `${process.env.URL_API}` + 'npaconsiderar'
       await axios.get(urlArrayNPaConsiderar, {httpsAgent, headers: {'Authorization': `Bearer ${token}`}})
                                       .then(response => {results = []; data = response.data; for(var i = 0; i < data.length; i++){results.push(data[i]['cod_comp'])} return Array.push(results) })
-                                      .catch((error)=>{console.log(error)});
+                                      .catch((error)=>{console.error(error)});
       const NPaConsiderar = Array[0].map(x => `'${x}'`);
       const NPaConsiderarWithCommas = NPaConsiderar.join(',');
       const DeposANoConsiderar = ArrayDeposANoConsiderar[0]
@@ -555,7 +555,7 @@ async function getComboArt(comboArt){
       return combo.recordsets
     }
     catch(error){
-      console.log(error)
+      console.error(error)
     }
   }
 
@@ -573,7 +573,7 @@ async function getComboArt(comboArt){
       return combo.recordsets
     }
     catch(error){
-      console.log(error)
+      console.error(error)
     }
   } */
 
@@ -583,7 +583,7 @@ async function getComboArt(comboArt){
       let urlArrayNPaConsiderar = `${process.env.URL_API}` + 'npaconsiderar'
       await axios.get(urlArrayNPaConsiderar, {httpsAgent, headers: {'Authorization': `Bearer ${token}`}})
                                       .then(response => {results = []; data = response.data; for(var i = 0; i < data.length; i++){results.push(data[i]['cod_comp'])} return Array.push(results) })
-                                      .catch((error)=>{console.log(error)});
+                                      .catch((error)=>{console.error(error)});
       const NPaConsiderar = Array[0].map(x => `'${x}'`);
       const NPaConsiderarWithCommas = NPaConsiderar.join(',');
       const DeposANoConsiderar = ArrayDeposANoConsiderar[0]
@@ -592,7 +592,7 @@ async function getComboArt(comboArt){
       return infoLP.recordsets;
     }
     catch (error){
-      console.log(error);
+      console.error(error);
     }
   }
 
@@ -602,12 +602,12 @@ async function getComboArt(comboArt){
       let urlArrayNPaConsiderar = `${process.env.URL_API}` + 'npaconsiderar'
       await axios.get(urlArrayNPaConsiderar, {httpsAgent, headers: {'Authorization': `Bearer ${token}`}})
                                       .then(response => {results = []; data = response.data; for(var i = 0; i < data.length; i++){results.push(data[i]['cod_comp'])} return Array.push(results) })
-                                      .catch((error)=>{console.log(error)});
+                                      .catch((error)=>{console.error(error)});
       const ArrayDepositoANoConsiderar = [];
       let urlArray = `${process.env.URL_API}` + 'depositoanoconsiderarparastockfisico'
       await axios.get(urlArray, {httpsAgent, headers: {'Authorization': `Bearer ${token}`}})
                                   .then(response => {results = []; data = response.data; for(var i = 0; i < data.length; i++){results.push(data[i]['codigo_deposito'])} return ArrayDepositoANoConsiderar.push(results) })
-                                  .catch((error)=>{console.log(error)});
+                                  .catch((error)=>{console.error(error)});
       const NPaConsiderar = Array[0].map(x => `'${x}'`);
       const NPaConsiderarWithCommas = NPaConsiderar.join(',');
       const DeposANoConsiderar = ArrayDepositoANoConsiderar[0]
@@ -616,7 +616,7 @@ async function getComboArt(comboArt){
       return comboweb.recordsets;
     }
     catch (error){
-      console.log(error);
+      console.error(error);
     }
   }
 
@@ -627,7 +627,7 @@ async function getUltimaVta(){
     return listaUltimaVta.recordsets;
   }
   catch(error){
-    console.log(error);
+    console.error(error);
   }
 }
 
@@ -636,7 +636,7 @@ async function ArrayComprobantesOmitir() {
   let urlArray = `${process.env.URL_API}` + 'comprobantesaomitir'
   const response = await axios.get(urlArray, {httpsAgent, headers: {'Authorization': `Bearer ${token}`}})
     .then(response => {results = []; data = response.data; for(var i = 0; i < data.length; i++){results.push(data[i]['cod_comprobante'])} return results })
-    .catch((error)=>{console.log(error)});
+    .catch((error)=>{console.error(error)});
   return ArrayComprobantes.push(response);
   } 
 ArrayComprobantesOmitir();
@@ -646,7 +646,7 @@ async function ArrayRemitosVtas() {
   let urlArray = `${process.env.URL_API}` + 'remitosvtas'
   const response = await axios.get(urlArray, {httpsAgent, headers: {'Authorization': `Bearer ${token}`}})
     .then(response => {results = []; data = response.data; for(var i = 0; i < data.length; i++){results.push(data[i]['cod_comprobante'])} return results })
-    .catch((error)=>{console.log(error)});
+    .catch((error)=>{console.error(error)});
   return ArrayComprobantes2.push(response);
   } 
 ArrayRemitosVtas();
@@ -657,14 +657,14 @@ async function AcopioCemento(fechaAlta){
     let urlArrayNPaConsiderar = `${process.env.URL_API}` + 'npaconsiderar'
     await axios.get(urlArrayNPaConsiderar, {httpsAgent, headers: {'Authorization': `Bearer ${token}`}})
                                     .then(response => {results = []; data = response.data; for(var i = 0; i < data.length; i++){results.push(data[i]['cod_comp'])} return Array.push(results) })
-                                    .catch((error)=>{console.log(error)});
+                                    .catch((error)=>{console.error(error)});
     const NPaConsiderar = Array[0].map(x => `'${x}'`);
     const NPaConsiderarWithCommas = NPaConsiderar.join(',');
     const ArrayDepositoANoConsiderar = [];
     let urlArray = `${process.env.URL_API}` + 'depositoanoconsiderarparastockfisico'
     await axios.get(urlArray, {httpsAgent, headers: {'Authorization': `Bearer ${token}`}})
                                   .then(response => {results = []; data = response.data; for(var i = 0; i < data.length; i++){results.push(data[i]['codigo_deposito'])} return ArrayDepositoANoConsiderar.push(results) })
-                                  .catch((error)=>{console.log(error)});
+                                  .catch((error)=>{console.error(error)});
     const DeposANoConsiderar = ArrayDepositoANoConsiderar[0]
     const CodComprobante = ArrayComprobantes[0].map(x => `'${x}'`);
     const ComprobanteAOmitir = CodComprobante.join(',');
@@ -677,7 +677,7 @@ async function AcopioCemento(fechaAlta){
     return listaAcopioCemento.recordsets;
   }
   catch(error){
-    console.log(error)
+    console.error(error)
   }
 }
 
@@ -686,7 +686,7 @@ async function ArrayArticulos() {
   let urlArray = `${process.env.URL_API}` + 'calescementosplasticor'
   const response = await axios.get(urlArray, {httpsAgent, headers: {'Authorization': `Bearer ${token}`}})
     .then(response => {results = []; data = response.data; for(var i = 0; i < data.length; i++){results.push(data[i]['cod_articulos'])} return results })
-    .catch((error)=>{console.log(error)});
+    .catch((error)=>{console.error(error)});
   return ArrayArticulosCalesCementosPlasticor.push(response);
   } 
 ArrayArticulos();
@@ -697,7 +697,7 @@ async function StockNPOC_CalesCementosPlasticor(){
   let urlArrayNPaConsiderar = `${process.env.URL_API}` + 'npaconsiderar'
   await axios.get(urlArrayNPaConsiderar, {httpsAgent, headers: {'Authorization': `Bearer ${token}`}})
                                   .then(response => {results = []; data = response.data; for(var i = 0; i < data.length; i++){results.push(data[i]['cod_comp'])} return Array.push(results) })
-                                  .catch((error)=>{console.log(error)});
+                                  .catch((error)=>{console.error(error)});
   const NPaConsiderar = Array[0].map(x => `'${x}'`);
   const NPaConsiderarWithCommas = NPaConsiderar.join(',');
   const DeposANoConsiderar = ArrayDepositoANoConsiderar[0]
@@ -710,7 +710,7 @@ async function StockNPOC_CalesCementosPlasticor(){
     return listaCalesCementosPlasticor.recordsets;
   }
   catch(error){
-    console.log(error);
+    console.error(error);
   }
 }
 
@@ -722,7 +722,7 @@ async function ListaClientesPlataforma(){
     return listaClientesPlataforma.recordsets
   }
   catch(error){
-    console.log(error);
+    console.error(error);
   }
 }
 
@@ -740,7 +740,7 @@ async function ArrayFiltrosClientesPlataforma() {
         }
       } 
       return results })
-    .catch((error)=>{console.log(error)});
+    .catch((error)=>{console.error(error)});
   return ArrayFiltrosClientes.push(response);
   } 
 ArrayFiltrosClientesPlataforma();
@@ -757,7 +757,7 @@ async function ArrayFiltrosClientesPlataforma2() {
         }
       } 
       return results })
-    .catch((error)=>{console.log(error)});
+    .catch((error)=>{console.error(error)});
   return ArrayFiltrosClientes2.push(response);
   } 
 ArrayFiltrosClientesPlataforma2();
@@ -776,7 +776,7 @@ async function ListaClientesPlataformaCtaCte(){
     return listaClientesPlataformaCtaCte.recordsets
   }
   catch(error){
-    console.log(error);
+    console.error(error);
   }
 }
 
@@ -788,7 +788,7 @@ async function ListaClientesPlataformaAcopios(){
     return listaClientesAcopios.recordsets
   }
   catch(error){
-    console.log(error);
+    console.error(error);
   }
 }
 
@@ -800,7 +800,7 @@ async function TiposDeClientes(){
     return listaTipos.recordsets
   }
   catch(error){
-    console.log(error);
+    console.error(error);
   }
 }
 
@@ -811,7 +811,7 @@ async function PerfilCrediticio(){
     return ListaPerfilC.recordsets
   }
   catch(error){
-    console.log(error);
+    console.error(error);
   }
 }
 
@@ -824,7 +824,7 @@ async function NP_Problema_EI(fechaDesde){
     return ListaNPCProblemaEI.recordsets
   }
   catch(error){
-    console.log(error);
+    console.error(error);
   }
 }
 
@@ -835,7 +835,7 @@ async function NCInformesAcindarPTF(){
     return ListaNCInformesAcindarPTF.recordsets
   }
   catch(error){
-    console.log(error)
+    console.error(error);
   }
 }
 
@@ -846,7 +846,7 @@ async function InformesAcindarPTF(){
     return ListaInformesAcindarPTF.recordsets
   }
   catch(error){
-    console.log(error);
+    console.error(error);
   }
 }
 
@@ -860,7 +860,7 @@ async function InformesAcindarPTFDate(getDates){
     return ListaInformesAcindarPTF.recordsets
   }
   catch(error){
-    console.log(error);
+    console.error(error);
   }
 }
 
@@ -874,7 +874,7 @@ async function NCInformesAcindarPTFDate(getDates){
     return ListaNCInformesAcindarPTF.recordsets
   }
   catch(error){
-    console.log(error)
+    console.error(error);
   }
 }
 
@@ -890,7 +890,7 @@ async function getCheckQR(getData){
     return ListaQR.recordsets
   }
   catch(error){
-    console.log(error)
+    console.error(error);
   }
 }
 
@@ -904,7 +904,7 @@ async function ConsultaOrdenesCompraFechaUltRem(getData){
     return ConsultaOC.recordsets
   }
   catch(error){
-    console.log(error)
+    console.error(error)
   }
 }
 
@@ -925,7 +925,7 @@ async function ConsultaSaldosCtaCte(getData){
     return ConsultaSaldos.recordsets
   }
   catch(error){
-    console.log(error)
+    console.error(error);
 
   }
 }
@@ -949,7 +949,7 @@ async function ConsultaSaldosCtaCteRemito(getData){
     return ConsultaSaldos.recordsets
   }
   catch(error){
-    console.log(error)
+    console.error(error);
 
   }
 }
@@ -963,7 +963,7 @@ async function ConsultasClientes(getData){
     return ConsultaCliente.recordsets
   }
   catch(error){
-    console.log(error)
+    console.error(error);
   }
 }
 
@@ -977,13 +977,13 @@ async function gdc_itemsReclamadosAlProveedor() {
                                 for(var i = 0; i < data.length; i++){results.push(data[i]['Cod_clasif8'])}
                                 return results;
                               })
-                              .catch((error) => {console.log(error)});
+                              .catch((error) => {console.error(error)});
     let pool = await sql.connect(config.plataforma);
     let gdcItemsReclamados = await pool.request()
       .query("WITH ArtQueSeCompranSegunClas8yRCMercado AS( SELECT STOC_ARCO.ARCO_RUBRO_COMPRA ,CPAG_RUBC.RUBC_NOMBRE ,STOC_ARTS.ARTS_ARTICULO ,STOC_ARTS.ARTS_ARTICULO_EMP ,STOC_ARTS.ARTS_NOMBRE ,STOC_CA08.CA08_CLASIF_8 ,STOC_CA08.CA08_NOMBRE FROM CPAG_RUBC WITH (NOLOCK) INNER JOIN ((STOC_ARCO WITH (NOLOCK) INNER JOIN STOC_ARTS WITH (NOLOCK) ON STOC_ARCO.ARCO_ARTICULO = STOC_ARTS.ARTS_ARTICULO) INNER JOIN STOC_CA08 WITH (NOLOCK) ON STOC_ARTS.ARTS_CLASIF_8 = STOC_CA08.CA08_CLASIF_8) ON CPAG_RUBC.RUBC_RUBRO_COMPRA = STOC_ARCO.ARCO_RUBRO_COMPRA WHERE (((CPAG_RUBC.RUBC_NOMBRE) LIKE '%(1)%')) AND STOC_CA08.CA08_CLASIF_8 IN (" + response2.join(',') + ")) SELECT COMP_CODC.CODC_PROVEEDOR ,CPAG_PROV.PROV_NOMBRE ,COMP_CODC.CODC_FECHA_OC ,COMP_CODC.CODC_DIVISION ,COMP_CODC.CODC_TIPO_OC ,COMP_CODC.CODC_NUM_OC ,COMP_RODC.RODC_ARTICULO ,STOC_ARTS.ARTS_ARTICULO_EMP ,STOC_ARTS.ARTS_NOMBRE ,COMP_RODC.RODC_CANT_PEDIDA ,COMP_RODC.RODC_CANT_RECIB ,IIf([RODC_CANT_PEDIDA]-[RODC_CANT_RECIB]>0,[RODC_CANT_PEDIDA]-[RODC_CANT_RECIB],0) AS [Cant pend ent] ,COMP_RODC.RODC_MOTIVO_CANC ,COMP_RODC.RODC_SECTOR FROM (CPAG_PROV WITH (NOLOCK) INNER JOIN ((((COMP_CODC WITH (NOLOCK) INNER JOIN COMP_RODC WITH (NOLOCK) ON (COMP_CODC.CODC_NUM_OC = COMP_RODC.RODC_NUM_OC) AND (COMP_CODC.CODC_TIPO_OC = COMP_RODC.RODC_TIPO_OC) AND (COMP_CODC.CODC_DIVISION = COMP_RODC.RODC_DIVISION)) INNER JOIN STOC_ARTS WITH (NOLOCK) ON COMP_RODC.RODC_ARTICULO = STOC_ARTS.ARTS_ARTICULO) INNER JOIN STOC_ARCO WITH (NOLOCK) ON COMP_RODC.RODC_ARTICULO = STOC_ARCO.ARCO_ARTICULO) INNER JOIN CPAG_RUBC WITH (NOLOCK) ON STOC_ARCO.ARCO_RUBRO_COMPRA = CPAG_RUBC.RUBC_RUBRO_COMPRA) ON CPAG_PROV.PROV_PROVEEDOR = COMP_CODC.CODC_PROVEEDOR) INNER JOIN ArtQueSeCompranSegunClas8yRCMercado ON STOC_ARTS.ARTS_ARTICULO = ArtQueSeCompranSegunClas8yRCMercado.ARTS_ARTICULO WHERE (((IIf([RODC_CANT_PEDIDA]-[RODC_CANT_RECIB]>0,[RODC_CANT_PEDIDA]-[RODC_CANT_RECIB],0))>0) AND ((COMP_RODC.RODC_MOTIVO_CANC) Is Null) AND ((COMP_RODC.RODC_SECTOR)='100'))");
     return gdcItemsReclamados.recordsets;
   } catch (error) {
-    console.log(error);
+    console.error(error);
   }
 }
 
@@ -997,14 +997,14 @@ async function gdc_itemsVinculadasAOC(){
                                 for(var i = 0; i < data.length; i++){results.push(data[i]['Cod_NP'])}
                                 return results;
                               })
-                              .catch((error)=>{console.log(error)});
+                              .catch((error)=>{console.error(error)});
     let pool = await sql.connect(config.plataforma);
     let gdcItemsVinculadasAOC = await pool.request()
       .query("SELECT Right('000000' + [CODC_PROVEEDOR],6) + '-' + [PROV_NOMBRE] AS Proveedor ,COMP_CODC.CODC_PROVEEDOR ,CPAG_PROV.PROV_NOMBRE ,COMP_CODC.CODC_FECHA_OC ,COMP_CODC.CODC_DIVISION ,COMP_CODC.CODC_TIPO_OC ,COMP_CODC.CODC_NUM_OC ,COMP_CODC.CODC_COND_PAGO ,CPAG_CPPR.CPPR_NOMBRE ,COMP_CODC.CODC_OBSERVACION ,STOC_ARTS.ARTS_ARTICULO_EMP ,STOC_ARTS.ARTS_NOMBRE ,COMP_RODC.RODC_DESC_AMPLIA ,COMP_RODC.RODC_CANT_PEDIDA ,COMP_RODC.RODC_CANT_RECIB ,IIf([RODC_CANT_PEDIDA]-[RODC_CANT_RECIB]>0,[RODC_CANT_PEDIDA]-[RODC_CANT_RECIB],0) AS [Cantpend_ent] ,SIST_OCNP.OCNP_CANT_VINC ,COMP_RODC.RODC_FECHA_ENTREGA ,COMP_RODC.RODC_MOTIVO_CANC ,STOC_ARCO.ARCO_RUBRO_COMPRA ,CPAG_RUBC.RUBC_NOMBRE ,SIST_OCNP.OCNP_RENGLON_NPDE ,VENT_NPCA.NPCA_FECHA_EMI AS [Fecha_NP] ,VENT_NPDE.NPDE_DIVISION_NPCA ,VENT_NPDE.NPDE_TIPO_NPCA ,VENT_NPDE.NPDE_NUMERO_NPCA ,VENT_NPCA.NPCA_CLIENTE ,CCOB_CLIE.CLIE_NOMBRE ,Right('0000000000' + [NPCA_CLIENTE],6) + '-' + [CLIE_NOMBRE] AS Cliente ,VENT_NPDE.NPDE_CANT_PEDIDA ,VENT_NPDE.NPDE_CANT_ENTREG ,VENT_NPDE.NPDE_CANT_FACTUR ,VENT_NPDE.NPDE_FECHA_CANC ,SIST_VEND.VEND_NOMBRE FROM((((((((CPAG_PROV WITH (NOLOCK) INNER JOIN ((((COMP_CODC WITH (NOLOCK) INNER JOIN COMP_RODC WITH (NOLOCK) ON (COMP_CODC.CODC_NUM_OC = COMP_RODC.RODC_NUM_OC) AND (COMP_CODC.CODC_TIPO_OC = COMP_RODC.RODC_TIPO_OC) AND (COMP_CODC.CODC_DIVISION = COMP_RODC.RODC_DIVISION)) INNER JOIN STOC_ARTS WITH (NOLOCK) ON COMP_RODC.RODC_ARTICULO = STOC_ARTS.ARTS_ARTICULO) INNER JOIN STOC_ARCO WITH (NOLOCK) ON COMP_RODC.RODC_ARTICULO = STOC_ARCO.ARCO_ARTICULO) INNER JOIN CPAG_RUBC WITH (NOLOCK) ON STOC_ARCO.ARCO_RUBRO_COMPRA = CPAG_RUBC.RUBC_RUBRO_COMPRA) ON CPAG_PROV.PROV_PROVEEDOR = COMP_CODC.CODC_PROVEEDOR) INNER JOIN SIST_OCNP WITH (NOLOCK) ON (COMP_RODC.RODC_REN_OC = SIST_OCNP.OCNP_RENGLON_RODC) AND (COMP_RODC.RODC_NUM_OC = SIST_OCNP.OCNP_NUMERO_CODC) AND (COMP_RODC.RODC_TIPO_OC = SIST_OCNP.OCNP_TIPO_CODC) AND (COMP_RODC.RODC_DIVISION = SIST_OCNP.OCNP_DIVISION_CODC)) INNER JOIN VENT_NPDE WITH (NOLOCK) ON (SIST_OCNP.OCNP_RENGLON_NPDE = VENT_NPDE.NPDE_RENGLON) AND (SIST_OCNP.OCNP_NUMERO_NPCA = VENT_NPDE.NPDE_NUMERO_NPCA) AND (SIST_OCNP.OCNP_DIVISION_NPCA = VENT_NPDE.NPDE_DIVISION_NPCA) AND (SIST_OCNP.OCNP_TIPO_NPCA = VENT_NPDE.NPDE_TIPO_NPCA)) INNER JOIN VENT_NPCA WITH (NOLOCK) ON (VENT_NPDE.NPDE_NUMERO_NPCA = VENT_NPCA.NPCA_NUMERO_NPCA) AND (VENT_NPDE.NPDE_TIPO_NPCA = VENT_NPCA.NPCA_TIPO_NPCA) AND (VENT_NPDE.NPDE_DIVISION_NPCA = VENT_NPCA.NPCA_DIVISION_NPCA)) INNER JOIN CCOB_CLIE WITH (NOLOCK) ON VENT_NPCA.NPCA_CLIENTE = CCOB_CLIE.CLIE_CLIENTE) INNER JOIN VENT_NPVE WITH (NOLOCK) ON (VENT_NPCA.NPCA_NUMERO_NPCA = VENT_NPVE.NPVE_NUMERO_NPCA) AND (VENT_NPCA.NPCA_TIPO_NPCA = VENT_NPVE.NPVE_TIPO_NPCA) AND (VENT_NPCA.NPCA_DIVISION_NPCA = VENT_NPVE.NPVE_DIVISION_NPCA)) INNER JOIN SIST_VEND WITH (NOLOCK) ON VENT_NPVE.NPVE_VENDEDOR = SIST_VEND.VEND_VENDEDOR) INNER JOIN CPAG_CPPR WITH (NOLOCK) ON COMP_CODC.CODC_COND_PAGO = CPAG_CPPR.CPPR_COND_PAGO) WHERE VENT_NPDE.NPDE_TIPO_NPCA IN (" + response4.map(x => `'${x}'`).join(',') + ")");
     return gdcItemsVinculadasAOC.recordsets;
   }
   catch (error) {
-    console.log(error);
+    console.error(error);
   }
 }
 
@@ -1023,7 +1023,7 @@ async function gdc_consolidacion(getData){
                                 for(var i = 0; i < data.length; i++){results.push(data[i])}
                                 return results;
                               })
-                              .catch((error)=>{console.log(error)});
+                              .catch((error)=>{console.error(error)});
     
     const response2 = await axios.get(urlArray2, {httpsAgent, headers: {'Authorization': `Bearer ${token}`}})
                               .then(response =>{
@@ -1032,7 +1032,7 @@ async function gdc_consolidacion(getData){
                                 for(var i = 0; i < data.length; i++){results.push(data[i]['Cod_clasif8'])}
                                 return results;
                               })
-                              .catch((error)=>{console.log(error)});
+                              .catch((error)=>{console.error(error)});
     
     const response3 = await axios.get(urlArray3, {httpsAgent, headers: {'Authorization': `Bearer ${token}`}})
                               .then(response =>{
@@ -1041,7 +1041,7 @@ async function gdc_consolidacion(getData){
                                 for(var i = 0; i < data.length; i++){results.push(data[i]['Cod_Depos'])}
                                 return results;
                               })
-                              .catch((error)=>{console.log(error)});
+                              .catch((error)=>{console.error(error)});
 
     const response4 = await axios.get(urlArray4, {httpsAgent, headers: {'Authorization': `Bearer ${token}`}})
                               .then(response =>{
@@ -1050,7 +1050,7 @@ async function gdc_consolidacion(getData){
                                 for(var i = 0; i < data.length; i++){results.push(data[i]['Cod_NP'])}
                                 return results;
                               })
-                              .catch((error)=>{console.log(error)});
+                              .catch((error)=>{console.error(error)});
                               
     const response5 = await axios.get(urlArray5, {httpsAgent, headers: {'Authorization': `Bearer ${token}`}})
                               .then(response =>{
@@ -1059,7 +1059,7 @@ async function gdc_consolidacion(getData){
                                 for(var i = 0; i < data.length; i++){results.push(data[i]['Cod_tipo'])}
                                 return results;
                               })
-                              .catch((error)=>{console.log(error)});
+                              .catch((error)=>{console.error(error)});
     
     const response6 = await axios.get(urlArray6, {httpsAgent, headers: {'Authorization': `Bearer ${token}`}})
                               .then(response =>{
@@ -1068,7 +1068,7 @@ async function gdc_consolidacion(getData){
                                 for(var i = 0; i < data.length; i++){results.push(data[i]['Cod_Comp'])}
                                 return results;
                               })
-                              .catch((error)=>{console.log(error)});
+                              .catch((error)=>{console.error(error)});
     let clasif8artquesecompran = response2.sort(function(a, b){return a - b}).join(',');
     let deposanoconsiderarparastock = response3.sort(function(a, b){return a - b}).join(',');
     let npstockcomprometido = response4.sort().map(x => `'${x}'`).join(',');
@@ -1077,8 +1077,8 @@ async function gdc_consolidacion(getData){
     let filtroxcomprador = !getData.Comprador ? '' : getData.Comprador == 'TODOS' ? '' : 'WHERE Left(ArtQueSeCompranSegunClas8yRCMercado.[RUBC_NOMBRE],3) = ' + `'${getData.Comprador}'`;
     let filtroxrubros = !getData.Rubros ? '' : getData.Comprador == 'TODOS' ? ' WHERE ArtQueSeCompranSegunClas8yRCMercado.[ARCO_RUBRO_COMPRA] IN (' + getData.Rubros + ')' : ' AND ArtQueSeCompranSegunClas8yRCMercado.[ARCO_RUBRO_COMPRA] IN (' + getData.Rubros + ')';
     
-    console.log('filtroxcomprador:', filtroxcomprador);
-    console.log('filtroxrubros:', filtroxrubros);
+    //console.log('filtroxcomprador:', filtroxcomprador);
+    //console.log('filtroxrubros:', filtroxrubros);
     
     let pool = await sql.connect(config.plataforma);
     let gdcConsolidacion = await pool.request()
@@ -1088,7 +1088,7 @@ async function gdc_consolidacion(getData){
     return gdcConsolidacion.recordsets;
   }
   catch(error) {
-    console.log(error);
+    console.error(error);
   }
 }
 
@@ -1102,14 +1102,14 @@ async function gdc_itemreclamadosalproveedor() {
                                 for(var i = 0; i < data.length; i++){results.push(data[i]['Cod_clasif8'])}
                                 return results;
                               })
-                              .catch((error)=>{console.log(error)});
+                              .catch((error)=>{console.error(error)});
     let clasif8artquesecompran = response2.sort(function(a, b){return a - b}).join(',');                
     let pool = await sql.connect(config.plataforma);
     let gdc_itemreclamadosalproveedor = await pool.request().query("WITH ArtQueSeCompranSegunClas8yRCMercado AS( SELECT STOC_ARCO.ARCO_RUBRO_COMPRA ,CPAG_RUBC.RUBC_NOMBRE ,STOC_ARTS.ARTS_ARTICULO ,STOC_ARTS.ARTS_ARTICULO_EMP ,STOC_ARTS.ARTS_NOMBRE ,STOC_CA08.CA08_CLASIF_8 ,STOC_CA08.CA08_NOMBRE FROM CPAG_RUBC WITH (NOLOCK) INNER JOIN ((STOC_ARCO WITH (NOLOCK) INNER JOIN STOC_ARTS WITH (NOLOCK) ON STOC_ARCO.ARCO_ARTICULO = STOC_ARTS.ARTS_ARTICULO) INNER JOIN STOC_CA08 WITH (NOLOCK) ON STOC_ARTS.ARTS_CLASIF_8 = STOC_CA08.CA08_CLASIF_8) ON CPAG_RUBC.RUBC_RUBRO_COMPRA = STOC_ARCO.ARCO_RUBRO_COMPRA WHERE (((CPAG_RUBC.RUBC_NOMBRE) LIKE '%(1)%')) AND STOC_CA08.CA08_CLASIF_8 IN ("+ clasif8artquesecompran +")) SELECT COMP_CODC.CODC_DIVISION ,COMP_CODC.CODC_TIPO_OC ,COMP_CODC.CODC_NUM_OC ,COMP_RODC.RODC_REN_OC ,FORMAT(COMP_CODC.CODC_FECHA_OC, 'dd/MM/yyyy') AS Fecha_OC ,STOC_ARTS.ARTS_ARTICULO_EMP ,STOC_ARTS.ARTS_NOMBRE ,SUM(IIf([RODC_CANT_PEDIDA]-[RODC_CANT_RECIB]>0,[RODC_CANT_PEDIDA]-[RODC_CANT_RECIB],0)) AS Pend_Entrega FROM ((COMP_CODC WITH (NOLOCK) INNER JOIN COMP_RODC WITH (NOLOCK) ON (COMP_CODC.CODC_NUM_OC = COMP_RODC.RODC_NUM_OC) AND (COMP_CODC.CODC_TIPO_OC = COMP_RODC.RODC_TIPO_OC) AND (COMP_CODC.CODC_DIVISION = COMP_RODC.RODC_DIVISION)) INNER JOIN STOC_ARTS WITH (NOLOCK) ON COMP_RODC.RODC_ARTICULO = STOC_ARTS.ARTS_ARTICULO) INNER JOIN ArtQueSeCompranSegunClas8yRCMercado ON STOC_ARTS.ARTS_ARTICULO = ArtQueSeCompranSegunClas8yRCMercado.ARTS_ARTICULO WHERE ((COMP_RODC.RODC_SECTOR)='100') AND ((IIf([RODC_CANT_PEDIDA]-[RODC_CANT_RECIB]>0,[RODC_CANT_PEDIDA]-[RODC_CANT_RECIB],0))>0) AND ((COMP_RODC.RODC_MOTIVO_CANC) Is Null) GROUP BY COMP_CODC.CODC_DIVISION ,COMP_CODC.CODC_TIPO_OC ,COMP_CODC.CODC_NUM_OC ,COMP_RODC.RODC_REN_OC ,COMP_CODC.CODC_FECHA_OC ,STOC_ARTS.ARTS_ARTICULO_EMP ,STOC_ARTS.ARTS_NOMBRE");
     return gdc_itemreclamadosalproveedor.recordsets;
   }
   catch(error) {
-    console.log(error);
+    console.error(error);
   }
 }
 
@@ -1123,7 +1123,7 @@ async function gdc_getArtsDerivados(getData){
     return infoLista.recordsets
   }
   catch (error){
-    console.log(error);
+    console.error(error);
   }
 }
 
@@ -1135,7 +1135,7 @@ async function gdc_itemsVinculadosAOC() {
     return gdc_itemsVinculadosAOC.recordsets;
   }
   catch (error) {
-    console.log(error);
+    console.error(error);
   }
 }
 
@@ -1150,7 +1150,7 @@ async function tiemposEntregas(fecha) {
     return listatiemposentregas.recordsets;
     }
     catch (error) {
-      console.log(error);
+      console.error(error);
     }
   }
 

@@ -93,7 +93,7 @@ async function getUsuariosCAD(){
         return resultsToCAD
     }
     catch(error){
-        console.log(error)
+        console.error(error)
     }
 }
 
@@ -114,11 +114,9 @@ async function jsontotxt(){
         xlsx.writeFile(wb, filePathXLSX);
         xlsx.writeFile(wb, filePathCSV);
         fs.writeFileSync(filePathTXT, dataToTxt.replaceAll(";","---"));
-        
-        
     }
     catch(error){
-        console.log(error)
+        console.error(error)
     }
 }
 

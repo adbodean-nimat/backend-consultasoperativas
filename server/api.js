@@ -67,7 +67,7 @@ app.use('/api', verifyUserToken, router);
 app.post('/login', function (req, res, next){
   passport.authenticate('ldapauth', {session: false}, function(err, user, info) {
     var error = err || info
-    //console.log(error);
+    console.error(error);
     if (req.statusCode){
       return res.status(req.statusCode).json(info.message) 
     }
@@ -540,7 +540,7 @@ router.route('/tiemposentregas').get((request, response)=>{
   Db.tiemposEntregas(fecha).then((data)=>{ 
     response.json(data[0]);
   }).catch((err)=>{
-    console.log(err)
+    console.error(err)
     response.status(500).json({error: err})
   })
 })
@@ -690,7 +690,7 @@ async function getActualizadoWeb(){
         jsonToExcel.jsontosheet();
         jsonToExcel.actualizadoWeb();
         //jsonToExcel.getFileExcelToOpenAi();
-        console.log('Actualizado Web');                
+        // console.log('Actualizado Web');                
       },
       null,
       true,
@@ -702,7 +702,7 @@ async function getActualizadoWeb(){
         jsonToExcel.jsontosheet();
         jsonToExcel.actualizadoWeb();
         //jsonToExcel.getFileExcelToOpenAi();
-        console.log('Actualizado Web');
+        // console.log('Actualizado Web');
       },
       null,
       true,
@@ -712,13 +712,13 @@ async function getActualizadoWeb(){
     if(await data.actualizacion_automatica == true){
       job_lunvie.start(); 
       job_sab.start();
-      console.log('Actualización automática: Iniciado');
+      // console.log('Actualización automática: Iniciado');
     } 
     
     if(await data.actualizacion_automatica == false){
       job_lunvie.stop();
       job_sab.stop();
-      console.log('Actualización automática: Detenido');
+      // console.log('Actualización automática: Detenido');
     }
 
     router.route('/job-stop').get((request, response)=>{
@@ -726,7 +726,7 @@ async function getActualizadoWeb(){
       job_lunvie.stop();
       job_sab.stop();
       response.status(200).json({message:'job stopped successfully'});
-      console.log('Actualización automática: Detenido');
+      // console.log('Actualización automática: Detenido');
     });
     
     router.route('/job-start').get((request, response)=>{
@@ -734,12 +734,12 @@ async function getActualizadoWeb(){
       job_lunvie.start();
       job_sab.start();
       response.status(200).json({message:'job start successfully'});
-      console.log('Actualización automática: Iniciado');
+      //console.log('Actualización automática: Iniciado');
     }); 
 
   }
   catch(error){
-    console.log(error);
+    console.error(error);
   }
   finally {
     console.log('Todas las tareas están hechas');
@@ -749,11 +749,11 @@ getActualizadoWeb();
 
 router.route('/job-restart').get((request, response)=>{
   setTimeout(()=>{
-    console.log('Reiniciando...')
+    //console.log('Reiniciando...')
     process.exit(0);
     }, 1000);
   response.status(200).json({message: 'job restart successfully'});
-  console.log('Actualización automática: Reiniciado');
+  //console.log('Actualización automática: Reiniciado');
 });
 
 router.route('/rowaplancanje').get(fsConfig.getFileExcel);

@@ -97,7 +97,7 @@ async function dispatchOne(evt) {
 
 async function loop() {
   const pool = await sql.connect(config);
-  console.log('Worker conectado. Enviando webhooks…');
+  //console.log('Worker conectado. Enviando webhooks…');
 
   setInterval(async () => {
     try {
@@ -118,14 +118,14 @@ async function loop() {
 
 const pool = await sql.connect(config);
 const batch = await claimBatch(pool);
-console.log('Tomé', batch.length, 'eventos.');
+//console.log('Tomé', batch.length, 'eventos.');
 
 for (const evt of batch) {
   try {
-    console.log('Enviando', evt.id, evt.op, evt.aggregate);
+    //console.log('Enviando', evt.id, evt.op, evt.aggregate);
     await dispatchOne(evt);
     await markSuccess(pool, evt.id);
-    console.log('OK', evt.id);
+    //console.log('OK', evt.id);
   } catch (e) {
     await markFailure(pool, evt.id, e);
     console.error('FALLÓ', evt.id, e);

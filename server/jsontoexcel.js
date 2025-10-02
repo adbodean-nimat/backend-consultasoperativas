@@ -187,7 +187,7 @@ async function getWebNimat(){
             return results
         } 
     ).catch(function (error) {
-        console.log(error);
+        console.error(error);
    });
  
  return response2
@@ -271,7 +271,7 @@ async function getWebNimatCombo(){
             return results
         } 
     ).catch(function (error) {
-        console.log(error);
+        console.error(error);
    });
  return response2
 }
