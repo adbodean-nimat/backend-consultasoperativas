@@ -1,6 +1,7 @@
 require('dotenv').config();
 const sql = require('mssql');
 const crypto = require('crypto');
+const CronJob = require('cron').CronJob
 
 const sqlConfig = {
   user: process.env.SQL_USER,
@@ -75,3 +76,12 @@ async function tick() {
 
 setInterval(tick, 2000); // cada 2s (ajustá según SLA/carga)
 tick(); // primer disparo inmediato
+new CronJob(
+      '0 0 * * *', // cada día a la medianoche
+      function(){
+        tick();
+      },
+      null,
+      true,
+      "America/Argentina/Buenos_Aires"
+    );

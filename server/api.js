@@ -694,7 +694,7 @@ async function getActualizadoWeb(){
       },
       null,
       true,
-      'America/Buenos_Aires'    
+      'America/Argentina/Buenos_Aires'    
     );
     const job_sab = new CronJob(
       await data.actualizacion_cron_sabados,
@@ -706,7 +706,7 @@ async function getActualizadoWeb(){
       },
       null,
       true,
-      "America/Buenos_Aires"
+      "America/Argentina/Buenos_Aires"
     );
     
     if(await data.actualizacion_automatica == true){
