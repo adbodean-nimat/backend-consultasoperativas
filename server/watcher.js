@@ -2,6 +2,11 @@ require('dotenv').config();
 const sql = require('mssql');
 const crypto = require('crypto');
 const CronJob = require('cron').CronJob
+const dayjs = require('dayjs');
+var utc = require("dayjs/plugin/utc");
+var timezone = require("dayjs/plugin/timezone"); // dependent on utc plugin
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 const sqlConfig = {
   user: process.env.SQL_USER,
@@ -42,7 +47,7 @@ async function tick() {
         lastSeenKey = key;
         const payload = {
             source: 'SIST_COTI',
-            detectedAt: new Date().toISOString(),
+            detectedAt: dayjs().tz("America/Argentina/Buenos_Aires").format(),
             items: [row].map(r => ({
             COTI_MONEDA1: r.COTI_MONEDA1,
             COTI_MONEDA2: r.COTI_MONEDA2,
