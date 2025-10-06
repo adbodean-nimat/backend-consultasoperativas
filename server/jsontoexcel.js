@@ -388,7 +388,7 @@ new CronJob(
     },
     null,
     true,
-    'America/Buenos_Aires'    
+    'America/Argentina/Buenos_Aires'    
 );
 
 module.exports = {
