@@ -310,8 +310,6 @@ async function getActualizacionWeb() {
     var data = getData[0];
     return data
 }
-getActualizacionWeb();
-
 
 async function jsontosheet2(){
     try{

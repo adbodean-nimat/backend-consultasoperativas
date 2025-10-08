@@ -107,6 +107,8 @@ app.post('/login', function (req, res, next){
 
 router.use((request, response, next) => {
     console.log('middleware');
+    console.log('request method:', request.method);
+    console.log('request url:', request.url);
     next();
   });
 
@@ -683,7 +685,7 @@ router.route('/jsontosheetdownload').get((request, response)=>{
 async function getActualizadoWeb(){
   try{
     const data = await jsonToExcel.getActualizacionWeb();
-
+    //console.log(data);
     const job_lunvie = new CronJob(
       await data.actualizacion_cron_lunesaviernes,
       function(){
