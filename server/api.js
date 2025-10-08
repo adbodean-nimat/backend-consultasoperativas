@@ -106,9 +106,7 @@ app.post('/login', function (req, res, next){
 }) */
 
 router.use((request, response, next) => {
-    console.log('middleware');
-    console.log('request method:', request.method);
-    console.log('request url:', request.url);
+    console.log('middleware -', request.method + ' - ' + request.url);
     next();
   });
 
