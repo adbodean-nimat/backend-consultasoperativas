@@ -2088,7 +2088,14 @@ const gdd_parametros_distribucionesDelete = (request, response) => {
     )
 }
 
-
+const simulador_tiposdecomprobantes = async () => {
+    try {
+        const { rows } = await pool.query('SELECT * FROM public.simulador_cobranzas_tipos_de_comprobantes');
+        return rows;
+    } catch (error) {
+        console.error('Error executing query', error);
+    }
+}
 
 module.exports = {
     getDeposANoConsiderar, getDeposANoConsiderarByCod, createDepos, updateDepos, deleteDepos,
@@ -2130,5 +2137,6 @@ module.exports = {
     gdc_remitosdeventas, gdc_remitosdeventasUpdate, gdc_remitosdeventasDelete,
     getArticulosWeb2, getCategoriasWeb2,
     gdd_clientes_distribuciones, gdd_clientes_distribucionesCreate, gdd_clientes_distribucionesUpdate, gdd_clientes_distribucionesDelete,
-    gdd_parametros_distribuciones, gdd_parametros_distribucionesCreate, gdd_parametros_distribucionesUpdate, gdd_parametros_distribucionesDelete
+    gdd_parametros_distribuciones, gdd_parametros_distribucionesCreate, gdd_parametros_distribucionesUpdate, gdd_parametros_distribucionesDelete,
+    simulador_tiposdecomprobantes
 }

@@ -5,6 +5,7 @@ const jConfig = require('./jconfig');
 const fsConfig = require('./fsconfig');
 const jsonToExcel = require('./jsontoexcel');
 const jsonToTXT = require('./jsontotxt');
+const syncProducts = require('./sync-products');
 const { enviarListaPreciosPorPerfil } = require('./whatsapp');
 const { logEnviadoOk, logErrorEnvio } = require('./whatsapp_logger.js');
 const express = require('express');
@@ -689,6 +690,7 @@ async function getActualizadoWeb(){
       function(){
         jsonToExcel.jsontosheet();
         jsonToExcel.actualizadoWeb();
+        syncProducts.main();
         //jsonToExcel.getFileExcelToOpenAi();
         // console.log('Actualizado Web');                
       },
@@ -701,6 +703,7 @@ async function getActualizadoWeb(){
       function(){
         jsonToExcel.jsontosheet();
         jsonToExcel.actualizadoWeb();
+        syncProducts.main();
         //jsonToExcel.getFileExcelToOpenAi();
         // console.log('Actualizado Web');
       },

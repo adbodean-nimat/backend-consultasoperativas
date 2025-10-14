@@ -41,8 +41,8 @@ async function tick() {
     if (!row) return;
 
     // clave de idempotencia sencilla (fecha + cotización)
-    const key = `${row.COTI_FECHA.toISOString?.() || row.COTI_FECHA}|${row.COTI_COTIZACION}`;
-
+    const key = `${row.COTI_COTIZACION}`;
+    // console.log('Detected change, key:', key);
     if (key !== lastSeenKey) {
         lastSeenKey = key;
         const payload = {
@@ -80,13 +80,4 @@ async function tick() {
 }
 
 setInterval(tick, 2000); // cada 2s (ajustá según SLA/carga)
-tick(); // primer disparo inmediato
-new CronJob(
-      '0 0 * * *', // cada día a la medianoche
-      function(){
-        tick();
-      },
-      null,
-      true,
-      "America/Argentina/Buenos_Aires"
-    );
+//tick(); // primer disparo inmediato
