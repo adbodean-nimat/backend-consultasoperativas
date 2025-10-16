@@ -690,7 +690,7 @@ async function getActualizadoWeb(){
       function(){
         jsonToExcel.jsontosheet();
         jsonToExcel.actualizadoWeb();
-        syncProducts.main();
+        // syncProducts.main();
         //jsonToExcel.getFileExcelToOpenAi();
         // console.log('Actualizado Web');                
       },
@@ -703,7 +703,7 @@ async function getActualizadoWeb(){
       function(){
         jsonToExcel.jsontosheet();
         jsonToExcel.actualizadoWeb();
-        syncProducts.main();
+        // syncProducts.main();
         //jsonToExcel.getFileExcelToOpenAi();
         // console.log('Actualizado Web');
       },

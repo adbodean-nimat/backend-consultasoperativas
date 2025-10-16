@@ -396,6 +396,5 @@ module.exports = {
     actualizadoWeb,
     getActualizacionWeb,
     jsontosheet2,
-    jsontosheet3,
-    getFileExcelToOpenAi
+    jsontosheet3
 }
