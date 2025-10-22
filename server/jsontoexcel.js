@@ -8,12 +8,12 @@ const path = require('path');
 const fs = require('fs');
 const https = require('https');
 const axios = require('axios');
-const httpsAgent = new https.Agent({ rejectUnauthorized: false }); 
+const httpsAgent = new https.Agent({ rejectUnauthorized: process.env.SSL_REJECT_UNAUTHORIZED }); 
 const token = process.env.JWT_TOKEN
 const querystring = require('querystring');
 const CronJob = require('cron').CronJob
 
-async function getFileExcelToOpenAi(){
+/* async function getFileExcelToOpenAi(){
     try{
         const firstResponse = await Pg.getArticulosWeb2().catch(error => {
             console.error('Error fetching data:', error);
@@ -91,12 +91,12 @@ async function getFileExcelToOpenAi(){
         const filePathXLSX = path.join(route, 'NIMAT/precios/NIMAT_template_precios_stock_v2.xlsx');
         const filePathJSON = path.join(route, 'NIMAT/precios/NIMAT_precios_stock_v2.json');
         fs.writeFileSync(filePathJSON, JSON.stringify([...results, ...results2], null, 2));
-        /* const array = [...results, ...results2];
+        const array = [...results, ...results2];
         const workSheet = xlsx.utils.json_to_sheet(array, {dense: true});
         const wb = xlsx.utils.book_new();
         xlsx.CFB.utils.use_zlib(zlib);
         xlsx.utils.book_append_sheet(wb, workSheet, 'NIMAT_template_precios_stock_v2');
-        xlsx.writeFile(wb, filePathXLSX, {bookType: 'xlsx'}); */
+        xlsx.writeFile(wb, filePathXLSX, {bookType: 'xlsx'});
         
         if (results.length === 0) {
             console.log('No data available to write to CSV.');
@@ -114,7 +114,7 @@ async function getFileExcelToOpenAi(){
     } catch(error){
         console.error(error);
     }
-}
+} */
 
 async function getWebNimat(){
     let endpoints4 = [

@@ -511,6 +511,108 @@ router.route('/gdc/infodeartquesecomprancorrientemente').get((request, response)
   })
 })
 
+// === Normalizador de filas desde SQL (tus nombres exactos) ===
+function normalizeRow(row) {
+  return {
+    comprador: String(row.Comprador ?? ''),                // LEFT(RUBC_NOMBRE,3) AS Comprador
+    rubro_compra: String(row.ARCO_RUBRO_COMPRA ?? ''),     // Código RC
+    articulo_id: row.ARTS_ARTICULO ?? row.ARTS_ARTICULO_EMP // ID para contar ítems
+  };
+}
+
+// === Builder del payload para la grilla (con subtotales) ===
+function buildGridPayload(rows, { page = 1, pageSize = 50 } = {}) {
+  const norm = rows.map(normalizeRow).filter(r => r.comprador);
+
+  // Agregados por Comprador
+  const byBuyer = new Map();
+  for (const r of norm) {
+    if (!byBuyer.has(r.comprador)) {
+      byBuyer.set(r.comprador, { items: 0, rcSet: new Set() });
+    }
+    const acc = byBuyer.get(r.comprador);
+    acc.items += 1;                            // cantidad_items
+    if (r.rubro_compra) acc.rcSet.add(r.rubro_compra); // RC distintos
+  }
+
+  const data = [...byBuyer.entries()].map(([comprador, acc]) => {
+    const cantidad_items = acc.items;
+    const cantidad_rc = acc.rcSet.size;
+    const ratio = cantidad_rc ? Number((cantidad_items / cantidad_rc).toFixed(2)) : null;
+    return { comprador, cantidad_items, cantidad_rc, ratio };
+  });
+
+  // === Subtotales ===
+  const sumItems = data.reduce((a, r) => a + r.cantidad_items, 0);
+  const sumRcPerBuyer = data.reduce((a, r) => a + r.cantidad_rc, 0); // suma de RC distintos por comprador
+  const ratioTotal = sumRcPerBuyer ? Number((sumItems / sumRcPerBuyer).toFixed(2)) : null;
+
+  // RC únicos globales (opcional para mostrar aparte)
+  const rcUnicosGlobal = new Set(norm.map(r => r.rubro_compra).filter(Boolean)).size;
+
+  // Fila TOTAL
+  data.push({
+    comprador: 'TOTAL',
+    cantidad_items: sumItems,
+    cantidad_rc: sumRcPerBuyer,
+    ratio: ratioTotal,
+    _extras: { rc_distintos_global: rcUnicosGlobal }
+  });
+
+  // Índices
+  const byRow = data.map(r => r.comprador);
+  const byId = {};
+  byRow.forEach((id, i) => (byId[id] = i));
+
+  const meta = {
+    title: 'Resumen por Comprador',
+    primaryKey: ['comprador'],
+    columns: [
+      { field: 'comprador',      label: 'Comprador',           type: 'string', key: true },
+      { field: 'cantidad_items', label: 'Cantidad de ítems',   type: 'number', agg: 'sum' },
+      { field: 'cantidad_rc',    label: 'Cantidad de RC',      type: 'number', agg: 'sum' },
+      { field: 'ratio',          label: 'Ratio',               type: 'number', format: '0.00',
+        formula: 'cantidad_items / cantidad_rc' }
+    ],
+    indexes: [
+      { name: 'idx_comprador', fields: ['comprador'], unique: false },
+      { name: 'idx_ratio_desc', fields: ['ratio'], order: 'desc' }
+    ],
+    summary: {
+      totals_row_label: 'TOTAL',
+      rc_distintos_global: rcUnicosGlobal,
+      note: 'cantidad_rc (subtotal) = suma de RC distintos por comprador; rc_distintos_global = RC únicos en todo el set.'
+    },
+    pagination: { page, pageSize, total: data.length },
+    generatedAt: new Date().toISOString()
+  };
+
+  return { meta, index: { byId, byRow }, data };
+}
+
+router.route('/gdc/grillacompradores').get(async (req, res) => {
+  try {
+    const getData = {
+      Cant_días_atrás_para_evaluar_SM4: req.query.cantdiasatrasparaevaluarsm4, 
+      Dias_hacia_atrás_fecha_de_NP: req.query.diashaciaatrasfechadeNP
+    }
+
+    Db.gdc_grilla_consolidacion(getData).then((data)=>{
+      const page = Number(req.query.page ?? 1);
+      const pageSize = Number(req.query.pageSize ?? 5000);
+
+    // 3) Payload
+      const payload = buildGridPayload(data[0], { page, pageSize });
+      res.json(payload);
+    }).catch((err)=>{
+      console.error(err);
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error generando grilla' });
+  }
+});
+
 router.route('/gdc/itemreclamadosalproveedor').get((request, response)=>{
   Db.gdc_itemreclamadosalproveedor().then((data)=>{
     response.json(data[0]);
