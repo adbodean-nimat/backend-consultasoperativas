@@ -5,3 +5,4 @@
 *.pem
 *.log
 *.csv
+server/logs/api.log

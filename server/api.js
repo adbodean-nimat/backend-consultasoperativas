@@ -5,7 +5,6 @@ const jConfig = require('./jconfig');
 const fsConfig = require('./fsconfig');
 const jsonToExcel = require('./jsontoexcel');
 const jsonToTXT = require('./jsontotxt');
-const syncProducts = require('./sync-products');
 const { enviarListaPreciosPorPerfil } = require('./whatsapp');
 const { logEnviadoOk, logErrorEnvio } = require('./whatsapp_logger.js');
 const express = require('express');
@@ -22,6 +21,7 @@ const fs = require('fs');
 const jwt = require("jsonwebtoken");
 const morgan = require('morgan');
 const rfs = require('rotating-file-stream');
+const helmet = require('helmet');
 const app = express();
 const accessLogStream = rfs.createStream('api.log', {
   interval: '1d',
@@ -49,6 +49,7 @@ const verifyUserToken = (req, res, next) => {
   }
 };
 app.use(morgan('combined', { stream: accessLogStream }))
+app.use(helmet());
 passport.use(new LdapStrategy({
   server: {
     url: process.env.LDAP_URL,
