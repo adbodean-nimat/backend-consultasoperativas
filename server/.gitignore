@@ -2,7 +2,7 @@
 .env
 *.pem
 /data
-/logs/*
+/logs
 *.log
 *.csv
 
