@@ -309,7 +309,10 @@ router.route('/listadeprecioweb').get((request, response)=>{
 
 router.route('/planillaimportar').get((request, response)=>{
   Db.getPlanillaImportar().then((data)=>{
-    response.json(data[0]);
+    response.json(data[0])
+  }).catch((err)=>{
+    console.error(err)
+    response.status(500).json({error: err})
   })
 })
 
@@ -730,13 +733,19 @@ router.route('/informesacindarentrefechasexportar/').get((request, response)=>{
 router.route('/planillaimportarweb').get((request, response)=>{
   jsonToExcel.getWebNimat().then((data)=>{
     response.json(data);
-  })
+  }).catch((err)=>{
+    console.error(err);
+    response.status(500).json({error: err}); 
+  });
 })
 
 router.route('/planillaimportarwebcombo').get((request, response)=>{
   jsonToExcel.getWebNimatCombo().then((data)=>{
     response.json(data);
-  })
+  }).catch((err)=>{
+    console.error(err);
+    response.status(500).json({error: err}); 
+  });
 })
 
 router.route('/jsontosheet').get((request,response)=>{
@@ -1108,28 +1117,33 @@ router.route('/gdd/parametrosdistribucionesupdate/:id').put(Pg.gdd_parametros_di
 router.route('/enviarxWhatsapp').post((request, response)=>{
   const { to, perfil } = request.body || {};
   try {
-    const out = enviarListaPreciosPorPerfil({ to, perfil });
-    const waId = out?.wa?.messages?.[0]?.id || '';
-    const filename = perfil === 'REA' ? process.env.PDF_FILENAME_REA : process.env.PDF_FILENAME_REB;
-    logEnviadoOk({
-      to: to,
-      perfil: perfil,
-      messageId: waId,
-      mediaId: out.mediaId,
-      templateName: process.env.TEMPLATE_NAME,
-      filename
+    const out = enviarListaPreciosPorPerfil({ to, perfil }).then((data)=>{   
+      console.log('Mensaje enviado:', data.wa.messages[0].message_status); 
+      const filename = perfil === 'REA' ? process.env.PDF_FILENAME_REA : process.env.PDF_FILENAME_REB;
+      logEnviadoOk({
+        to: data?.to,
+        perfil: data?.perfil,
+        messageId: data?.wa?.messages[0].id,
+        messageStatus: data?.wa?.messages[0].message_status,
+        mediaId: data?.mediaId,
+        templateName: process.env.TEMPLATE_NAME,
+        filename
+      });
+    }).catch((err)=>{
+      console.log('Error enviando mensaje:', err);
+      logErrorEnvio({
+        to,
+        perfil,
+        err,
+        templateName: process.env.TEMPLATE_NAME,
+        filename: perfil === 'REA' ? process.env.PDF_FILENAME_REA : process.env.PDF_FILENAME_REB
+      });
     });
+    
     response.status(200).json(out);
     } catch (err) {
     //const msg = err?.message || 'Error inesperado';
     //const isBadReq = /E\.164|perfil inválido|Drive devolvió HTML/i.test(msg);
-    logErrorEnvio({
-      to,
-      perfil,
-      err,
-      templateName: process.env.TEMPLATE_NAME,
-      filename: perfil === 'REA' ? process.env.PDF_FILENAME_REA : process.env.PDF_FILENAME_REB
-    });
     response.status(400).json({ ok: false, error: err?.message || 'Error' });
     }
 })

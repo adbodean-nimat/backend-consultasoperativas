@@ -143,7 +143,10 @@ async function enviarTemplateConMedia({ toE164, templateName, mediaId, filename,
     validateStatus: s => s >= 200 && s < 500
   });
   if (resp.status >= 400) {
-    throw new Error(`Error /messages ${resp.status}: ${JSON.stringify(resp.data)}`);
+    throw {
+      status: resp.status,
+      error: resp.data?.error || 'Error desconocido',
+    };
   }
   return resp.data;
 }

@@ -401,108 +401,111 @@ async function getLPDistribucion(){
 }
 
 async function getPlanillaImportarStock(){
-    let endpoints4 = [
-        `${process.env.URL_API}` + 'planillaimportar',
-        `${process.env.URL_API}` + 'stockfisicoydispon',
-        `${process.env.URL_API}` + 'listadeprecioweb',
-        `${process.env.URL_API}` + 'artsclasif5alconsultar',
-      ];
-      let response = await Promise.all(endpoints4.map((endpoint4) => axios.get(endpoint4,{httpsAgent, headers: {'Authorization': `Basic ${token}`,'Accept-Encoding': 'gzip, deflate, br'}}))).then(
-        ([{data: firstResponse}, {data: secundResponse}, {data: threeResponse}, {data: fourResponse}]) => {
-            //console.log(fourResponse)
-            var results = [];
-            for (var i=0; i<firstResponse.length; i++) {
-                for (var j=0; j<secundResponse.length; j++) {
-                    if (firstResponse[i].SKU === secundResponse[j].Cod_Art) {
-                        results.push({
-                            ProductType: firstResponse[i].ProductType,
-                            Name: firstResponse[i].Name,
-                            ShortDescription: secundResponse[j].ARTS_CLASIF_8 == "0130" && secundResponse[j].Uni_M2_Disp == 0 ? "<strong>Producto sin stock. Disponible a pedido de cliente. Antes de comprar, consultanos por el plazo de entrega.</strong>" :
-                                              fourResponse.filter(item => secundResponse[j].ARTS_CLASIF_5 == item.arts_clasif_5[0]['input']) && secundResponse[j].Uni_M2_Disp == 0 ? "<strong>"+fourResponse.map(data => data.descripcion)[0] + "<a class='navigation-block__link navigation-block__link--whatsapp' href='https://wa.me/"+fourResponse.map(data => data.whatsapp.replace('+', '')) +"'>"+ fourResponse.map(data => data.whatsapp) +"</a></strong>" :
-                                              secundResponse[j].ARTS_CLASIF_8 == "0180" ? "<strong>Discontinuado. Venta hasta agotar stock.</strong>" :
-                                              secundResponse[j].ARTS_CLASIF_8 == "0190" ? "<strong>Discontinuado. Venta hasta agotar stock.</strong>" :
-                                              secundResponse[j].ARTS_CLASIF_8 == "0004" ? "<strong>* Antes de la compra leé las Recomendaciones para la Colocación de Cerámicas y Porcelanatos, <a style='color: green' href='https://www.nimat.com.ar/Content/Images/uploaded/pdf/Recomendacionesparaceramicasyterminaciones.pdf'>ver aquí</a>.</strong>" :
-                                              "",
-                            FullDescription: firstResponse[i].FullDescription,
-                            ProductTemplate: firstResponse[i].ProductTemplate,
-                            MetaKeywords: firstResponse[i].MetaKeywords,
-                            MetaDescription: firstResponse[i].MetaDescription,
-                            MetaTitle: firstResponse[i].MetaTitle,
-                            SeName: firstResponse[i].SeName,
-                            AllowCustomerReviews: firstResponse[i].AllowCustomerReviews,
-                            Published: secundResponse[j].ARVE_BLOQUEO_VENTA == 1 ? "BLOQUEADO" 
-                            : secundResponse[j].ARTS_CLASIF_8 == "0180" && secundResponse[j].Uni_M2_Disp == 0 ? "FALSE" 
-                            : secundResponse[j].ARTS_CLASIF_8 == "0190" && secundResponse[j].Uni_M2_Disp == 0 ? "FALSE" 
-                            : secundResponse[j].ARTS_CLASIF_8 == "0130" ? "TRUE" 
-                            : firstResponse[i].SKU.substring(0,2)=="81" ? "TRUE" 
-                            : "FALSE",
-                            SKU: firstResponse[i].SKU,
-                            IsShipEnabled: firstResponse[i].IsShipEnabled,
-                            ManageInventoryMethod: firstResponse[i].ManageInventoryMethod,
-                            StockQuantity: secundResponse[j].Uni_M2_Disp,
-                            DisplayStockAvailability: secundResponse[j].ARTS_CLASIF_8 == "0130" && secundResponse[j].Uni_M2_Disp == 0 ? "FALSE" : 
-                                                      fourResponse.filter(item => secundResponse[j].ARTS_CLASIF_5 == item.arts_clasif_5[0]['input']) && secundResponse[j].Uni_M2_Disp == 0 ? 'FALSE' :
-                                                      firstResponse[i].SKU.substring(0,3)=="811" ? "TRUE" : "TRUE",
-                            DisplayStockQuantity: "TRUE",
-                            NotifyAdminForQuantityBelow: firstResponse[i].NotifyAdminForQuantityBelow,
-                            BackorderMode: firstResponse[i].BackorderMode,
-                            OrderMinimumQuantity: firstResponse[i].OrderMinimumQuantity,
-                            OrderMaximumQuantity: 1000,
-                            CallForPrice: firstResponse[i].CallForPrice,
-                            DisableBuyButton: secundResponse[j].ARTS_CLASIF_8 == "0130" && secundResponse[j].Uni_M2_Disp == 0 ? "TRUE" :  secundResponse[j].Uni_M2_Disp == 0 ? "TRUE" : "FALSE",
-                            Manufacturers: firstResponse[i].Manufacturers,
-                            Weight: firstResponse[i].Weight,
-                            Picture1: firstResponse[i].Picture1,
-                            BasepriceAmount: firstResponse[i].BasepriceAmount,
-                            Deleted: firstResponse[i].Deleted
-                        });
+    try {
+        let endpoints4 = [
+            `${process.env.URL_API}` + 'planillaimportar',
+            `${process.env.URL_API}` + 'stockfisicoydispon',
+            `${process.env.URL_API}` + 'listadeprecioweb',
+            `${process.env.URL_API}` + 'artsclasif5alconsultar',
+          ];
+          let response = await Promise.all(endpoints4.map((endpoint4) => axios.get(endpoint4,{httpsAgent, headers: {'Authorization': `Basic ${token}`,'Accept-Encoding': 'gzip, deflate, br'}}))).then(
+            ([{data: firstResponse}, {data: secundResponse}, {data: threeResponse}, {data: fourResponse}]) => {
+                var results = [];
+                for (var i=0; i<firstResponse.length; i++) {
+                    for (var j=0; j<secundResponse.length; j++) {
+                        if (firstResponse[i].SKU === secundResponse[j].Cod_Art) {
+                            results.push({
+                                ProductType: firstResponse[i].ProductType,
+                                Name: firstResponse[i].Name,
+                                ShortDescription: secundResponse[j].ARTS_CLASIF_8 == "0130" && secundResponse[j].Uni_M2_Disp == 0 ? "<strong>Producto sin stock. Disponible a pedido de cliente. Antes de comprar, consultanos por el plazo de entrega.</strong>" :
+                                                  fourResponse.filter(item => secundResponse[j].ARTS_CLASIF_5 == item.arts_clasif_5[0]['input']) && secundResponse[j].Uni_M2_Disp == 0 ? "<strong>"+fourResponse.map(data => data.descripcion)[0] + "<a class='navigation-block__link navigation-block__link--whatsapp' href='https://wa.me/"+fourResponse.map(data => data.whatsapp.replace('+', '')) +"'>"+ fourResponse.map(data => data.whatsapp) +"</a></strong>" :
+                                                  secundResponse[j].ARTS_CLASIF_8 == "0180" ? "<strong>Discontinuado. Venta hasta agotar stock.</strong>" :
+                                                  secundResponse[j].ARTS_CLASIF_8 == "0190" ? "<strong>Discontinuado. Venta hasta agotar stock.</strong>" :
+                                                  secundResponse[j].ARTS_CLASIF_8 == "0004" ? "<strong>* Antes de la compra leé las Recomendaciones para la Colocación de Cerámicas y Porcelanatos, <a style='color: green' href='https://www.nimat.com.ar/Content/Images/uploaded/pdf/Recomendacionesparaceramicasyterminaciones.pdf'>ver aquí</a>.</strong>" :
+                                                  "",
+                                FullDescription: firstResponse[i].FullDescription,
+                                ProductTemplate: firstResponse[i].ProductTemplate,
+                                MetaKeywords: firstResponse[i].MetaKeywords,
+                                MetaDescription: firstResponse[i].MetaDescription,
+                                MetaTitle: firstResponse[i].MetaTitle,
+                                SeName: firstResponse[i].SeName,
+                                AllowCustomerReviews: firstResponse[i].AllowCustomerReviews,
+                                Published: secundResponse[j].ARVE_BLOQUEO_VENTA == 1 ? "BLOQUEADO" 
+                                : secundResponse[j].ARTS_CLASIF_8 == "0180" && secundResponse[j].Uni_M2_Disp == 0 ? "FALSE" 
+                                : secundResponse[j].ARTS_CLASIF_8 == "0190" && secundResponse[j].Uni_M2_Disp == 0 ? "FALSE" 
+                                : secundResponse[j].ARTS_CLASIF_8 == "0130" ? "TRUE" 
+                                : firstResponse[i].SKU.substring(0,2)=="81" ? "TRUE" 
+                                : "FALSE",
+                                SKU: firstResponse[i].SKU,
+                                IsShipEnabled: firstResponse[i].IsShipEnabled,
+                                ManageInventoryMethod: firstResponse[i].ManageInventoryMethod,
+                                StockQuantity: secundResponse[j].Uni_M2_Disp,
+                                DisplayStockAvailability: secundResponse[j].ARTS_CLASIF_8 == "0130" && secundResponse[j].Uni_M2_Disp == 0 ? "FALSE" : 
+                                                          fourResponse.filter(item => secundResponse[j].ARTS_CLASIF_5 == item.arts_clasif_5[0]['input']) && secundResponse[j].Uni_M2_Disp == 0 ? 'FALSE' :
+                                                          firstResponse[i].SKU.substring(0,3)=="811" ? "TRUE" : "TRUE",
+                                DisplayStockQuantity: "TRUE",
+                                NotifyAdminForQuantityBelow: firstResponse[i].NotifyAdminForQuantityBelow,
+                                BackorderMode: firstResponse[i].BackorderMode,
+                                OrderMinimumQuantity: firstResponse[i].OrderMinimumQuantity,
+                                OrderMaximumQuantity: 1000,
+                                CallForPrice: firstResponse[i].CallForPrice,
+                                DisableBuyButton: secundResponse[j].ARTS_CLASIF_8 == "0130" && secundResponse[j].Uni_M2_Disp == 0 ? "TRUE" :  secundResponse[j].Uni_M2_Disp == 0 ? "TRUE" : "FALSE",
+                                Manufacturers: firstResponse[i].Manufacturers,
+                                Weight: firstResponse[i].Weight,
+                                Picture1: firstResponse[i].Picture1,
+                                BasepriceAmount: firstResponse[i].BasepriceAmount,
+                                Deleted: firstResponse[i].Deleted
+                            });
+                        }
                     }
                 }
-            }
-            var results2 = [];
-            for (var i=0; i<results.length; i++) {
-                for (var j=0; j<threeResponse.length; j++) {
-                    if (results[i].SKU === threeResponse[j].ARTS_ARTICULO_EMP) {
-                        results2.push({
-                            ProductType: results[i].ProductType,
-                            Name: results[i].Name,
-                            ShortDescription: results[i].ShortDescription,
-                            FullDescription: results[i].FullDescription,
-                            ProductTemplate: results[i].ProductTemplate,
-                            MetaKeywords: results[i].MetaKeywords,
-                            MetaDescription: results[i].MetaDescription,
-                            MetaTitle: results[i].MetaTitle,
-                            SeName: results[i].SeName,
-                            AllowCustomerReviews: results[i].AllowCustomerReviews,
-                            Published: results[i].Published,
-                            SKU: results[i].SKU,
-                            IsShipEnabled: results[i].IsShipEnabled,
-                            ManageInventoryMethod: results[i].ManageInventoryMethod,
-                            StockQuantity: results[i].StockQuantity,
-                            DisplayStockQuantity: results[i].DisplayStockQuantity,
-                            DisplayStockAvailability: results[i].DisplayStockAvailability,
-                            NotifyAdminForQuantityBelow: results[i].NotifyAdminForQuantityBelow,
-                            BackorderMode: results[i].BackorderMode,
-                            OrderMinimumQuantity: results[i].OrderMinimumQuantity,
-                            OrderMaximumQuantity: results[i].OrderMaximumQuantity,
-                            CallForPrice: results[i].CallForPrice,
-                            DisableBuyButton: results[i].DisableBuyButton,
-                            Price: threeResponse[j].Pre_Cdo_con_IVA_L1,
-                            Manufacturers: results[i].Manufacturers,
-                            Weight: results[i].Weight,
-                            Picture1: results[i].Picture1,
-                            BasepriceAmount: results[i].BasepriceAmount,
-                            Deleted: results[i].Deleted
-                        });
+                var results2 = [];
+                for (var i=0; i<results.length; i++) {
+                    for (var j=0; j<threeResponse.length; j++) {
+                        if (results[i].SKU === threeResponse[j].ARTS_ARTICULO_EMP) {
+                            results2.push({
+                                ProductType: results[i].ProductType,
+                                Name: results[i].Name,
+                                ShortDescription: results[i].ShortDescription,
+                                FullDescription: results[i].FullDescription,
+                                ProductTemplate: results[i].ProductTemplate,
+                                MetaKeywords: results[i].MetaKeywords,
+                                MetaDescription: results[i].MetaDescription,
+                                MetaTitle: results[i].MetaTitle,
+                                SeName: results[i].SeName,
+                                AllowCustomerReviews: results[i].AllowCustomerReviews,
+                                Published: results[i].Published,
+                                SKU: results[i].SKU,
+                                IsShipEnabled: results[i].IsShipEnabled,
+                                ManageInventoryMethod: results[i].ManageInventoryMethod,
+                                StockQuantity: results[i].StockQuantity,
+                                DisplayStockQuantity: results[i].DisplayStockQuantity,
+                                DisplayStockAvailability: results[i].DisplayStockAvailability,
+                                NotifyAdminForQuantityBelow: results[i].NotifyAdminForQuantityBelow,
+                                BackorderMode: results[i].BackorderMode,
+                                OrderMinimumQuantity: results[i].OrderMinimumQuantity,
+                                OrderMaximumQuantity: results[i].OrderMaximumQuantity,
+                                CallForPrice: results[i].CallForPrice,
+                                DisableBuyButton: results[i].DisableBuyButton,
+                                Price: threeResponse[j].Pre_Cdo_con_IVA_L1,
+                                Manufacturers: results[i].Manufacturers,
+                                Weight: results[i].Weight,
+                                Picture1: results[i].Picture1,
+                                BasepriceAmount: results[i].BasepriceAmount,
+                                Deleted: results[i].Deleted
+                            });
+                        }
                     }
                 }
-            }
-            return results2;
-        } 
-    ).catch(function (error) {
+                return results2;
+            } 
+        ).catch((error) => {
+            console.error(error);
+       });
+        return response
+    } catch (error) {
         console.error(error);
-   });
-    return response
+    }
 }
 
 async function getInformesAcindar(){

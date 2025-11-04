@@ -34,17 +34,20 @@ function formatLocal(date, timezone) {
 }
 
 function extractWaError(err) {
-  const out = { httpStatus: '', waCode: '', waSubcode: '', waType: '', fbtraceId: '', message: '' };
+  const out = { httpStatus: '', waCode: '', waSubcode: '', waType: '', fbtraceId: '', message: '', product: '', masDetalles: '' };
   // axios-like error
-  const r = err?.response;
+  const r = err
   if (r) {
     out.httpStatus = r.status || '';
-    const e = r.data?.error || {};
+    const e = r.error || {};
     out.waCode = e.code ?? '';
     out.waSubcode = e.error_subcode ?? '';
     out.waType = e.type ?? '';
     out.fbtraceId = e.fbtrace_id ?? '';
     out.message = e.message ?? (typeof err.message === 'string' ? err.message : '');
+    const ee = r.error?.error_data || {};
+    out.product = ee.messaging_product || '';
+    out.masDetalles = ee.details ?? '';
     return out;
   }
   // generic error
@@ -56,9 +59,10 @@ export function logEnviadoOk({
   to,
   perfil,
   messageId,
+  messageStatus,
   filename,
-  mediaId = '',
-  templateName = '',
+  mediaId,
+  templateName,
   date = new Date(),
   logPath = './logs/envios_ok.csv',
   timezone = 'America/Argentina/Buenos_Aires'
@@ -68,10 +72,10 @@ export function logEnviadoOk({
   const dateLocal = formatLocal(date, timezone);
 
   ensureDir(logPath);
-  const header = 'date_iso,date_local,to,perfil,status,message_id,template_name,filename,media_id\n';
+  const header = 'date_iso,date_local,to,perfil,status,message_id,message_status,template_name,filename,media_id\n';
   if (!exists(logPath)) fs.writeFileSync(logPath, header);
 
-  const row = [dateIso, dateLocal, to, perfil, 'ENVIADO_OK', messageId, templateName, filename, mediaId]
+  const row = [dateIso, dateLocal, to, perfil, 'ENVIADO_OK', messageId, messageStatus, templateName, filename, mediaId]
     .map(csvEscape).join(',') + '\n';
   fs.appendFileSync(logPath, row);
   return { ok: true, logPath };
@@ -83,7 +87,7 @@ export function logErrorEnvio({
   err,
   templateName,
   filename,
-  mediaId = '',
+  mediaId,
   date = new Date(),
   logPath = './logs/envios_error.csv',
   timezone = 'America/Argentina/Buenos_Aires'
@@ -93,7 +97,7 @@ export function logErrorEnvio({
   const det = extractWaError(err);
 
   ensureDir(logPath);
-  const header = 'date_iso,date_local,to,perfil,status,http_status,wa_code,wa_subcode,wa_type,fbtrace_id,error_message,template_name,filename,media_id\n';
+  const header = 'date_iso,date_local,to,perfil,status,http_status,wa_code,wa_subcode,wa_type,fbtrace_id,error_message,producto,detalles,template_name,filename,media_id\n';
   if (!exists(logPath)) fs.writeFileSync(logPath, header);
 
   const row = [
@@ -108,6 +112,8 @@ export function logErrorEnvio({
     det.waType,
     det.fbtraceId,
     det.message,
+    det.product,
+    det.masDetalles,
     templateName,
     filename,
     mediaId
