@@ -871,7 +871,10 @@ router.route('/job-restart').get((request, response)=>{
   //console.log('Actualización automática: Reiniciado');
 });
 
+// File EXCEL to JSON
 router.route('/rowaplancanje').get(fsConfig.getFileExcel);
+router.route('/enviarxWhatsapp/log/enviado').get(fsConfig.getLogEnviado)
+router.route('/enviarxWhatsapp/log/error').get(fsConfig.getLogError)
 
 //Tablas
 router.route('/tablas').get(Pg.getTablas)
@@ -1118,19 +1121,19 @@ router.route('/enviarxWhatsapp').post((request, response)=>{
   const { to, perfil } = request.body || {};
   try {
     const out = enviarListaPreciosPorPerfil({ to, perfil }).then((data)=>{   
-      console.log('Mensaje enviado:', data.wa.messages[0].message_status); 
+      //console.log('Mensaje enviado:', data.wa.messages[0].message_status); 
       const filename = perfil === 'REA' ? process.env.PDF_FILENAME_REA : process.env.PDF_FILENAME_REB;
       logEnviadoOk({
         to: data?.to,
         perfil: data?.perfil,
         messageId: data?.wa?.messages[0].id,
         messageStatus: data?.wa?.messages[0].message_status,
-        mediaId: data?.mediaId,
         templateName: process.env.TEMPLATE_NAME,
-        filename
+        filename,
+        mediaId: data?.mediaId,
       });
     }).catch((err)=>{
-      console.log('Error enviando mensaje:', err);
+      //console.log('Error enviando mensaje:', err);
       logErrorEnvio({
         to,
         perfil,

@@ -75,7 +75,17 @@ export function logEnviadoOk({
   const header = 'date_iso,date_local,to,perfil,status,message_id,message_status,template_name,filename,media_id\n';
   if (!exists(logPath)) fs.writeFileSync(logPath, header);
 
-  const row = [dateIso, dateLocal, to, perfil, 'ENVIADO_OK', messageId, messageStatus, templateName, filename, mediaId]
+  const row = [dateIso, //data_iso 
+              dateLocal, //date_local
+              to, //to
+              perfil, //perfil
+              'ENVIADO_OK', //status
+              messageId, //message_id
+              messageStatus, //message_status
+              templateName, //template_name
+              filename, //filename
+              mediaId //media_id
+            ]
     .map(csvEscape).join(',') + '\n';
   fs.appendFileSync(logPath, row);
   return { ok: true, logPath };
@@ -101,22 +111,22 @@ export function logErrorEnvio({
   if (!exists(logPath)) fs.writeFileSync(logPath, header);
 
   const row = [
-    dateIso,
-    dateLocal,
-    to || '',
-    perfil,
-    'ENVIADO_ERROR',
-    det.httpStatus,
-    det.waCode,
-    det.waSubcode,
-    det.waType,
-    det.fbtraceId,
-    det.message,
-    det.product,
-    det.masDetalles,
-    templateName,
-    filename,
-    mediaId
+    dateIso, //date_iso
+    dateLocal, //date_local
+    to || '', //to
+    perfil, //perfil
+    'ENVIADO_ERROR', //status
+    det.httpStatus, //http_status
+    det.waCode, //wa_code
+    det.waSubcode, //wa_subcode
+    det.waType, //wa_type
+    det.fbtraceId, //fbtrace_id
+    det.message, //error_message
+    det.product, //producto
+    det.masDetalles, //detalles
+    templateName, //template_name
+    filename, //filename
+    mediaId //media_id
   ].map(csvEscape).join(',') + '\n';
 
   fs.appendFileSync(logPath, row);
