@@ -24,9 +24,10 @@ const rfs = require('rotating-file-stream');
 const helmet = require('helmet');
 const app = express();
 const accessLogStream = rfs.createStream('api.log', {
-  interval: '1d',
+  interval: '2h',
   path: path.join(__dirname, 'logs')
 })
+console.log(__dirname);
 const router = express.Router();
 const httpsOptions = {
   key: fs.readFileSync(process.env.SSL_KEY),
