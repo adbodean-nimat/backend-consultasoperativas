@@ -1133,21 +1133,18 @@ router.route('/enviarxWhatsapp').post((request, response)=>{
         filename,
         mediaId: data?.mediaId,
       });
-    }).catch((err)=>{
-      //console.log('Error enviando mensaje:', err);
-      logErrorEnvio({
-        to,
-        perfil,
-        err,
-        templateName: process.env.TEMPLATE_NAME,
-        filename: perfil === 'REA' ? process.env.PDF_FILENAME_REA : process.env.PDF_FILENAME_REB
-      });
-    });
-    
+    })
     response.status(200).json(out);
     } catch (err) {
     //const msg = err?.message || 'Error inesperado';
     //const isBadReq = /E\.164|perfil inválido|Drive devolvió HTML/i.test(msg);
+    logErrorEnvio({
+      to,
+      perfil,
+      err,
+      templateName: process.env.TEMPLATE_NAME,
+      filename: perfil === 'REA' ? process.env.PDF_FILENAME_REA : process.env.PDF_FILENAME_REB
+    });
     response.status(400).json({ ok: false, error: err?.message || 'Error' });
     }
 })
