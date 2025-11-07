@@ -23,11 +23,10 @@ const morgan = require('morgan');
 const rfs = require('rotating-file-stream');
 const helmet = require('helmet');
 const app = express();
-const accessLogStream = rfs.createStream('api.log', {
-  interval: '2h',
+/* const accessLogStream = rfs.createStream('api.log', {
+  interval: '',
   path: path.join(__dirname, 'logs')
-})
-console.log(__dirname);
+}) */
 const router = express.Router();
 const httpsOptions = {
   key: fs.readFileSync(process.env.SSL_KEY),
@@ -49,7 +48,7 @@ const verifyUserToken = (req, res, next) => {
     res.status(400).send("Token inválido.");
   }
 };
-app.use(morgan('combined', { stream: accessLogStream }))
+/* app.use(morgan('combined', { stream: accessLogStream })) */
 app.use(helmet());
 passport.use(new LdapStrategy({
   server: {
