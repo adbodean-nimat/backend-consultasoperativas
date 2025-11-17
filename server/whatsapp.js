@@ -44,6 +44,7 @@ import FormData from 'form-data';
 import { pipeline } from 'node:stream/promises';
 
 const {
+  WABA_VERSION,
   WHATSAPP_TOKEN,
   WABA_PHONE_NUMBER_ID,
   TEMPLATE_NAME,
@@ -110,7 +111,7 @@ async function subirPdfAWhatsApp(filePath, fileName) {
   form.append('file', fs.createReadStream(filePath), {
     filename: fileName, contentType: 'application/pdf'
   });
-  const url = `https://graph.facebook.com/v21.0/${WABA_PHONE_NUMBER_ID}/media`;
+  const url = `https://graph.facebook.com/${WABA_VERSION}/${WABA_PHONE_NUMBER_ID}/media`;
   const resp = await axios.post(url, form, {
     headers: { Authorization: `Bearer ${WHATSAPP_TOKEN}`, ...form.getHeaders() },
     maxContentLength: Infinity, maxBodyLength: Infinity,
@@ -137,7 +138,7 @@ async function enviarTemplateConMedia({ toE164, templateName, mediaId, filename,
       ]
     }
   };
-  const url = `https://graph.facebook.com/v21.0/${WABA_PHONE_NUMBER_ID}/messages`;
+  const url = `https://graph.facebook.com/${WABA_VERSION}/${WABA_PHONE_NUMBER_ID}/messages`;
   const resp = await axios.post(url, payload, {
     headers: { Authorization: `Bearer ${WHATSAPP_TOKEN}`, 'Content-Type': 'application/json' },
     validateStatus: s => s >= 200 && s < 500

@@ -6,7 +6,9 @@ const fsConfig = require('./fsconfig');
 const jsonToExcel = require('./jsontoexcel');
 const jsonToTXT = require('./jsontotxt');
 const { enviarListaPreciosPorPerfil } = require('./whatsapp');
-const { logEnviadoOk, logErrorEnvio } = require('./whatsapp_logger.js');
+const { logEnviadoOk, logErrorEnvio } = require('./whatsapp_logger');
+const { syncOpenAI } = require('./sync-openai');
+const syncProductosCategorias = require('./sync-productos-cateogorias')
 const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
@@ -782,26 +784,19 @@ router.route('/jsontosheetdownload').get((request, response)=>{
   response.download(filePath);
 });
 
-/* router.route('/jsontotxtdownload').get((request, response)=>{
-  const date = new Date();
-  const month = date.getMonth();
-  const monthNumbers = ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"];
-  const folder = `${process.env.URL_DIR}/`+ new Date().getFullYear() +'.'+ monthNumbers[month]
-  const filePath = path.join(folder, '/Archivo.txt');
-  if (!fs.existsSync(filePath)) {
-    return response.download(filePath);  
-  }
-}); */
-
 async function getActualizadoWeb(){
   try{
     const data = await jsonToExcel.getActualizacionWeb();
-    console.log(data);
+    //console.log(data);
     const job_lunvie = new CronJob(
       await data.actualizacion_cron_lunesaviernes,
       function(){
         jsonToExcel.jsontosheet();
         jsonToExcel.actualizadoWeb();
+        /* syncProductosCategorias.sincronizarCompleto();
+        syncOpenAI().catch((err) => {
+          console.error("Error actualizando el vector store:", err.response?.data ?? err);
+        }); */
         // syncProducts.main();
         //jsonToExcel.getFileExcelToOpenAi();
         // console.log('Actualizado Web');                
@@ -815,9 +810,13 @@ async function getActualizadoWeb(){
       function(){
         jsonToExcel.jsontosheet();
         jsonToExcel.actualizadoWeb();
-        // syncProducts.main();
+        /* syncProductosCategorias.sincronizarCompleto();
+        syncOpenAI().catch((err) => {
+          console.error("Error actualizando el vector store:", err.response?.data ?? err);
+        }); */
+        //syncProducts.main();
         //jsonToExcel.getFileExcelToOpenAi();
-        // console.log('Actualizado Web');
+        //console.log('Actualizado Web');
       },
       null,
       true,
