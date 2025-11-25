@@ -793,10 +793,10 @@ async function getActualizadoWeb(){
       function(){
         jsonToExcel.jsontosheet();
         jsonToExcel.actualizadoWeb();
-        sincronizarCompleto();
+        /* sincronizarCompleto();
         syncOpenAI().catch((err) => {
           console.error("Error actualizando el vector store:", err.response?.data ?? err);
-        });
+        }); */
         // syncProducts.main();
         //jsonToExcel.getFileExcelToOpenAi();
         // console.log('Actualizado Web');                
@@ -810,10 +810,10 @@ async function getActualizadoWeb(){
       function(){
         jsonToExcel.jsontosheet();
         jsonToExcel.actualizadoWeb();
-        sincronizarCompleto();
+        /* sincronizarCompleto();
         syncOpenAI().catch((err) => {
           console.error("Error actualizando el vector store:", err.response?.data ?? err);
-        });
+        }); */
         //syncProducts.main();
         //jsonToExcel.getFileExcelToOpenAi();
         //console.log('Actualizado Web');
