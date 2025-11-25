@@ -1,9 +1,8 @@
 // sync-categorias-productos.js
 // Script para sincronizar categorías desde Excel y generar JSON completo
-import 'dotenv/config';
-import fs from 'node:fs';
-import Dropbox from 'dropbox';
-import xlsx from 'xlsx';
+import { Dropbox } from 'dropbox';
+import { read, utils } from 'xlsx';
+import { writeFileSync, statSync } from 'fs';
 import { encode } from '@toon-format/toon';
 
 const EXCEL_PRODUCTOS = process.env.EXCEL_PRODUCTOS_PATH
@@ -196,8 +195,8 @@ export async function sincronizarCompleto() {
     // 1. Cargar Excel de Categorías
     console.log('📥 Descargando categorías...');
     const resCat = await dbx.filesDownload({ path: EXCEL_CATEGORIAS });
-    const wbCat = xlsx.read(resCat.result.fileBinary, { type: 'buffer' });
-    const categorias = xlsx.utils.sheet_to_json(wbCat.Sheets[wbCat.SheetNames[0]]);
+    const wbCat = read(resCat.result.fileBinary, { type: 'buffer' });
+    const categorias = utils.sheet_to_json(wbCat.Sheets[wbCat.SheetNames[0]]);
     
     console.log(`   ✓ Categorías leídas: ${categorias.length}`);
     
@@ -212,8 +211,8 @@ export async function sincronizarCompleto() {
     // 3. Cargar Excel de Productos
     console.log('\n📥 Descargando productos...');
     const resProd = await dbx.filesDownload({ path: EXCEL_PRODUCTOS });
-    const wbProd = xlsx.read(resProd.result.fileBinary, { type: 'buffer' });
-    const productosRaw = xlsx.utils.sheet_to_json(wbProd.Sheets[wbProd.SheetNames[0]]);
+    const wbProd = read(resProd.result.fileBinary, { type: 'buffer' });
+    const productosRaw = utils.sheet_to_json(wbProd.Sheets[wbProd.SheetNames[0]]);
     
     console.log(`   ✓ Productos leídos: ${productosRaw.length}`);
     
@@ -311,8 +310,8 @@ export async function sincronizarCompleto() {
     const catalogoCompletoToJSON = JSON.stringify(catalogoCompleto, null, 2);
     const catalogoCompletoToTOON = encode(catalogoCompleto);
     //console.log(catalogoCompletoToTOON);
-    fs.writeFileSync(OUTPUT_JSON, catalogoCompletoToJSON, 'utf8');
-    fs.writeFileSync(OUTPUT_TOON, catalogoCompletoToTOON)
+    writeFileSync(OUTPUT_JSON, catalogoCompletoToJSON, 'utf8');
+    writeFileSync(OUTPUT_TOON, catalogoCompletoToTOON)
 
     // 10. Estadísticas finales
     console.log('\n✅ SINCRONIZACIÓN COMPLETA\n');
@@ -324,8 +323,8 @@ export async function sincronizarCompleto() {
     console.log(`   • Marcas: ${catalogoCompleto.metadata.marcas_total}`);
     console.log(`\n💾 Archivo generado: ${OUTPUT_JSON}`);
     console.log(`💾 Archivo generado: ${OUTPUT_TOON}`);
-    console.log(`📦 Tamaño JSON: ${(fs.statSync(OUTPUT_JSON).size / 1024).toFixed(2)} KB`);
-    console.log(`📦 Tamaño TOON: ${(fs.statSync(OUTPUT_TOON).size / 1024).toFixed(2)} KB\n`);
+    console.log(`📦 Tamaño JSON: ${(statSync(OUTPUT_JSON).size / 1024).toFixed(2)} KB`);
+    console.log(`📦 Tamaño TOON: ${(statSync(OUTPUT_TOON).size / 1024).toFixed(2)} KB\n`);
     
     // Mostrar algunas categorías principales
     console.log('🌳 Categorías principales:');
@@ -338,3 +337,6 @@ export async function sincronizarCompleto() {
     console.error(error);
   }
 }
+
+// Ejecutar
+//sincronizarCompleto();

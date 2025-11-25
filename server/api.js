@@ -8,7 +8,7 @@ const jsonToTXT = require('./jsontotxt');
 const { enviarListaPreciosPorPerfil } = require('./whatsapp');
 const { logEnviadoOk, logErrorEnvio } = require('./whatsapp_logger');
 const { syncOpenAI } = require('./sync-openai');
-const syncProductosCategorias = require('./sync-productos-cateogorias')
+const { sincronizarCompleto } = require('./sync-productos-cateogorias')
 const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
@@ -793,10 +793,10 @@ async function getActualizadoWeb(){
       function(){
         jsonToExcel.jsontosheet();
         jsonToExcel.actualizadoWeb();
-        /* syncProductosCategorias.sincronizarCompleto();
+        sincronizarCompleto();
         syncOpenAI().catch((err) => {
           console.error("Error actualizando el vector store:", err.response?.data ?? err);
-        }); */
+        });
         // syncProducts.main();
         //jsonToExcel.getFileExcelToOpenAi();
         // console.log('Actualizado Web');                
@@ -810,10 +810,10 @@ async function getActualizadoWeb(){
       function(){
         jsonToExcel.jsontosheet();
         jsonToExcel.actualizadoWeb();
-        /* syncProductosCategorias.sincronizarCompleto();
+        sincronizarCompleto();
         syncOpenAI().catch((err) => {
           console.error("Error actualizando el vector store:", err.response?.data ?? err);
-        }); */
+        });
         //syncProducts.main();
         //jsonToExcel.getFileExcelToOpenAi();
         //console.log('Actualizado Web');
