@@ -1,11 +1,7 @@
-import  dotenv from 'dotenv';
+import dotenv from 'dotenv';
 import fs from "node:fs"
 import fsPromises from "node:fs/promises";
 import OpenAI from "openai";
-
-/* const fs = require("node:fs")
-const fsPromises = require("node:fs/promises");
-const OpenAI = require("openai"); */
 
 dotenv.config();
 

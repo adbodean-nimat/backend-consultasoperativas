@@ -1,7 +1,7 @@
 // sync-categorias-productos.js
 // Script para sincronizar categorías desde Excel y generar JSON completo
 import dotenv from 'dotenv';
-import Dropbox from 'dropbox';
+import { Dropbox } from 'dropbox';
 import xlsx from 'xlsx';
 import fs from 'fs';
 import { encode } from '@toon-format/toon'
