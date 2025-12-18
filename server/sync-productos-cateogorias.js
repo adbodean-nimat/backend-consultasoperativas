@@ -188,7 +188,7 @@ function crearIndicesCategorias(productos, arbolCategorias) {
   return indices;
 }
 
-async function sincronizarCompleto() {
+export async function sincronizarCompleto() {
   try {
     console.log('🚀 Iniciando sincronización completa...\n');
     const token = await ensureAccessToken();
