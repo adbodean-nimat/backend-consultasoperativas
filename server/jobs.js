@@ -5,6 +5,15 @@ import { syncOpenAI } from './sync-openai.js';
 import { sincronizarCompleto } from './sync-productos-cateogorias.js';
 import { CronJob } from 'cron';
 
+export async function SyncOpenAIUpdate() {
+  try {
+    await syncOpenAI();
+    await sincronizarCompleto();
+  } catch (err) {
+    console.error('Error en sincronización de OpenAI:', err);
+  }
+}
+
 let job_lunvie = null;
 let job_sab = null;
 

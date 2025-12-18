@@ -200,7 +200,7 @@ async function jsontosheet(){
         XLSX.utils.book_append_sheet(wb, workSheet, 'Hoja1');
         XLSX.writeFileXLSX(wb, filePath, { compression: true });
         return true;
-    } catch (error) {
+    } catch(error) {
         console.error(error);
     }
 }

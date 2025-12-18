@@ -22,7 +22,7 @@ import fsConfig from './fsconfig.js';
 import jsonToTXT from './jsontotxt.js';
 import { enviarListaPreciosPorPerfil } from './whatsapp.js';
 import { logEnviadoOk, logErrorEnvio } from './whatsapp_logger.js';
-import { initJobs, startJobs, stopJobs } from './jobs.js';
+import { initJobs, startJobs, stopJobs, SyncOpenAIUpdate } from './jobs.js';
 
 // Solo una instancia en cluster
 if (process.env.NODE_APP_INSTANCE === '0') {
@@ -755,9 +755,17 @@ router.route('/planillaimportarwebcombo').get((request, response)=>{
 })
 
 router.route('/jsontosheet').get((request,response)=>{
-  jsonToExcel.jsontosheet().then((data)=> {   
-    response.status(200).send('Generado correctamente');
-  })
+  jsonToExcel.jsontosheet().catch((err)=>{
+    console.error(err);
+    response.status(500).send('Error en generación de planilla');
+  });
+  if(process.env.NODE_APP_INSTANCE === '0'){
+      SyncOpenAIUpdate().catch((err)=>{
+        console.error(err);
+        response.status(500).send('Error en sincronización de OpenAI');
+      });
+    }
+  response.status(200).send('Generado correctamente');
 })
 
 router.route('/jsontosheet2').get((request, response)=>{
@@ -798,7 +806,6 @@ router.route('/job-stop').get((request, response)=>{
 
 router.route('/job-start').get((request, response)=>{
   Pg.UpdateActualizacionWebChecked(true); 
-  startJobs();
   if (process.env.NODE_APP_INSTANCE === '0'){
     startJobs();
   }
