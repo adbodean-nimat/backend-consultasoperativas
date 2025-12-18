@@ -2,10 +2,13 @@
   "name": "restapi-nodejs",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "api.js",
+  "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "nodemon api.js"
+    "start": "nodemon api.js",
+    "jobs": "nodemon jobs.js",
+    "watcher": "nodemon watcher.js"
   },
   "keywords": [],
   "author": "",

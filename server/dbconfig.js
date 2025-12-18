@@ -1,4 +1,5 @@
-require('dotenv').config();
+import dotenv from 'dotenv';
+dotenv.config();
 
 const plataforma = {
     user: process.env.SQL_USER, 
@@ -29,8 +30,4 @@ const plataforma = {
       instancename: 'MSSQLSERVER'
     }
   }
-  
-  module.exports = {
-    plataforma: plataforma,
-    cad: cad
-  };
+  export { plataforma, cad };

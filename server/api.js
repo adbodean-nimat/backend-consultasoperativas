@@ -1,30 +1,34 @@
-const Db = require('./dboperacion');
-const Pg = require('./dboperacion_pg');
-const DbCAD = require('./dboperacion_cad');
-const jConfig = require('./jconfig');
-const fsConfig = require('./fsconfig');
-const jsonToExcel = require('./jsontoexcel');
-const jsonToTXT = require('./jsontotxt');
-const { enviarListaPreciosPorPerfil } = require('./whatsapp');
-const { logEnviadoOk, logErrorEnvio } = require('./whatsapp_logger');
-const { syncOpenAI } = require('./sync-openai');
-const { sincronizarCompleto } = require('./sync-productos-cateogorias')
-const express = require('express');
-const bodyParser = require('body-parser');
-const cors = require('cors');
-const passport = require('passport');
-const LdapStrategy = require('passport-ldapauth');
-const compression = require('compression');
-const CronJob = require('cron').CronJob
-const path = require('path');
-const http = require('http');
-const https = require('https');
-const fs = require('fs');
-const jwt = require("jsonwebtoken");
-const morgan = require('morgan');
-const rfs = require('rotating-file-stream');
-const helmet = require('helmet');
+import express from 'express';
+import bodyParser from 'body-parser';
+import cors from 'cors';
+import passport from 'passport';
+import LdapStrategy from 'passport-ldapauth';
+import compression from 'compression';
+import path from 'path';
+import http from 'http';
+import https from 'https';
+import fs from 'fs';
+import jwt from "jsonwebtoken";
+import helmet from 'helmet';
+
 const app = express();
+
+import DbCAD from './dboperacion_cad.js';
+import jsonToExcel from './jsontoexcel.js';
+import Db from './dboperacion.js';
+import Pg from './dboperacion_pg.js';
+import jConfig from './jconfig.js';
+import fsConfig from './fsconfig.js';
+import jsonToTXT from './jsontotxt.js';
+import { enviarListaPreciosPorPerfil } from './whatsapp.js';
+import { logEnviadoOk, logErrorEnvio } from './whatsapp_logger.js';
+import { initJobs, startJobs, stopJobs } from './jobs.js';
+
+// Solo una instancia en cluster
+if (process.env.NODE_APP_INSTANCE === '0') {
+  initJobs();
+}
+
 /* const accessLogStream = rfs.createStream('api.log', {
   interval: '',
   path: path.join(__dirname, 'logs')
@@ -751,8 +755,7 @@ router.route('/planillaimportarwebcombo').get((request, response)=>{
 })
 
 router.route('/jsontosheet').get((request,response)=>{
-  //jsonToExcel.getFileExcelToOpenAi();
-  jsonToExcel.jsontosheet().then((data)=>{
+  jsonToExcel.jsontosheet().then((data)=> {   
     response.status(200).send('Generado correctamente');
   })
 })
@@ -784,90 +787,34 @@ router.route('/jsontosheetdownload').get((request, response)=>{
   response.download(filePath);
 });
 
-async function getActualizadoWeb(){
-  try{
-    const data = await jsonToExcel.getActualizacionWeb();
-    //console.log(data);
-    const job_lunvie = new CronJob(
-      await data.actualizacion_cron_lunesaviernes,
-      function(){
-        jsonToExcel.jsontosheet();
-        jsonToExcel.actualizadoWeb();
-        /* sincronizarCompleto();
-        syncOpenAI().catch((err) => {
-          console.error("Error actualizando el vector store:", err.response?.data ?? err);
-        }); */
-        // syncProducts.main();
-        //jsonToExcel.getFileExcelToOpenAi();
-        // console.log('Actualizado Web');                
-      },
-      null,
-      true,
-      'America/Argentina/Buenos_Aires'    
-    );
-    const job_sab = new CronJob(
-      await data.actualizacion_cron_sabados,
-      function(){
-        jsonToExcel.jsontosheet();
-        jsonToExcel.actualizadoWeb();
-        /* sincronizarCompleto();
-        syncOpenAI().catch((err) => {
-          console.error("Error actualizando el vector store:", err.response?.data ?? err);
-        }); */
-        //syncProducts.main();
-        //jsonToExcel.getFileExcelToOpenAi();
-        //console.log('Actualizado Web');
-      },
-      null,
-      true,
-      "America/Argentina/Buenos_Aires"
-    );
-    
-    if(await data.actualizacion_automatica == true){
-      job_lunvie.start(); 
-      job_sab.start();
-      // console.log('Actualización automática: Iniciado');
-    } 
-    
-    if(await data.actualizacion_automatica == false){
-      job_lunvie.stop();
-      job_sab.stop();
-      // console.log('Actualización automática: Detenido');
-    }
+router.route('/job-stop').get((request, response)=>{
+  Pg.UpdateActualizacionWebChecked(false); 
+  if (process.env.NODE_APP_INSTANCE === '0'){
+    stopJobs();
+  }
+  response.status(200).json({message:'job stopped successfully'});
+  console.log('Actualización automática: Detenido');
+});
 
-    router.route('/job-stop').get((request, response)=>{
-      Pg.UpdateActualizacionWebChecked(false);
-      job_lunvie.stop();
-      job_sab.stop();
-      response.status(200).json({message:'job stopped successfully'});
-      // console.log('Actualización automática: Detenido');
-    });
-    
-    router.route('/job-start').get((request, response)=>{
-      Pg.UpdateActualizacionWebChecked(true);
-      job_lunvie.start();
-      job_sab.start();
-      response.status(200).json({message:'job start successfully'});
-      //console.log('Actualización automática: Iniciado');
-    }); 
-
+router.route('/job-start').get((request, response)=>{
+  Pg.UpdateActualizacionWebChecked(true); 
+  startJobs();
+  if (process.env.NODE_APP_INSTANCE === '0'){
+    startJobs();
   }
-  catch(error){
-    console.error(error);
-  }
-  finally {
-    console.log('Todas las tareas están hechas');
-  }
-}
-getActualizadoWeb();
+  response.status(200).json({message:'job start successfully'});
+  console.log('Actualización automática: Iniciado');
+}); 
 
 router.route('/job-restart').get((request, response)=>{
   setTimeout(()=>{
-    //console.log('Reiniciando...')
-    process.exit(0);
+    console.log('Reiniciando...')
+    if (process.env.NODE_APP_INSTANCE === '0'){
+      initJobs();
+    }
     }, 1000);
   response.status(200).json({message: 'job restart successfully'});
-  //console.log('Actualización automática: Reiniciado');
+  console.log('Actualización automática: Reiniciado');
 });
 
 // File EXCEL to JSON

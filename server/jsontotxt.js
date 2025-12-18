@@ -1,16 +1,18 @@
-require('dotenv').config();
-var Db = require('./dboperacion');
-var DbCAD = require('./dboperacion_cad');
-const xlsx = require('xlsx');
-const zlib = require('zlib');
-const path = require('path');
-const fs = require('fs');
-const https = require('https');
-const axios = require('axios');
+import dotenv from 'dotenv';
+dotenv.config();
+import Db from './dboperacion.js';
+import DbCAD from './dboperacion_cad.js';
+import xlsx from 'xlsx';
+import zlib from 'zlib';
+import path from 'path';
+import fs from 'fs';
+import https from 'https';
+import axios from 'axios';
+import querystring from 'querystring';
+import { CronJob } from 'cron';
+
 const httpsAgent = new https.Agent({ rejectUnauthorized: process.env.SSL_REJECT_UNAUTHORIZED }); 
 const token = process.env.JWT_TOKEN
-const querystring = require('querystring');
-var CronJob = require('cron').CronJob
 
 async function getUsuariosCAD(){
     try{
@@ -120,7 +122,7 @@ async function jsontotxt(){
     }
 }
 
-module.exports = {
+export default {
     getUsuariosCAD,
     jsontotxt
 }

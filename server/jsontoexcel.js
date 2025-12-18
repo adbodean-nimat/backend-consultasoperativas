@@ -1,121 +1,16 @@
-require('dotenv').config();
-const Db = require('./dboperacion');
-const Pg = require('./dboperacion_pg');
-const jConfig = require('./jconfig');
-const xlsx = require('xlsx');
-const zlib = require('zlib');
-const path = require('path');
-const fs = require('fs');
-const https = require('https');
-const axios = require('axios');
+import dotenv from 'dotenv';
+dotenv.config();
+import * as XLSX from 'xlsx';
+import * as fs from 'fs';
+import zlib from 'node:zlib';
+import path from 'path';
+import https from 'https';
+import axios from 'axios';
+import { stringify } from 'querystring';
+import { CronJob } from 'cron';
 const httpsAgent = new https.Agent({ rejectUnauthorized: process.env.SSL_REJECT_UNAUTHORIZED }); 
 const token = process.env.JWT_TOKEN
-const querystring = require('querystring');
-const CronJob = require('cron').CronJob
-
-/* async function getFileExcelToOpenAi(){
-    try{
-        const firstResponse = await Pg.getArticulosWeb2().catch(error => {
-            console.error('Error fetching data:', error);
-            throw error;
-        });
-
-        const secundResponse = await Db.getComboWeb().then(response => {return response}).catch(error => {
-            console.error('Error fetching combo data:', error);
-            throw error;
-        });
-        
-        const threeResponse = await jConfig.getPlanillaImportarStock().catch(error => {
-            console.error('Error fetching stock data:', error);
-            throw error;
-        });
-        
-        const categorias = await Pg.getCategoriasWeb2().catch(error => {
-            console.error('Error fetching categorias data:', error);
-            throw error;
-        });
-
-        const results = [];
-        const results2 = [];
-        
-        firstResponse.forEach(item => {                  
-            secundResponse.forEach(comboItem => {
-                comboItem.forEach(ci => {
-                    if (item.codigo_art == ci.Cod_Combo) {
-                        if (ci && item.publicado === true && ci.SumaDeStockDispon_CantCombo >= item.min_para_web) {
-                            results2.push({
-                                sku: ci.Cod_Combo.toString().padStart(4, '0'),
-                                nombre: item.nombre_art,
-                                categoria: categorias.filter(cat => cat.id_categorias == item.categorias1).map(cat => cat.nombre_categorias).toString(),
-                                marca: ci.PrimeroDeCA06_NOMBRE,
-                                descripcion_corto: item.copete == "" ? '' : item.copete,
-                                precio_contado: ci.SumaDePre_Oferta_Cdo_total,
-                                moneda: "ARS",
-                                iva_incluido: "SI",
-                                stock: ci.SumaDeStockDispon_CantCombo,
-                                url_ficha: "https://www.nimat.com.ar/search?q=" + item.codigo_art,
-                                peso_kg: ci.SumaDeWeight,
-                                ultima_actualizacion: new Date().toISOString()
-                            });
-                        }
-                    }
-                })
-                
-            });
-        });
-
-        firstResponse.forEach(item => {       
-            threeResponse.forEach(stockItem => {
-                if (item.codigo_art === stockItem.SKU) {
-                    if (stockItem && item.publicado === true && stockItem.StockQuantity >= item.min_para_web) {
-                        results.push({
-                            sku: (stockItem.SKU).toString().padStart(8, '0'),
-                            nombre: item.nombre_art,
-                            categoria: categorias.filter(cat => cat.id_categorias == item.categorias1).map(cat => cat.nombre_categorias).toString(),
-                            marca: stockItem.Manufacturers,
-                            descripcion_corto: item.copete == "" ? '' : item.copete,
-                            precio_contado: stockItem.Price,
-                            moneda: "ARS",
-                            iva_incluido: "SI",
-                            stock: stockItem.StockQuantity,
-                            url_ficha: "https://www.nimat.com.ar/search?q=" + item.codigo_art,
-                            peso_kg: stockItem.Weight,
-                            ultima_actualizacion: new Date().toISOString()
-                        });
-                    }
-                }
-            }); 
-        });
-        
-        const route = `${process.env.URL_DROPBOX}`
-        const filePathXLSX = path.join(route, 'NIMAT/precios/NIMAT_template_precios_stock_v2.xlsx');
-        const filePathJSON = path.join(route, 'NIMAT/precios/NIMAT_precios_stock_v2.json');
-        fs.writeFileSync(filePathJSON, JSON.stringify([...results, ...results2], null, 2));
-        const array = [...results, ...results2];
-        const workSheet = xlsx.utils.json_to_sheet(array, {dense: true});
-        const wb = xlsx.utils.book_new();
-        xlsx.CFB.utils.use_zlib(zlib);
-        xlsx.utils.book_append_sheet(wb, workSheet, 'NIMAT_template_precios_stock_v2');
-        xlsx.writeFile(wb, filePathXLSX, {bookType: 'xlsx'});
-        
-        if (results.length === 0) {
-            console.log('No data available to write to CSV.');
-            return;
-        } else {
-            console.log(`Data ready to be written to CSV. Number of records: ${results.length}`);    
-        }
-        if (results2.length === 0) {
-            console.log('No combo data available to write to CSV.');
-            return;
-        } else {
-            console.log(`Combo data ready to be written to CSV. Number of records: ${results2.length}`);    
-        }
-        
-    } catch(error){
-        console.error(error);
-    }
-} */
-
+XLSX.set_fs(fs);
 async function getWebNimat(){
     try {
         let endpoints4 = [
@@ -136,7 +31,7 @@ async function getWebNimat(){
                                 : secundResponse[j].Published == "BLOQUEADO" && firstResponse[i].bloq_vtas == true && firstResponse[i].stock >= 0 ? "TRUE" 
                                 : secundResponse[j].StockQuantity >= firstResponse[i].min_para_web ? "TRUE" 
                                 : secundResponse[j].Published, 
-                                Name: secundResponse[j].Name,
+                                Name: (secundResponse[j].Name).trim(),
                                 ShortDescription: secundResponse[j].ShortDescription +' '+ (firstResponse[i].copete == "" ? '' : '<span>'+ firstResponse[i].copete +'</span>'),
                                 FullDescription: secundResponse[j].FullDescription,
                                 ProductTemplate: secundResponse[j].ProductTemplate,
@@ -286,32 +181,31 @@ async function getWebNimatCombo(){
 
 async function jsontosheet(){
     try {
-        let url = `${process.env.URL_API}` + 'planillaimportarweb';
-        let urlcombo = `${process.env.URL_API}` + 'planillaimportarwebcombo';
-        const raw_data = (await axios(url, {httpsAgent, headers: {'Authorization': `Bearer ${token}`,'Accept-Encoding': 'gzip, deflate, br'}})).data;
-        const raw_data2 = (await axios(urlcombo, {httpsAgent, headers: {'Authorization': `Bearer ${token}`,'Accept-Encoding': 'gzip, deflate, br'}})).data;
+        const raw_data = await getWebNimat().then((response)=>response).catch(error => {
+            console.error('Error fetching data:', error);
+            throw error;
+        });
+        const raw_data2 = await getWebNimatCombo().then((response)=>response).catch(error => {
+            console.error('Error fetching combo data:', error);
+            throw error;
+        });
         const route = `${process.env.URL_DROPBOX}`
         const routePath = path.normalize(route);
         const filePath = path.join(route, '/Importar_AgileWorks_M2.xlsx');
         const array = [...raw_data, ...raw_data2];
-        const workSheet = xlsx.utils.json_to_sheet(array, {dense: true});
-        const wb = xlsx.utils.book_new();
+        const workSheet = XLSX.utils.json_to_sheet(array);
+        const wb = XLSX.utils.book_new();
         
-        xlsx.CFB.utils.use_zlib(zlib);
-        xlsx.utils.book_append_sheet(wb, workSheet, 'Hoja1');
-        
-        const s = xlsx.writeFileXLSX(wb, filePath, {
-            bookType: 'xlsx',
-            type: 'file',
-            bookSST: true,
-            compression: true
-        });
+        //XLSX.CFB.utils.use_zlib(zlib);
+        XLSX.utils.book_append_sheet(wb, workSheet, 'Hoja1');
+        XLSX.writeFileXLSX(wb, filePath, { compression: true });
+        return true;
     } catch (error) {
         console.error(error);
     }
 }
 
-async function actualizadoWeb(){
+async function actualizadoWeb() {
     try {
         let urlapi = `${process.env.URL_API}` + 'actualizacionwebnow/1';
         await axios.put(urlapi, {}, {httpsAgent, headers: {'Authorization': `Bearer ${token}`, 'Accept-Encoding': 'gzip, deflate, br'}});
@@ -343,19 +237,19 @@ async function jsontosheet2(){
         if (!fs.existsSync(folder)) {
             fs.mkdirSync(folder);
           }
-        const routePath = path.normalize(folder);
-        const filePathXSLS = path.join(folder, '/Archivo.xlsx');
-        const filePathCSV = path.join(folder, '/Archivo.csv');
-        const filePathTXT = path.join(folder, '/Archivo.txt');
-        const workSheet = xlsx.utils.json_to_sheet(raw_data, {dense: true});
-        const wb = xlsx.utils.book_new();
-        xlsx.CFB.utils.use_zlib(zlib);
-        xlsx.utils.book_append_sheet(wb, workSheet, "Hoja1");
-        xlsx.utils.sheet_add_aoa(workSheet, [["DEA","SUCURSAL","Nº DOC LEGAL","TIPO DOC LEGAL","TIPO DE TRANSACCION","ITEM DOC LEGAL","FECHA DOC LEGAL","Nº DOC REFERENCIA","TIPO DOC REF","ITEM DOC REF","FECHA DOC REF","CUIT CLIENTE","N°INTERNO CLIENTE","RAZON SOCIAL","SEGMENTO","DIRECCION","CIUDAD","PROVINCIA","CODIGO ART","DESCRIPCION","UMV","CANTIDAD","MONTO","FECHA COSTO","DESCRIPCION COND VTA","DIAS","OBSERVACION"]], { origin: "A1" });
-        const sorkCSV = xlsx.utils.sheet_to_csv(workSheet, {FS: ";"});
-        xlsx.writeFile(wb, filePathXSLS, {bookType: 'xlsx'});
-        //xlsx.writeFile(wb, filePathCSV, {bookType: "csv", FS: ";"});
-        //xlsx.writeFile(wb, filePathCSV);
+        const routePath = normalize(folder);
+        const filePathXSLS = join(folder, '/Archivo.xlsx');
+        const filePathCSV = join(folder, '/Archivo.csv');
+        const filePathTXT = join(folder, '/Archivo.txt');
+        const workSheet = XLSX.utils.json_to_sheet(raw_data, {dense: true});
+        const wb = XLSX.utils.book_new();
+        XLSX.CFB.utils.use_zlib(zlib);
+        XLSX.utils.book_append_sheet(wb, workSheet, "Hoja1");
+        XLSX.utils.sheet_add_aoa(workSheet, [["DEA","SUCURSAL","Nº DOC LEGAL","TIPO DOC LEGAL","TIPO DE TRANSACCION","ITEM DOC LEGAL","FECHA DOC LEGAL","Nº DOC REFERENCIA","TIPO DOC REF","ITEM DOC REF","FECHA DOC REF","CUIT CLIENTE","N°INTERNO CLIENTE","RAZON SOCIAL","SEGMENTO","DIRECCION","CIUDAD","PROVINCIA","CODIGO ART","DESCRIPCION","UMV","CANTIDAD","MONTO","FECHA COSTO","DESCRIPCION COND VTA","DIAS","OBSERVACION"]], { origin: "A1" });
+        const sorkCSV = XLSX.utils.sheet_to_csv(workSheet, {FS: ";"});
+        XLSX.writeFile(wb, filePathXSLS, {bookType: 'xlsx'});
+        //XLSX.writeFile(wb, filePathCSV, {bookType: "csv", FS: ";"});
+        //XLSX.writeFile(wb, filePathCSV);
         fs.writeFileSync(filePathTXT, sorkCSV);
         fs.writeFileSync(filePathCSV, sorkCSV);
     }
@@ -366,7 +260,7 @@ async function jsontosheet2(){
 
 async function jsontosheet3(getDates){
     try{
-        var queryParams = querystring.stringify(getDates)
+        var queryParams = stringify(getDates)
         let url = `${process.env.URL_API}` + 'informesacindarentrefechasexportar?'+queryParams;
         const raw_data = (await axios(url, {httpsAgent, headers: {'Authorization': `Bearer ${token}`}})).data;
         const date1 = getDates.fechadesde
@@ -378,18 +272,18 @@ async function jsontosheet3(getDates){
         if (!fs.existsSync(folder)) {
             fs.mkdirSync(folder);
           }
-        const routePath = path.normalize(folder);
-        const filePathXSLS = path.join(folder, '/Archivo.xlsx');
-        const filePathCSV = path.join(folder, '/Archivo.csv');
-        const filePathTXT = path.join(folder, '/Archivo.txt');
-        const workSheet = xlsx.utils.json_to_sheet(raw_data);
-        const wb = xlsx.utils.book_new();
-        xlsx.CFB.utils.use_zlib(zlib);
-        xlsx.utils.book_append_sheet(wb, workSheet, "Hoja1");
-        xlsx.utils.sheet_add_aoa(workSheet, [["DEA","SUCURSAL","Nº DOC LEGAL","TIPO DOC LEGAL","TIPO DE TRANSACCION","ITEM DOC LEGAL","FECHA DOC LEGAL","Nº DOC REFERENCIA","TIPO DOC REF","ITEM DOC REF","FECHA DOC REF","CUIT CLIENTE","Nº INTERNO CLIENTE","RAZON SOCIAL","SEGMENTO","DIRECCION","CIUDAD","PROVINCIA","CODIGO ART","DESCRIPCION","UMV","CANTIDAD","MONTO","FECHA COSTO","DESCRIPCION COND VTA","DIAS","OBSERVACION"]], { origin: "A1" });
-        const sorkCSV = xlsx.utils.sheet_to_csv(workSheet, {FS: ";"});
-        xlsx.writeFile(wb, filePathXSLS, {bookType: 'xlsx'});
-        //xlsx.writeFile(wb, filePathCSV);
+        const routePath = normalize(folder);
+        const filePathXSLS = join(folder, '/Archivo.xlsx');
+        const filePathCSV = join(folder, '/Archivo.csv');
+        const filePathTXT = join(folder, '/Archivo.txt');
+        const workSheet = XLSX.utils.json_to_sheet(raw_data);
+        const wb = XLSX.utils.book_new();
+        XLSX.CFB.utils.use_zlib(zlib);
+        XLSX.utils.book_append_sheet(wb, workSheet, "Hoja1");
+        XLSX.utils.sheet_add_aoa(workSheet, [["DEA","SUCURSAL","Nº DOC LEGAL","TIPO DOC LEGAL","TIPO DE TRANSACCION","ITEM DOC LEGAL","FECHA DOC LEGAL","Nº DOC REFERENCIA","TIPO DOC REF","ITEM DOC REF","FECHA DOC REF","CUIT CLIENTE","Nº INTERNO CLIENTE","RAZON SOCIAL","SEGMENTO","DIRECCION","CIUDAD","PROVINCIA","CODIGO ART","DESCRIPCION","UMV","CANTIDAD","MONTO","FECHA COSTO","DESCRIPCION COND VTA","DIAS","OBSERVACION"]], { origin: "A1" });
+        const sorkCSV = XLSX.utils.sheet_to_csv(workSheet, {FS: ";"});
+        XLSX.writeFile(wb, filePathXSLS, {bookType: 'xlsx'});
+        //XLSX.writeFile(wb, filePathCSV);
         fs.writeFileSync(filePathTXT, sorkCSV);
         fs.writeFileSync(filePathCSV, sorkCSV);
     }
@@ -409,7 +303,7 @@ new CronJob(
     'America/Argentina/Buenos_Aires'    
 );
 
-module.exports = {
+export default {
     getWebNimat,
     jsontosheet,
     getWebNimatCombo,
@@ -417,4 +311,5 @@ module.exports = {
     getActualizacionWeb,
     jsontosheet2,
     jsontosheet3
-}
+  };
+  

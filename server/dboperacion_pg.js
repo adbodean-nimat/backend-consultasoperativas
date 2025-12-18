@@ -1,5 +1,8 @@
-var configpg = require('./dbconfig_pg.js');
-const Pool = require('pg').Pool
+
+// const Pool = require('pg').Pool
+import pg from 'pg';
+import configpg from './dbconfig_pg.js';
+const { Pool } = pg;
 const pool = new Pool(configpg);
 
 //Tabla
@@ -2097,7 +2100,7 @@ const simulador_tiposdecomprobantes = async () => {
     }
 }
 
-module.exports = {
+export default {
     getDeposANoConsiderar, getDeposANoConsiderarByCod, createDepos, updateDepos, deleteDepos,
     getNPaConsiderar, getNPaConsiderarByCod, createNP, updateNP, deleteNP,
     getDimensionesCont, getDimensionesContById, createDimensionesCont, updateDimensionesCont, deleteDimensionesCont,

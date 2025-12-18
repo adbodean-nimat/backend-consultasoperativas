@@ -1,12 +1,16 @@
 // sync-categorias-productos.js
 // Script para sincronizar categorías desde Excel y generar JSON completo
-import { Dropbox } from 'dropbox';
-import { read, utils } from 'xlsx';
-import { writeFileSync, statSync } from 'fs';
-import { encode } from '@toon-format/toon';
+import dotenv from 'dotenv';
+import Dropbox from 'dropbox';
+import xlsx from 'xlsx';
+import fs from 'fs';
+import { encode } from '@toon-format/toon'
+
+dotenv.config();
 
 const EXCEL_PRODUCTOS = process.env.EXCEL_PRODUCTOS_PATH
 const EXCEL_CATEGORIAS = process.env.EXCEL_CATEGORIAS_PATH
+const EXCEL_URLS = process.env.EXCEL_URLS_PATH
 const OUTPUT_JSON = process.env.OUTPUT_JSON
 const OUTPUT_TOON = process.env.OUTPUT_TOON
 
@@ -25,10 +29,10 @@ async function getAccessToken() {
     const errText = await res.text().catch(() => "");
     throw new Error(`OAuth token error ${res.status}: ${errText}`);
   }
-  return res.json(); // { access_token, expires_in, ... } // { access_token, expires_in, ... }
+  return res.json();
 }
 
-let _cachedAccess = null; // { token, expiresAt }
+let _cachedAccess = null;
 async function ensureAccessToken() {
   const now = Date.now();
   if (_cachedAccess && _cachedAccess.expiresAt > now + 30_000) {
@@ -37,7 +41,6 @@ async function ensureAccessToken() {
   const t = await getAccessToken();
   _cachedAccess = {
     token: t.access_token,
-// Si no viene expires_in, usa 1h por defecto
     expiresAt: now + ((t.expires_in ?? 3600) - 60) * 1000,
   };
   return _cachedAccess.token;
@@ -66,10 +69,8 @@ function construirArbolCategorias(categorias) {
   // Segundo paso: construir jerarquía
   Object.values(categoriasMap).forEach(cat => {
     if (cat.parent_id === 0) {
-      // Categoría principal
       arbol.push(cat);
     } else {
-      // Subcategoría - agregar al padre
       const padre = categoriasMap[cat.parent_id];
       if (padre) {
         padre.hijos.push(cat);
@@ -124,12 +125,13 @@ function enriquecerProductos(productos, categoriasMap) {
         ruta.unshift(catActual.nombre);
         catActual = catActual.parent_id ? categoriasMap[catActual.parent_id] : null;
       }
-      
+
       return {
         id: cp.id,
         nombre: cat.nombre,
         slug: cat.slug,
         ruta: ruta.join(' > '),
+        ruta_principal: ruta[0],
         orden: cp.orden
       };
     }).filter(c => c !== null);
@@ -145,7 +147,7 @@ function enriquecerProductos(productos, categoriasMap) {
       categoria_principal_slug: categoriaPrincipal ? categoriaPrincipal.slug : 'general',
       categorias_completas: categoriasInfo,
       ruta_categoria: categoriaPrincipal ? categoriaPrincipal.ruta : 'General',
-      url_categoria: categoriaPrincipal ? 'https://www.nimat.com.ar/'+categoriaPrincipal.slug : 'https://www.nimat.com.ar/'+prod.MARCA
+      url_categoria: categoriaPrincipal ? 'https://www.nimat.com.ar/'+categoriaPrincipal.slug : 'https://www.nimat.com.ar/'+prod.marca
     };
   });
 }
@@ -186,7 +188,7 @@ function crearIndicesCategorias(productos, arbolCategorias) {
   return indices;
 }
 
-export async function sincronizarCompleto() {
+async function sincronizarCompleto() {
   try {
     console.log('🚀 Iniciando sincronización completa...\n');
     const token = await ensureAccessToken();
@@ -195,8 +197,8 @@ export async function sincronizarCompleto() {
     // 1. Cargar Excel de Categorías
     console.log('📥 Descargando categorías...');
     const resCat = await dbx.filesDownload({ path: EXCEL_CATEGORIAS });
-    const wbCat = read(resCat.result.fileBinary, { type: 'buffer' });
-    const categorias = utils.sheet_to_json(wbCat.Sheets[wbCat.SheetNames[0]]);
+    const wbCat = xlsx.read(resCat.result.fileBinary, { type: 'buffer' });
+    const categorias = xlsx.utils.sheet_to_json(wbCat.Sheets[wbCat.SheetNames[0]]);
     
     console.log(`   ✓ Categorías leídas: ${categorias.length}`);
     
@@ -211,29 +213,58 @@ export async function sincronizarCompleto() {
     // 3. Cargar Excel de Productos
     console.log('\n📥 Descargando productos...');
     const resProd = await dbx.filesDownload({ path: EXCEL_PRODUCTOS });
-    const wbProd = read(resProd.result.fileBinary, { type: 'buffer' });
-    const productosRaw = utils.sheet_to_json(wbProd.Sheets[wbProd.SheetNames[0]]);
+    const wbProd = xlsx.read(resProd.result.fileBinary, { type: 'buffer' });
+    const productosRaw = xlsx.utils.sheet_to_json(wbProd.Sheets[wbProd.SheetNames[0]]);
     
     console.log(`   ✓ Productos leídos: ${productosRaw.length}`);
     
-    // 4. Procesar productos (tu lógica existente)
+    // 3.5. Cargar Excel de URLs
+    console.log('\n📥 Descargando URLs de productos...');
+    const resUrls = await dbx.filesDownload({ path: EXCEL_URLS });
+    const wbUrls = xlsx.read(resUrls.result.fileBinary, { type: 'buffer' });
+    const urlsRaw = xlsx.utils.sheet_to_json(wbUrls.Sheets[wbUrls.SheetNames[0]]);
+    
+    console.log(`   ✓ URLs leídas: ${urlsRaw.length}`);
+    
+    // Crear mapa de URLs por SKU
+    const urlsMap = {};
+    urlsRaw.forEach(row => {
+      const sku = (row.Sku || row.SKU || '').trim();
+      if (sku) {
+        urlsMap[sku] = {
+          url: row.url || '',
+          imageUrl: row.imageUrl || ''
+        };
+      }
+    });
+    
+    console.log(`   ✓ URLs mapeadas: ${Object.keys(urlsMap).length}`);
+    
+    // 4. Procesar productos (combinando con URLs)
     console.log('\n🔄 Procesando productos...');
     const productosBase = productosRaw
       .filter(row => row.Published === 'TRUE' && row.VisibleIndividually === 'TRUE')
-      .map((row, idx) => ({
-        id: idx,
-        sku: row.SKU || '',
-        nombre: row.Name || '',
-        descripcion_corta: (row.ShortDescription || '').replace(/<[^>]+>/g, ''),
-        precio: parseFloat(row.Price) || 0,
-        stock: parseInt(row.StockQuantity) || 0,
-        marca: row.Manufacturers || '',
-        peso_kg: parseFloat(row.Weight) || 0,
-        categorias: row.Categories || '',
-        activo: true,
-        visible: true,
-        keywords: []
-      }));
+      .map((row, idx) => {
+        const sku = (row.SKU || '').trim();
+        const urlData = urlsMap[sku] || { url: '', imageUrl: '' };
+        
+        return {
+          id: idx,
+          sku: sku,
+          nombre: row.Name || '',
+          descripcion_corta: (row.ShortDescription || '').replace(/<[^>]+>/g, ''),
+          precio: parseFloat(row.Price) || 0,
+          stock: parseInt(row.StockQuantity) || 0,
+          marca: row.Manufacturers || '',
+          peso_kg: parseFloat(row.Weight) || 0,
+          categorias: row.Categories || '',
+          url: urlData.url,
+          imageUrl: urlData.imageUrl,
+          activo: true,
+          visible: true,
+          keywords: []
+        };
+      });
     
     // 5. Enriquecer productos con info de categorías
     console.log('✨ Enriqueciendo productos con categorías...');
@@ -253,7 +284,7 @@ export async function sincronizarCompleto() {
     });
     
     // 7. Crear índices
-    console.log('🔍 Creando índices...');
+    console.log('📑 Creando índices...');
     const indicesCategorias = crearIndicesCategorias(productosEnriquecidos, arbol);
     
     // Índices adicionales (por marca, precio, etc.)
@@ -309,10 +340,118 @@ export async function sincronizarCompleto() {
     // 9. Guardar JSON
     const catalogoCompletoToJSON = JSON.stringify(catalogoCompleto, null, 2);
     const catalogoCompletoToTOON = encode(catalogoCompleto);
-    //console.log(catalogoCompletoToTOON);
-    writeFileSync(OUTPUT_JSON, catalogoCompletoToJSON, 'utf8');
-    writeFileSync(OUTPUT_TOON, catalogoCompletoToTOON)
 
+// --- LÓGICA DE SELECCIÓN DE CATEGORÍA ---
+let rawData = catalogoCompleto.productos
+
+// Función Helper: Elegir la categoría más descriptiva
+function elegirMejorCategoria(data) {
+  let categoriaGanadora = "General"; // Valor por defecto (Plan D)
+  let urlCategoriaGanadora = "https://www.nimat.com.ar/"; // Default
+  
+  if (Array.isArray(data.categorias_completas) && data.categorias_completas.length > 0) {
+    
+    const categoriaMasProfunda = data.categorias_completas.sort((a, b) => {
+        const profundidadA = (a.ruta.match(/>/g) || []).length;
+        const profundidadB = (b.ruta.match(/>/g) || []).length;
+        return profundidadB - profundidadA; // De mayor a menor
+    })[0];
+    
+    categoriaGanadora = categoriaMasProfunda.ruta;
+    // Intentamos armar la URL con el slug de esa categoría específica
+    if (categoriaMasProfunda.slug) {
+        urlCategoriaGanadora = `https://www.nimat.com.ar/${categoriaMasProfunda.slug}`;
+    }
+
+// PLAN B: Si no hay array, usamos el campo plano 'ruta_categoria' si existe
+} else if (rawData.ruta_categoria) {
+    categoriaGanadora = rawData.ruta_categoria;
+    // Usamos la URL de categoría que ya viene en el root
+    if (rawData.url_categoria) urlCategoriaGanadora = rawData.url_categoria;
+
+// PLAN C: Usamos la 'categoria_principal' como último recurso
+} else if (rawData.categoria_principal) {
+    categoriaGanadora = rawData.categoria_principal;
+    if (rawData.url_categoria) urlCategoriaGanadora = rawData.url_categoria;
+}
+return categoriaGanadora
+    } 
+
+function elegirMejorUrlCategoria(data) {
+  let categoriaGanadora = "General"; // Valor por defecto (Plan D)
+  let urlCategoriaGanadora = "https://www.nimat.com.ar/"; // Default
+  
+  if (Array.isArray(data.categorias_completas) && data.categorias_completas.length > 0) {
+    
+    const categoriaMasProfunda = data.categorias_completas.sort((a, b) => {
+        const profundidadA = (a.ruta.match(/>/g) || []).length;
+        const profundidadB = (b.ruta.match(/>/g) || []).length;
+        return profundidadB - profundidadA; // De mayor a menor
+    })[0];
+    
+    categoriaGanadora = categoriaMasProfunda.ruta;
+    // Intentamos armar la URL con el slug de esa categoría específica
+    if (categoriaMasProfunda.slug) {
+        urlCategoriaGanadora = `https://www.nimat.com.ar/${categoriaMasProfunda.slug}`;
+    }
+
+// PLAN B: Si no hay array, usamos el campo plano 'ruta_categoria' si existe
+} else if (rawData.ruta_categoria) {
+    categoriaGanadora = rawData.ruta_categoria;
+    // Usamos la URL de categoría que ya viene en el root
+    if (rawData.url_categoria) urlCategoriaGanadora = rawData.url_categoria;
+
+// PLAN C: Usamos la 'categoria_principal' como último recurso
+} else if (rawData.categoria_principal) {
+    categoriaGanadora = rawData.categoria_principal;
+    if (rawData.url_categoria) urlCategoriaGanadora = rawData.url_categoria;
+}
+return urlCategoriaGanadora
+    } 
+
+// --- PROCESO PRINCIPAL ---
+
+const productosLimpios = rawData
+  .filter(p => p.activo && p.visible && p.precio > 0)
+  .map(p => {
+    // 1. Resolvemos la categoría antes de crear el objeto
+    const mejorCategoria = elegirMejorCategoria(p); // p.categorias puede ser array o string
+    const mejorUrlCategoria = elegirMejorUrlCategoria(p)
+    // 2. Extraemos palabras clave de esa categoría para ayudar al buscador
+    // Ej: de "Aberturas > Ventanas" sacamos "aberturas, ventanas"
+    const keywordsCategoria = mejorCategoria
+      .replace(/>/g, ' ') // Cambiar > por espacio
+      .split(' ')
+      .filter(w => w.length > 3) // Filtrar conectores cortos
+      .join(', ');
+
+    return {
+      activo: p.activo,
+      sku: p.sku,
+      nombre: p.nombre.trim(),
+      marca: p.marca,
+      // AQUI VA TU DUDA RESUELTA:
+      categoria: mejorCategoria, // "Aberturas > Ventanas > Aluminio"
+      // Importante: La URL de categoría debe coincidir con la categoría elegida
+      // (Asumiendo que tenés ese dato, sino usá la genérica)
+      url_categoria: mejorUrlCategoria,
+      precio: p.precio,
+      stock: p.stock > 0, 
+      url: p.url,
+      imageUrl: p.imageUrl,
+      descripcion_corta: p.descripcion_corta.trim(),
+      peso_kg: p.peso_kg,
+      
+      // Sumamos la categoría a las keywords para potenciar la búsqueda
+      keywords: [p.keywords].join(", ").toLowerCase()
+    };
+  });
+
+    // Guardar productosLimpios en productos.json
+    fs.writeFileSync(OUTPUT_JSON, JSON.stringify(productosLimpios, null, 2), 'utf8');
+    fs.writeFileSync(OUTPUT_TOON, catalogoCompletoToTOON)
+    // Ver productos arriba
+    console.log(catalogoCompleto.productos[0])
     // 10. Estadísticas finales
     console.log('\n✅ SINCRONIZACIÓN COMPLETA\n');
     console.log('📊 Estadísticas:');
@@ -323,8 +462,8 @@ export async function sincronizarCompleto() {
     console.log(`   • Marcas: ${catalogoCompleto.metadata.marcas_total}`);
     console.log(`\n💾 Archivo generado: ${OUTPUT_JSON}`);
     console.log(`💾 Archivo generado: ${OUTPUT_TOON}`);
-    console.log(`📦 Tamaño JSON: ${(statSync(OUTPUT_JSON).size / 1024).toFixed(2)} KB`);
-    console.log(`📦 Tamaño TOON: ${(statSync(OUTPUT_TOON).size / 1024).toFixed(2)} KB\n`);
+    console.log(`📦 Tamaño JSON: ${(fs.statSync(OUTPUT_JSON).size / 1024).toFixed(2)} KB`);
+    console.log(`📦 Tamaño TOON: ${(fs.statSync(OUTPUT_TOON).size / 1024).toFixed(2)} KB\n`);
     
     // Mostrar algunas categorías principales
     console.log('🌳 Categorías principales:');
@@ -339,4 +478,4 @@ export async function sincronizarCompleto() {
 }
 
 // Ejecutar
-//sincronizarCompleto();
+// sincronizarCompleto();

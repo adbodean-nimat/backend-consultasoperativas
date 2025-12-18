@@ -1,7 +1,13 @@
-import { createReadStream } from "node:fs";
-import { access } from "node:fs/promises";
-import path from "node:path";
+import  dotenv from 'dotenv';
+import fs from "node:fs"
+import fsPromises from "node:fs/promises";
 import OpenAI from "openai";
+
+/* const fs = require("node:fs")
+const fsPromises = require("node:fs/promises");
+const OpenAI = require("openai"); */
+
+dotenv.config();
 
 const client = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -49,19 +55,19 @@ export async function syncOpenAI() {
 
   // 0) Verificar archivo local
   try {
-    await access(LOCAL_FILE_PATH_PRODUCTOS);
+    await fsPromises.access(LOCAL_FILE_PATH_PRODUCTOS);
   } catch {
     console.error(`No se encuentra el archivo local: ${LOCAL_FILE_PATH_PRODUCTOS}`);
     process.exit(1);
   }
   try {
-    await access(LOCAL_FILE_PATH_FAQ);
+    await fsPromises.access(LOCAL_FILE_PATH_FAQ);
   } catch {
     console.error(`No se encuentra el archivo local: ${LOCAL_FILE_PATH_FAQ}`);
     process.exit(1);
   }
   try {
-    await access(LOCAL_FILE_PATH_INFO);
+    await fsPromises.access(LOCAL_FILE_PATH_INFO);
   } catch {
     console.error(`No se encuentra el archivo local: ${LOCAL_FILE_PATH_INFO}`);
     process.exit(1);
@@ -91,16 +97,16 @@ export async function syncOpenAI() {
   // 2) Subir nuevo archivo a Files API
   console.log("⬆️ Subiendo nuevo archivos a Files API...");
   const uploadedFile = await client.files.create({
-    file: createReadStream(LOCAL_FILE_PATH_PRODUCTOS),
+    file: fs.createReadStream(LOCAL_FILE_PATH_PRODUCTOS),
     purpose: "assistants",
     //filename: path.basename(LOCAL_FILE_PATH_PRODUCTOS),
   });
   const uploadedFileFAQ = await client.files.create({
-    file: createReadStream(LOCAL_FILE_PATH_FAQ),
+    file: fs.createReadStream(LOCAL_FILE_PATH_FAQ),
     purpose: "assistants"
   });
   const uploadedFileINFO = await client.files.create({
-    file: createReadStream(LOCAL_FILE_PATH_INFO),
+    file: fs.createReadStream(LOCAL_FILE_PATH_INFO),
     purpose: "assistants"
   });
 

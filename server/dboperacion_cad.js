@@ -1,9 +1,11 @@
-require('dotenv').config();
-var config = require('./dbconfig.js');
-const sql = require('mssql');
+import dotenv from 'dotenv';
+dotenv.config();
+import sql from 'mssql';
 
-async function getListaClientesCAD(){
-  const cPool = new sql.ConnectionPool(config.cad);
+import { cad } from './dbconfig.js';
+
+export default async function getListaClientesCAD(){
+  const cPool = new sql.ConnectionPool(cad);
   cPool.on('error', err => console.log('---> SQL Error: ', err));
   try{
     await cPool.connect();
@@ -16,8 +18,4 @@ async function getListaClientesCAD(){
   finally {
     cPool.close();
   }
-}
-
-module.exports = {
-    getListaClientesCAD: getListaClientesCAD
 }

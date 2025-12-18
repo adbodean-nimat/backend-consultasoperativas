@@ -1,8 +1,9 @@
-require('dotenv').config();
-var Db = require('./dboperacion');
-var Pg = require('./dboperacion_pg');
-const https = require('https');
-const axios = require('axios');
+import dotenv from 'dotenv';
+dotenv.config();
+import https from 'https';
+import axios from 'axios';
+import Db from './dboperacion.js';
+import Pg from './dboperacion_pg.js';
 const httpsAgent = new https.Agent({ rejectUnauthorized: process.env.SSL_REJECT_UNAUTHORIZED }); 
 const token = process.env.JWT_TOKEN
 
@@ -1035,7 +1036,7 @@ async function getInformesAcindarEntreFechasExportar(getDates){
     return response;  
 } */
 
-module.exports = {
+export default {
     getListadePrecioBUI2,
     getConsSecoConfig,
     getListaConstSeco,

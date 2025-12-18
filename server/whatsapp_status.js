@@ -4,9 +4,6 @@
 
 import express from "express";
 import dotenv from "dotenv";
-
-// En Node 18+ fetch viene global. Si usás Node 16, instalá `node-fetch` y hacé: import fetch from 'node-fetch'
-
 dotenv.config();
 
 const app = express();

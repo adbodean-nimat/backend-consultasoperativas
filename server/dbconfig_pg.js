@@ -1,4 +1,5 @@
-require('dotenv').config();
+import dotenv from 'dotenv';
+dotenv.config();
 
 const configpg = {
     user: process.env.PSQL_USER,
@@ -8,4 +9,4 @@ const configpg = {
     port:  parseInt(process.env.PSQL_PORT, 10)
 }
 
-module.exports = configpg;
+export default configpg;
