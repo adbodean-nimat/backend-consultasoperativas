@@ -2,9 +2,9 @@ import dotenv from 'dotenv';
 dotenv.config();
 import sql from 'mssql';
 import crypto from 'crypto';
-import dayjs from 'dayjs';
-import utc from 'dayjs/plugin/utc';
-import timezone from 'dayjs/plugin/timezone';
+import dayjs from 'dayjs'
+import { utc } from 'dayjs/plugin/utc';
+import { timezone } from 'dayjs/plugin/timezone';
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
