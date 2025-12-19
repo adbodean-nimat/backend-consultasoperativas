@@ -998,17 +998,11 @@ async function ConsultasClientes(getData){
 async function gdc_itemsReclamadosAlProveedor() {
   try {
     let urlArray = `${process.env.URL_API}` + 'gdc/clasif8artquesecompran';
-    const response2 = await axios.get(urlArray, {httpsAgent, headers: {'Authorization': `Bearer ${token}`}})
-                              .then(response => {
-                                let results = [];
-                                data = response.data;
-                                for(var i = 0; i < data.length; i++){results.push(data[i]['Cod_clasif8'])}
-                                return results;
-                              })
-                              .catch((error) => {console.error(error)});
+    const raw_array = (await axios.get(urlArray, {httpsAgent, headers: {'Authorization': `Bearer ${token}`}})).data;
+    const response2 = raw_array.map(item => item.Cod_clasif8).join(',');                            
     let pool = await sql.connect(plataforma);
     let gdcItemsReclamados = await pool.request()
-      .query("WITH ArtQueSeCompranSegunClas8yRCMercado AS( SELECT STOC_ARCO.ARCO_RUBRO_COMPRA ,CPAG_RUBC.RUBC_NOMBRE ,STOC_ARTS.ARTS_ARTICULO ,STOC_ARTS.ARTS_ARTICULO_EMP ,STOC_ARTS.ARTS_NOMBRE ,STOC_CA08.CA08_CLASIF_8 ,STOC_CA08.CA08_NOMBRE FROM CPAG_RUBC WITH (NOLOCK) INNER JOIN ((STOC_ARCO WITH (NOLOCK) INNER JOIN STOC_ARTS WITH (NOLOCK) ON STOC_ARCO.ARCO_ARTICULO = STOC_ARTS.ARTS_ARTICULO) INNER JOIN STOC_CA08 WITH (NOLOCK) ON STOC_ARTS.ARTS_CLASIF_8 = STOC_CA08.CA08_CLASIF_8) ON CPAG_RUBC.RUBC_RUBRO_COMPRA = STOC_ARCO.ARCO_RUBRO_COMPRA WHERE (((CPAG_RUBC.RUBC_NOMBRE) LIKE '%(1)%')) AND STOC_CA08.CA08_CLASIF_8 IN (" + response2.join(',') + ")) SELECT COMP_CODC.CODC_PROVEEDOR ,CPAG_PROV.PROV_NOMBRE ,COMP_CODC.CODC_FECHA_OC ,COMP_CODC.CODC_DIVISION ,COMP_CODC.CODC_TIPO_OC ,COMP_CODC.CODC_NUM_OC ,COMP_RODC.RODC_ARTICULO ,STOC_ARTS.ARTS_ARTICULO_EMP ,STOC_ARTS.ARTS_NOMBRE ,COMP_RODC.RODC_CANT_PEDIDA ,COMP_RODC.RODC_CANT_RECIB ,IIf([RODC_CANT_PEDIDA]-[RODC_CANT_RECIB]>0,[RODC_CANT_PEDIDA]-[RODC_CANT_RECIB],0) AS [Cant pend ent] ,COMP_RODC.RODC_MOTIVO_CANC ,COMP_RODC.RODC_SECTOR FROM (CPAG_PROV WITH (NOLOCK) INNER JOIN ((((COMP_CODC WITH (NOLOCK) INNER JOIN COMP_RODC WITH (NOLOCK) ON (COMP_CODC.CODC_NUM_OC = COMP_RODC.RODC_NUM_OC) AND (COMP_CODC.CODC_TIPO_OC = COMP_RODC.RODC_TIPO_OC) AND (COMP_CODC.CODC_DIVISION = COMP_RODC.RODC_DIVISION)) INNER JOIN STOC_ARTS WITH (NOLOCK) ON COMP_RODC.RODC_ARTICULO = STOC_ARTS.ARTS_ARTICULO) INNER JOIN STOC_ARCO WITH (NOLOCK) ON COMP_RODC.RODC_ARTICULO = STOC_ARCO.ARCO_ARTICULO) INNER JOIN CPAG_RUBC WITH (NOLOCK) ON STOC_ARCO.ARCO_RUBRO_COMPRA = CPAG_RUBC.RUBC_RUBRO_COMPRA) ON CPAG_PROV.PROV_PROVEEDOR = COMP_CODC.CODC_PROVEEDOR) INNER JOIN ArtQueSeCompranSegunClas8yRCMercado ON STOC_ARTS.ARTS_ARTICULO = ArtQueSeCompranSegunClas8yRCMercado.ARTS_ARTICULO WHERE (((IIf([RODC_CANT_PEDIDA]-[RODC_CANT_RECIB]>0,[RODC_CANT_PEDIDA]-[RODC_CANT_RECIB],0))>0) AND ((COMP_RODC.RODC_MOTIVO_CANC) Is Null) AND ((COMP_RODC.RODC_SECTOR)='100'))");
+      .query("WITH ArtQueSeCompranSegunClas8yRCMercado AS( SELECT STOC_ARCO.ARCO_RUBRO_COMPRA ,CPAG_RUBC.RUBC_NOMBRE ,STOC_ARTS.ARTS_ARTICULO ,STOC_ARTS.ARTS_ARTICULO_EMP ,STOC_ARTS.ARTS_NOMBRE ,STOC_CA08.CA08_CLASIF_8 ,STOC_CA08.CA08_NOMBRE FROM CPAG_RUBC WITH (NOLOCK) INNER JOIN ((STOC_ARCO WITH (NOLOCK) INNER JOIN STOC_ARTS WITH (NOLOCK) ON STOC_ARCO.ARCO_ARTICULO = STOC_ARTS.ARTS_ARTICULO) INNER JOIN STOC_CA08 WITH (NOLOCK) ON STOC_ARTS.ARTS_CLASIF_8 = STOC_CA08.CA08_CLASIF_8) ON CPAG_RUBC.RUBC_RUBRO_COMPRA = STOC_ARCO.ARCO_RUBRO_COMPRA WHERE (((CPAG_RUBC.RUBC_NOMBRE) LIKE '%(1)%')) AND STOC_CA08.CA08_CLASIF_8 IN (" + response2 + ")) SELECT COMP_CODC.CODC_PROVEEDOR ,CPAG_PROV.PROV_NOMBRE ,COMP_CODC.CODC_FECHA_OC ,COMP_CODC.CODC_DIVISION ,COMP_CODC.CODC_TIPO_OC ,COMP_CODC.CODC_NUM_OC ,COMP_RODC.RODC_ARTICULO ,STOC_ARTS.ARTS_ARTICULO_EMP ,STOC_ARTS.ARTS_NOMBRE ,COMP_RODC.RODC_CANT_PEDIDA ,COMP_RODC.RODC_CANT_RECIB ,IIf([RODC_CANT_PEDIDA]-[RODC_CANT_RECIB]>0,[RODC_CANT_PEDIDA]-[RODC_CANT_RECIB],0) AS [Cant pend ent] ,COMP_RODC.RODC_MOTIVO_CANC ,COMP_RODC.RODC_SECTOR FROM (CPAG_PROV WITH (NOLOCK) INNER JOIN ((((COMP_CODC WITH (NOLOCK) INNER JOIN COMP_RODC WITH (NOLOCK) ON (COMP_CODC.CODC_NUM_OC = COMP_RODC.RODC_NUM_OC) AND (COMP_CODC.CODC_TIPO_OC = COMP_RODC.RODC_TIPO_OC) AND (COMP_CODC.CODC_DIVISION = COMP_RODC.RODC_DIVISION)) INNER JOIN STOC_ARTS WITH (NOLOCK) ON COMP_RODC.RODC_ARTICULO = STOC_ARTS.ARTS_ARTICULO) INNER JOIN STOC_ARCO WITH (NOLOCK) ON COMP_RODC.RODC_ARTICULO = STOC_ARCO.ARCO_ARTICULO) INNER JOIN CPAG_RUBC WITH (NOLOCK) ON STOC_ARCO.ARCO_RUBRO_COMPRA = CPAG_RUBC.RUBC_RUBRO_COMPRA) ON CPAG_PROV.PROV_PROVEEDOR = COMP_CODC.CODC_PROVEEDOR) INNER JOIN ArtQueSeCompranSegunClas8yRCMercado ON STOC_ARTS.ARTS_ARTICULO = ArtQueSeCompranSegunClas8yRCMercado.ARTS_ARTICULO WHERE (((IIf([RODC_CANT_PEDIDA]-[RODC_CANT_RECIB]>0,[RODC_CANT_PEDIDA]-[RODC_CANT_RECIB],0))>0) AND ((COMP_RODC.RODC_MOTIVO_CANC) Is Null) AND ((COMP_RODC.RODC_SECTOR)='100'))");
     return gdcItemsReclamados.recordsets;
   } catch (error) {
     console.error(error);
@@ -1018,17 +1012,11 @@ async function gdc_itemsReclamadosAlProveedor() {
 async function gdc_itemsVinculadasAOC(){
   try {
     let urlArray4 = `${process.env.URL_API}` + 'gdc/npstockcomprometido'
-    const response4 = await axios.get(urlArray4, {httpsAgent, headers: {'Authorization': `Bearer ${token}`}})
-                              .then(response =>{
-                                let results = [];
-                                data = response.data;
-                                for(var i = 0; i < data.length; i++){results.push(data[i]['Cod_NP'])}
-                                return results;
-                              })
-                              .catch((error)=>{console.error(error)});
+    const raw_array = (await axios.get(urlArray4, {httpsAgent, headers: {'Authorization': `Bearer ${token}`}})).data;
+    const response4 = raw_array.map(item => `'${item.Cod_NP}'` ).join(',');
     let pool = await sql.connect(plataforma);
     let gdcItemsVinculadasAOC = await pool.request()
-      .query("SELECT Right('000000' + [CODC_PROVEEDOR],6) + '-' + [PROV_NOMBRE] AS Proveedor ,COMP_CODC.CODC_PROVEEDOR ,CPAG_PROV.PROV_NOMBRE ,COMP_CODC.CODC_FECHA_OC ,COMP_CODC.CODC_DIVISION ,COMP_CODC.CODC_TIPO_OC ,COMP_CODC.CODC_NUM_OC ,COMP_CODC.CODC_COND_PAGO ,CPAG_CPPR.CPPR_NOMBRE ,COMP_CODC.CODC_OBSERVACION ,STOC_ARTS.ARTS_ARTICULO_EMP ,STOC_ARTS.ARTS_NOMBRE ,COMP_RODC.RODC_DESC_AMPLIA ,COMP_RODC.RODC_CANT_PEDIDA ,COMP_RODC.RODC_CANT_RECIB ,IIf([RODC_CANT_PEDIDA]-[RODC_CANT_RECIB]>0,[RODC_CANT_PEDIDA]-[RODC_CANT_RECIB],0) AS [Cantpend_ent] ,SIST_OCNP.OCNP_CANT_VINC ,COMP_RODC.RODC_FECHA_ENTREGA ,COMP_RODC.RODC_MOTIVO_CANC ,STOC_ARCO.ARCO_RUBRO_COMPRA ,CPAG_RUBC.RUBC_NOMBRE ,SIST_OCNP.OCNP_RENGLON_NPDE ,VENT_NPCA.NPCA_FECHA_EMI AS [Fecha_NP] ,VENT_NPDE.NPDE_DIVISION_NPCA ,VENT_NPDE.NPDE_TIPO_NPCA ,VENT_NPDE.NPDE_NUMERO_NPCA ,VENT_NPCA.NPCA_CLIENTE ,CCOB_CLIE.CLIE_NOMBRE ,Right('0000000000' + [NPCA_CLIENTE],6) + '-' + [CLIE_NOMBRE] AS Cliente ,VENT_NPDE.NPDE_CANT_PEDIDA ,VENT_NPDE.NPDE_CANT_ENTREG ,VENT_NPDE.NPDE_CANT_FACTUR ,VENT_NPDE.NPDE_FECHA_CANC ,SIST_VEND.VEND_NOMBRE FROM((((((((CPAG_PROV WITH (NOLOCK) INNER JOIN ((((COMP_CODC WITH (NOLOCK) INNER JOIN COMP_RODC WITH (NOLOCK) ON (COMP_CODC.CODC_NUM_OC = COMP_RODC.RODC_NUM_OC) AND (COMP_CODC.CODC_TIPO_OC = COMP_RODC.RODC_TIPO_OC) AND (COMP_CODC.CODC_DIVISION = COMP_RODC.RODC_DIVISION)) INNER JOIN STOC_ARTS WITH (NOLOCK) ON COMP_RODC.RODC_ARTICULO = STOC_ARTS.ARTS_ARTICULO) INNER JOIN STOC_ARCO WITH (NOLOCK) ON COMP_RODC.RODC_ARTICULO = STOC_ARCO.ARCO_ARTICULO) INNER JOIN CPAG_RUBC WITH (NOLOCK) ON STOC_ARCO.ARCO_RUBRO_COMPRA = CPAG_RUBC.RUBC_RUBRO_COMPRA) ON CPAG_PROV.PROV_PROVEEDOR = COMP_CODC.CODC_PROVEEDOR) INNER JOIN SIST_OCNP WITH (NOLOCK) ON (COMP_RODC.RODC_REN_OC = SIST_OCNP.OCNP_RENGLON_RODC) AND (COMP_RODC.RODC_NUM_OC = SIST_OCNP.OCNP_NUMERO_CODC) AND (COMP_RODC.RODC_TIPO_OC = SIST_OCNP.OCNP_TIPO_CODC) AND (COMP_RODC.RODC_DIVISION = SIST_OCNP.OCNP_DIVISION_CODC)) INNER JOIN VENT_NPDE WITH (NOLOCK) ON (SIST_OCNP.OCNP_RENGLON_NPDE = VENT_NPDE.NPDE_RENGLON) AND (SIST_OCNP.OCNP_NUMERO_NPCA = VENT_NPDE.NPDE_NUMERO_NPCA) AND (SIST_OCNP.OCNP_DIVISION_NPCA = VENT_NPDE.NPDE_DIVISION_NPCA) AND (SIST_OCNP.OCNP_TIPO_NPCA = VENT_NPDE.NPDE_TIPO_NPCA)) INNER JOIN VENT_NPCA WITH (NOLOCK) ON (VENT_NPDE.NPDE_NUMERO_NPCA = VENT_NPCA.NPCA_NUMERO_NPCA) AND (VENT_NPDE.NPDE_TIPO_NPCA = VENT_NPCA.NPCA_TIPO_NPCA) AND (VENT_NPDE.NPDE_DIVISION_NPCA = VENT_NPCA.NPCA_DIVISION_NPCA)) INNER JOIN CCOB_CLIE WITH (NOLOCK) ON VENT_NPCA.NPCA_CLIENTE = CCOB_CLIE.CLIE_CLIENTE) INNER JOIN VENT_NPVE WITH (NOLOCK) ON (VENT_NPCA.NPCA_NUMERO_NPCA = VENT_NPVE.NPVE_NUMERO_NPCA) AND (VENT_NPCA.NPCA_TIPO_NPCA = VENT_NPVE.NPVE_TIPO_NPCA) AND (VENT_NPCA.NPCA_DIVISION_NPCA = VENT_NPVE.NPVE_DIVISION_NPCA)) INNER JOIN SIST_VEND WITH (NOLOCK) ON VENT_NPVE.NPVE_VENDEDOR = SIST_VEND.VEND_VENDEDOR) INNER JOIN CPAG_CPPR WITH (NOLOCK) ON COMP_CODC.CODC_COND_PAGO = CPAG_CPPR.CPPR_COND_PAGO) WHERE VENT_NPDE.NPDE_TIPO_NPCA IN (" + response4.map(x => `'${x}'`).join(',') + ")");
+      .query("SELECT Right('000000' + [CODC_PROVEEDOR],6) + '-' + [PROV_NOMBRE] AS Proveedor ,COMP_CODC.CODC_PROVEEDOR ,CPAG_PROV.PROV_NOMBRE ,COMP_CODC.CODC_FECHA_OC ,COMP_CODC.CODC_DIVISION ,COMP_CODC.CODC_TIPO_OC ,COMP_CODC.CODC_NUM_OC ,COMP_CODC.CODC_COND_PAGO ,CPAG_CPPR.CPPR_NOMBRE ,COMP_CODC.CODC_OBSERVACION ,STOC_ARTS.ARTS_ARTICULO_EMP ,STOC_ARTS.ARTS_NOMBRE ,COMP_RODC.RODC_DESC_AMPLIA ,COMP_RODC.RODC_CANT_PEDIDA ,COMP_RODC.RODC_CANT_RECIB ,IIf([RODC_CANT_PEDIDA]-[RODC_CANT_RECIB]>0,[RODC_CANT_PEDIDA]-[RODC_CANT_RECIB],0) AS [Cantpend_ent] ,SIST_OCNP.OCNP_CANT_VINC ,COMP_RODC.RODC_FECHA_ENTREGA ,COMP_RODC.RODC_MOTIVO_CANC ,STOC_ARCO.ARCO_RUBRO_COMPRA ,CPAG_RUBC.RUBC_NOMBRE ,SIST_OCNP.OCNP_RENGLON_NPDE ,VENT_NPCA.NPCA_FECHA_EMI AS [Fecha_NP] ,VENT_NPDE.NPDE_DIVISION_NPCA ,VENT_NPDE.NPDE_TIPO_NPCA ,VENT_NPDE.NPDE_NUMERO_NPCA ,VENT_NPCA.NPCA_CLIENTE ,CCOB_CLIE.CLIE_NOMBRE ,Right('0000000000' + [NPCA_CLIENTE],6) + '-' + [CLIE_NOMBRE] AS Cliente ,VENT_NPDE.NPDE_CANT_PEDIDA ,VENT_NPDE.NPDE_CANT_ENTREG ,VENT_NPDE.NPDE_CANT_FACTUR ,VENT_NPDE.NPDE_FECHA_CANC ,SIST_VEND.VEND_NOMBRE FROM((((((((CPAG_PROV WITH (NOLOCK) INNER JOIN ((((COMP_CODC WITH (NOLOCK) INNER JOIN COMP_RODC WITH (NOLOCK) ON (COMP_CODC.CODC_NUM_OC = COMP_RODC.RODC_NUM_OC) AND (COMP_CODC.CODC_TIPO_OC = COMP_RODC.RODC_TIPO_OC) AND (COMP_CODC.CODC_DIVISION = COMP_RODC.RODC_DIVISION)) INNER JOIN STOC_ARTS WITH (NOLOCK) ON COMP_RODC.RODC_ARTICULO = STOC_ARTS.ARTS_ARTICULO) INNER JOIN STOC_ARCO WITH (NOLOCK) ON COMP_RODC.RODC_ARTICULO = STOC_ARCO.ARCO_ARTICULO) INNER JOIN CPAG_RUBC WITH (NOLOCK) ON STOC_ARCO.ARCO_RUBRO_COMPRA = CPAG_RUBC.RUBC_RUBRO_COMPRA) ON CPAG_PROV.PROV_PROVEEDOR = COMP_CODC.CODC_PROVEEDOR) INNER JOIN SIST_OCNP WITH (NOLOCK) ON (COMP_RODC.RODC_REN_OC = SIST_OCNP.OCNP_RENGLON_RODC) AND (COMP_RODC.RODC_NUM_OC = SIST_OCNP.OCNP_NUMERO_CODC) AND (COMP_RODC.RODC_TIPO_OC = SIST_OCNP.OCNP_TIPO_CODC) AND (COMP_RODC.RODC_DIVISION = SIST_OCNP.OCNP_DIVISION_CODC)) INNER JOIN VENT_NPDE WITH (NOLOCK) ON (SIST_OCNP.OCNP_RENGLON_NPDE = VENT_NPDE.NPDE_RENGLON) AND (SIST_OCNP.OCNP_NUMERO_NPCA = VENT_NPDE.NPDE_NUMERO_NPCA) AND (SIST_OCNP.OCNP_DIVISION_NPCA = VENT_NPDE.NPDE_DIVISION_NPCA) AND (SIST_OCNP.OCNP_TIPO_NPCA = VENT_NPDE.NPDE_TIPO_NPCA)) INNER JOIN VENT_NPCA WITH (NOLOCK) ON (VENT_NPDE.NPDE_NUMERO_NPCA = VENT_NPCA.NPCA_NUMERO_NPCA) AND (VENT_NPDE.NPDE_TIPO_NPCA = VENT_NPCA.NPCA_TIPO_NPCA) AND (VENT_NPDE.NPDE_DIVISION_NPCA = VENT_NPCA.NPCA_DIVISION_NPCA)) INNER JOIN CCOB_CLIE WITH (NOLOCK) ON VENT_NPCA.NPCA_CLIENTE = CCOB_CLIE.CLIE_CLIENTE) INNER JOIN VENT_NPVE WITH (NOLOCK) ON (VENT_NPCA.NPCA_NUMERO_NPCA = VENT_NPVE.NPVE_NUMERO_NPCA) AND (VENT_NPCA.NPCA_TIPO_NPCA = VENT_NPVE.NPVE_TIPO_NPCA) AND (VENT_NPCA.NPCA_DIVISION_NPCA = VENT_NPVE.NPVE_DIVISION_NPCA)) INNER JOIN SIST_VEND WITH (NOLOCK) ON VENT_NPVE.NPVE_VENDEDOR = SIST_VEND.VEND_VENDEDOR) INNER JOIN CPAG_CPPR WITH (NOLOCK) ON COMP_CODC.CODC_COND_PAGO = CPAG_CPPR.CPPR_COND_PAGO) WHERE VENT_NPDE.NPDE_TIPO_NPCA IN (" + response4 + ")");
     return gdcItemsVinculadasAOC.recordsets;
   }
   catch (error) {
@@ -1044,59 +1032,23 @@ async function gdc_consolidacion(getData){
     let urlArray4 = `${process.env.URL_API}` + 'gdc/npstockcomprometido'
     let urlArray5 = `${process.env.URL_API}` + 'gdc/chapastiposqueladefinen'
     let urlArray6 = `${process.env.URL_API}` + 'gdc/remitosdeventas'
-    const response = await axios.get(urlArray, {httpsAgent, headers: {'Authorization': `Bearer ${token}`}})
-                              .then(response =>{
-                                let results = [];
-                                data = response.data;
-                                for(var i = 0; i < data.length; i++){results.push(data[i])}
-                                return results;
-                              })
-                              .catch((error)=>{console.error(error)});
+    const response = (await axios(urlArray, {httpsAgent, headers: {'Authorization': `Bearer ${token}`}})).data;
     
-    const response2 = await axios.get(urlArray2, {httpsAgent, headers: {'Authorization': `Bearer ${token}`}})
-                              .then(response =>{
-                                let results = [];
-                                data = response.data;
-                                for(var i = 0; i < data.length; i++){results.push(data[i]['Cod_clasif8'])}
-                                return results;
-                              })
-                              .catch((error)=>{console.error(error)});
-    
-    const response3 = await axios.get(urlArray3, {httpsAgent, headers: {'Authorization': `Bearer ${token}`}})
-                              .then(response =>{
-                                let results = [];
-                                data = response.data;
-                                for(var i = 0; i < data.length; i++){results.push(data[i]['Cod_Depos'])}
-                                return results;
-                              })
-                              .catch((error)=>{console.error(error)});
+    const raw_array2 = (await axios(urlArray2, {httpsAgent, headers: {'Authorization': `Bearer ${token}`}})).data;
+    const response2 = raw_array2.map(item => item.Cod_clasif8);
 
-    const response4 = await axios.get(urlArray4, {httpsAgent, headers: {'Authorization': `Bearer ${token}`}})
-                              .then(response =>{
-                                let results = [];
-                                data = response.data;
-                                for(var i = 0; i < data.length; i++){results.push(data[i]['Cod_NP'])}
-                                return results;
-                              })
-                              .catch((error)=>{console.error(error)});
-                              
-    const response5 = await axios.get(urlArray5, {httpsAgent, headers: {'Authorization': `Bearer ${token}`}})
-                              .then(response =>{
-                                let results = [];
-                                data = response.data;
-                                for(var i = 0; i < data.length; i++){results.push(data[i]['Cod_tipo'])}
-                                return results;
-                              })
-                              .catch((error)=>{console.error(error)});
+    const raw_array3 = (await axios(urlArray3, {httpsAgent, headers: {'Authorization': `Bearer ${token}`}})).data;
+    const response3 = raw_array3.map(item => item.Cod_Depos);                          
     
-    const response6 = await axios.get(urlArray6, {httpsAgent, headers: {'Authorization': `Bearer ${token}`}})
-                              .then(response =>{
-                                let results = [];
-                                data = response.data;
-                                for(var i = 0; i < data.length; i++){results.push(data[i]['Cod_Comp'])}
-                                return results;
-                              })
-                              .catch((error)=>{console.error(error)});
+    const raw_array4 = (await axios(urlArray4, {httpsAgent, headers: {'Authorization': `Bearer ${token}`}})).data;
+    const response4 = raw_array4.map(item => item.Cod_NP);                          
+    
+    const raw_array5 = (await axios(urlArray5, {httpsAgent, headers: {'Authorization': `Bearer ${token}`}})).data;
+    const response5 = raw_array5.map(item => item.Cod_tipo);                          
+    
+    const raw_array6 = (await axios(urlArray6, {httpsAgent, headers: {'Authorization': `Bearer ${token}`}})).data;
+    const response6 = raw_array6.map(item => item.Cod_Comp);
+    
     let clasif8artquesecompran = response2.sort(function(a, b){return a - b}).join(',');
     let deposanoconsiderarparastock = response3.sort(function(a, b){return a - b}).join(',');
     let npstockcomprometido = response4.sort().map(x => `'${x}'`).join(',');
@@ -1124,59 +1076,22 @@ async function gdc_grilla_consolidacion(getData){
     let urlArray4 = `${process.env.URL_API}` + 'gdc/npstockcomprometido'
     let urlArray5 = `${process.env.URL_API}` + 'gdc/chapastiposqueladefinen'
     let urlArray6 = `${process.env.URL_API}` + 'gdc/remitosdeventas'
-    const response = await axios.get(urlArray, {httpsAgent, headers: {'Authorization': `Bearer ${token}`}})
-                              .then(response =>{
-                                let results = [];
-                                data = response.data;
-                                for(var i = 0; i < data.length; i++){results.push(data[i])}
-                                return results;
-                              })
-                              .catch((error)=>{console.error(error)});
+    const response = (await axios(urlArray, {httpsAgent, headers: {'Authorization': `Bearer ${token}`}})).data;
     
-    const response2 = await axios.get(urlArray2, {httpsAgent, headers: {'Authorization': `Bearer ${token}`}})
-                              .then(response =>{
-                                let results = [];
-                                data = response.data;
-                                for(var i = 0; i < data.length; i++){results.push(data[i]['Cod_clasif8'])}
-                                return results;
-                              })
-                              .catch((error)=>{console.error(error)});
-    
-    const response3 = await axios.get(urlArray3, {httpsAgent, headers: {'Authorization': `Bearer ${token}`}})
-                              .then(response =>{
-                                let results = [];
-                                data = response.data;
-                                for(var i = 0; i < data.length; i++){results.push(data[i]['Cod_Depos'])}
-                                return results;
-                              })
-                              .catch((error)=>{console.error(error)});
+    const raw_array2 = (await axios(urlArray2, {httpsAgent, headers: {'Authorization': `Bearer ${token}`}})).data;
+    const response2 = raw_array2.map(item => item.Cod_clasif8);
 
-    const response4 = await axios.get(urlArray4, {httpsAgent, headers: {'Authorization': `Bearer ${token}`}})
-                              .then(response =>{
-                                let results = [];
-                                data = response.data;
-                                for(var i = 0; i < data.length; i++){results.push(data[i]['Cod_NP'])}
-                                return results;
-                              })
-                              .catch((error)=>{console.error(error)});
-                              
-    const response5 = await axios.get(urlArray5, {httpsAgent, headers: {'Authorization': `Bearer ${token}`}})
-                              .then(response =>{
-                                let results = [];
-                                data = response.data;
-                                for(var i = 0; i < data.length; i++){results.push(data[i]['Cod_tipo'])}
-                                return results;
-                              })
-                              .catch((error)=>{console.error(error)});
+    const raw_array3 = (await axios(urlArray3, {httpsAgent, headers: {'Authorization': `Bearer ${token}`}})).data;
+    const response3 = raw_array3.map(item => item.Cod_Depos);                          
     
-    const response6 = await axios.get(urlArray6, {httpsAgent, headers: {'Authorization': `Bearer ${token}`}})
-                              .then(response =>{
-                                let results = [];
-                                data = response.data;
-                                for(var i = 0; i < data.length; i++){results.push(data[i]['Cod_Comp'])}
-                                return results;
-                              })
-                              .catch((error)=>{console.error(error)});
+    const raw_array4 = (await axios(urlArray4, {httpsAgent, headers: {'Authorization': `Bearer ${token}`}})).data;
+    const response4 = raw_array4.map(item => item.Cod_NP);                          
+    
+    const raw_array5 = (await axios(urlArray5, {httpsAgent, headers: {'Authorization': `Bearer ${token}`}})).data;
+    const response5 = raw_array5.map(item => item.Cod_tipo);                          
+    
+    const raw_array6 = (await axios(urlArray6, {httpsAgent, headers: {'Authorization': `Bearer ${token}`}})).data;
+    const response6 = raw_array6.map(item => item.Cod_Comp);
     let clasif8artquesecompran = response2.sort(function(a, b){return a - b}).join(',');
     let deposanoconsiderarparastock = response3.sort(function(a, b){return a - b}).join(',');
     let npstockcomprometido = response4.sort().map(x => `'${x}'`).join(',');
@@ -1197,15 +1112,10 @@ async function gdc_grilla_consolidacion(getData){
 async function gdc_itemreclamadosalproveedor() {
   try {
     let urlArray = `${process.env.URL_API}` + 'gdc/clasif8artquesecompran';
-    const response2 = await axios.get(urlArray, {httpsAgent, headers: {'Authorization': `Bearer ${token}`}})
-                              .then(response =>{
-                                let results = [];
-                                data = response.data;
-                                for(var i = 0; i < data.length; i++){results.push(data[i]['Cod_clasif8'])}
-                                return results;
-                              })
-                              .catch((error)=>{console.error(error)});
-    let clasif8artquesecompran = response2.sort(function(a, b){return a - b}).join(',');                
+    const raw_array = (await axios(urlArray, {httpsAgent, headers: {'Authorization': `Bearer ${token}`}})).data;
+    const response2 = raw_array.map(item => item.Cod_clasif8);
+    let clasif8artquesecompran = response2.sort(function(a, b){return a - b}).join(','); 
+    console.log(clasif8artquesecompran);               
     let pool = await sql.connect(plataforma);
     let gdc_itemreclamadosalproveedor = await pool.request().query("WITH ArtQueSeCompranSegunClas8yRCMercado AS( SELECT STOC_ARCO.ARCO_RUBRO_COMPRA ,CPAG_RUBC.RUBC_NOMBRE ,STOC_ARTS.ARTS_ARTICULO ,STOC_ARTS.ARTS_ARTICULO_EMP ,STOC_ARTS.ARTS_NOMBRE ,STOC_CA08.CA08_CLASIF_8 ,STOC_CA08.CA08_NOMBRE FROM CPAG_RUBC WITH (NOLOCK) INNER JOIN ((STOC_ARCO WITH (NOLOCK) INNER JOIN STOC_ARTS WITH (NOLOCK) ON STOC_ARCO.ARCO_ARTICULO = STOC_ARTS.ARTS_ARTICULO) INNER JOIN STOC_CA08 WITH (NOLOCK) ON STOC_ARTS.ARTS_CLASIF_8 = STOC_CA08.CA08_CLASIF_8) ON CPAG_RUBC.RUBC_RUBRO_COMPRA = STOC_ARCO.ARCO_RUBRO_COMPRA WHERE (((CPAG_RUBC.RUBC_NOMBRE) LIKE '%(1)%')) AND STOC_CA08.CA08_CLASIF_8 IN ("+ clasif8artquesecompran +")) SELECT COMP_CODC.CODC_DIVISION ,COMP_CODC.CODC_TIPO_OC ,COMP_CODC.CODC_NUM_OC ,COMP_RODC.RODC_REN_OC ,FORMAT(COMP_CODC.CODC_FECHA_OC, 'dd/MM/yyyy') AS Fecha_OC ,STOC_ARTS.ARTS_ARTICULO_EMP ,STOC_ARTS.ARTS_NOMBRE ,SUM(IIf([RODC_CANT_PEDIDA]-[RODC_CANT_RECIB]>0,[RODC_CANT_PEDIDA]-[RODC_CANT_RECIB],0)) AS Pend_Entrega FROM ((COMP_CODC WITH (NOLOCK) INNER JOIN COMP_RODC WITH (NOLOCK) ON (COMP_CODC.CODC_NUM_OC = COMP_RODC.RODC_NUM_OC) AND (COMP_CODC.CODC_TIPO_OC = COMP_RODC.RODC_TIPO_OC) AND (COMP_CODC.CODC_DIVISION = COMP_RODC.RODC_DIVISION)) INNER JOIN STOC_ARTS WITH (NOLOCK) ON COMP_RODC.RODC_ARTICULO = STOC_ARTS.ARTS_ARTICULO) INNER JOIN ArtQueSeCompranSegunClas8yRCMercado ON STOC_ARTS.ARTS_ARTICULO = ArtQueSeCompranSegunClas8yRCMercado.ARTS_ARTICULO WHERE ((COMP_RODC.RODC_SECTOR)='100') AND ((IIf([RODC_CANT_PEDIDA]-[RODC_CANT_RECIB]>0,[RODC_CANT_PEDIDA]-[RODC_CANT_RECIB],0))>0) AND ((COMP_RODC.RODC_MOTIVO_CANC) Is Null) GROUP BY COMP_CODC.CODC_DIVISION ,COMP_CODC.CODC_TIPO_OC ,COMP_CODC.CODC_NUM_OC ,COMP_RODC.RODC_REN_OC ,COMP_CODC.CODC_FECHA_OC ,STOC_ARTS.ARTS_ARTICULO_EMP ,STOC_ARTS.ARTS_NOMBRE");
     return gdc_itemreclamadosalproveedor.recordsets;
