@@ -521,7 +521,8 @@ async function getInformesAcindar(){
     let response = await Promise.all(endpoints.map((endpoint)=> axios.get(endpoint,{httpsAgent, headers: {'Authorization': `Basic ${token}`}}))).then(
         ([{data: data1}, {data: data2}, {data: data3}, {data: data4}, {data: data5},{data: data6}])=>{
             let getData5 = []
-            data5.forEach((e) => {({
+            data5.forEach((e) => {
+                const {
                     CVCL_TIPO_VAR,
                     CVCL_SUCURSAL_IMP,
                     CVCL_NUMERO_CVCL,
@@ -530,8 +531,8 @@ async function getInformesAcindar(){
                     ARTS_ARTICULO_EMP,
                     ARTS_NOMBRE,
                     ...VENT_NCFA
-                } = e)
-                    let d = getData5.find((x) => e.CVCL_NUMERO_CVCL == x.CVCL_NUMERO_CVCL && e.CVRF_RENGLON_CVRF == x.CVRF_RENGLON_CVRF)
+                } = e;
+                let d = getData5.find((x) => e.CVCL_NUMERO_CVCL == x.CVCL_NUMERO_CVCL && e.CVRF_RENGLON_CVRF == x.CVRF_RENGLON_CVRF)
                 if (d) {
                     d.VENT_NCFA.push(VENT_NCFA)
                 } else {
@@ -658,13 +659,13 @@ async function getInformesAcindarEntreFechas(getDates){
     try{
         var data1 = [];
         var data5 = [];
-        let getData1 = await Db.InformesAcindarPTFDate(getDates).then((response)=>data1.push(response))
-        let getData2 = await Db.NCInformesAcindarPTFDate(getDates).then((response)=>data5.push(response))
+        await Db.InformesAcindarPTFDate(getDates).then((response)=>data1.push(response));
+        await Db.NCInformesAcindarPTFDate(getDates).then((response)=>data5.push(response));
         
         let getData5 = []
 
         data5[0][0].forEach((e) => {
-        ({
+        const {
             CVCL_TIPO_VAR,
             CVCL_SUCURSAL_IMP,
             CVCL_NUMERO_CVCL,
@@ -673,7 +674,7 @@ async function getInformesAcindarEntreFechas(getDates){
             ARTS_ARTICULO_EMP,
             ARTS_NOMBRE,
             ...VENT_NCFA
-        } = e)
+        } = e;
         let d = getData5.find((x) => e.CVCL_NUMERO_CVCL == x.CVCL_NUMERO_CVCL && e.CVRF_RENGLON_CVRF == x.CVRF_RENGLON_CVRF)
         if (d) {
             d.VENT_NCFA.push(VENT_NCFA)
@@ -823,7 +824,7 @@ async function getInformesAcindarEntreFechasExportar(getDates){
         let getData5 = []
 
         data5[0][0].forEach((e) => {
-        ({
+        const {
             CVCL_TIPO_VAR,
             CVCL_SUCURSAL_IMP,
             CVCL_NUMERO_CVCL,
@@ -832,7 +833,7 @@ async function getInformesAcindarEntreFechasExportar(getDates){
             ARTS_ARTICULO_EMP,
             ARTS_NOMBRE,
             ...VENT_NCFA
-        } = e)
+        } = e;
         let d = getData5.find((x) => e.CVCL_NUMERO_CVCL == x.CVCL_NUMERO_CVCL && e.CVRF_RENGLON_CVRF == x.CVRF_RENGLON_CVRF)
         if (d) {
             d.VENT_NCFA.push(VENT_NCFA)

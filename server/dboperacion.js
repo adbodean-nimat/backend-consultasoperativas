@@ -476,37 +476,15 @@ async function getComboArt(comboArt){
 
   async function getStocArtsAll(){
     try{
-      const Array = [];
       let urlArray = `${process.env.URL_API}` + 'filtroacindarplataforma'
-      await axios.get(urlArray, {httpsAgent, headers: {'Authorization': `Bearer ${token}`}})
-        .then(response => {
-          results = [];
-          data = response.data; 
-          for(var i = 0; i < data.length; i++){
-            for(var y = 0; y < data[i]['clasif6_inc']['c6_i'].length; y++){
-              results.push(data[i]['clasif6_inc']['c6_i'][y]);
-            }
-          } 
-          return Array.push(results)
-        })
-        .catch((error)=>{
-          console.error(error)
-        });
-      const Array2 = [];
-      await axios.get(urlArray, {httpsAgent, headers: {'Authorization': `Bearer ${token}`}})
-        .then(response => {
-          results = [];
-          data = response.data; 
-          for(var i = 0; i < data.length; i++){
-            for(var y = 0; y < data[i]['clasif5_exc']['c5_e'].length; y++){
-              results.push(data[i]['clasif5_exc']['c5_e'][y]);
-            }
-          } 
-          return Array2.push(results) 
-        })
-        .catch((error)=>{
-          console.error(error)
-        });
+      const Array = [];
+      await (await (axios.get(urlArray, {httpsAgent, headers: {'Authorization': `Bearer ${token}`}}))).data.forEach(element => {
+        Array.push(element.clasif6_inc.c6_i)
+      })
+      const Array2 = []
+      await (await (axios.get(urlArray, {httpsAgent, headers: {'Authorization': `Bearer ${token}`}}))).data.forEach(element => {
+        Array2.push(element.clasif5_exc.c5_e)
+      })
       const getListaC6 = Array;
       const ListaC6 = getListaC6.map(x => `'${x}'`);
       const ListaC6Commas = ListaC6 == '' ? 0 : ListaC6
