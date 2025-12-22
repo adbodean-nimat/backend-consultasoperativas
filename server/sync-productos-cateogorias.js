@@ -338,7 +338,7 @@ export async function sincronizarCompleto() {
     const productosEnriquecidos = enriquecerProductos(productosBase, mapa);
     
     // 6. Generar keywords (robusto y útil para búsquedas vagas)
-    // Incluye: nombre, marca y TODAS las rutas de categorías (root + rutas completas)
+// Incluye: nombre, marca y TODAS las rutas de categorías (root + rutas completas)
     productosEnriquecidos.forEach(p => {
       const kw = new Set();
 
@@ -530,7 +530,7 @@ const productosLimpios = rawData
     fs.writeFileSync(OUTPUT_JSON, JSON.stringify(productosLimpios, null, 2), 'utf8');
     fs.writeFileSync(OUTPUT_TOON, catalogoCompletoToTOON)
     // Ver productos arriba
-    console.log(catalogoCompleto.productos[0])
+    //console.log(catalogoCompleto.productos[0])
     // 10. Estadísticas finales
     console.log('\n✅ SINCRONIZACIÓN COMPLETA\n');
     console.log('📊 Estadísticas:');

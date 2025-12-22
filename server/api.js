@@ -756,15 +756,15 @@ router.route('/planillaimportarwebcombo').get((request, response)=>{
 
 router.route('/jsontosheet').get((request,response)=>{
   jsonToExcel.jsontosheet().then((data)=>{
-    console.log(data);
-    if(process.env.NODE_APP_INSTANCE === '0'){
-      SyncOpenAIUpdate();
-    }
+    response.json(data);
     response.status(200).send('Generado correctamente');
   }).catch((err)=>{
     console.error(err);
     response.status(500).send('Error en generación de planilla');
   });
+  if(process.env.NODE_APP_INSTANCE === '0'){
+    SyncOpenAIUpdate();
+  }
 })
 
 router.route('/jsontosheet2').get((request, response)=>{

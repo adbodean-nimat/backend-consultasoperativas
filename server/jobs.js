@@ -7,8 +7,12 @@ import { CronJob } from 'cron';
 
 export async function SyncOpenAIUpdate() {
   try {
+    console.time('Sincronización completa');
     await sincronizarCompleto();
+    console.timeEnd('Sincronización completa');
+    console.time('Sync OpenAI');
     await syncOpenAI();
+    console.timeEnd('Sync OpenAI');
   } catch (err) {
     console.error('Error en sincronización de OpenAI:', err);
   }
@@ -42,10 +46,12 @@ export async function initJobs() {
           await jsonToExcel.jsontosheet();
           await jsonToExcel.actualizadoWeb();
           console.log('Actualizado Web ✅');
-          // console.log('Actualizado OpenAI ✅');
+          console.time('Sincronización completa');
           await sincronizarCompleto();
-          // console.log('Sincrnizado ✅');
+          console.timeEnd('Sincronización completa');
+          console.time('Sync OpenAI');
           await syncOpenAI();
+          console.timeEnd('Sync OpenAI');
         } catch (err) {
           console.error('Error en job lun-vie:', err);
         }
