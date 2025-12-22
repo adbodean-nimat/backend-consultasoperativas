@@ -1,8 +1,8 @@
 import dotenv from 'dotenv';
 dotenv.config();
 import jsonToExcel from './jsontoexcel.js';
-import { syncOpenAI } from './sync-openai.js';
 import { sincronizarCompleto } from './sync-productos-cateogorias.js';
+import { syncOpenAI } from './sync-openai.js';
 import { CronJob } from 'cron';
 
 export async function SyncOpenAIUpdate() {
