@@ -5,19 +5,6 @@ import { sincronizarCompleto } from './sync-productos-cateogorias.js';
 import { syncOpenAI } from './sync-openai.js';
 import { CronJob } from 'cron';
 
-export async function SyncOpenAIUpdate() {
-  try {
-    console.time('Sincronización completa');
-    await sincronizarCompleto();
-    console.timeEnd('Sincronización completa');
-    console.time('Sync OpenAI');
-    await syncOpenAI();
-    console.timeEnd('Sync OpenAI');
-  } catch (err) {
-    console.error('Error en sincronización de OpenAI:', err);
-  }
-}
-
 let job_lunvie = null;
 let job_sab = null;
 
@@ -45,13 +32,16 @@ export async function initJobs() {
         try {
           await jsonToExcel.jsontosheet();
           await jsonToExcel.actualizadoWeb();
-          console.log('Actualizado Web ✅');
-          console.time('Sincronización completa');
-          await sincronizarCompleto();
-          console.timeEnd('Sincronización completa');
-          console.time('Sync OpenAI');
-          await syncOpenAI();
-          console.timeEnd('Sync OpenAI');
+          //console.log('Actualizado Web ✅');
+          //console.time('Sincronización completa');
+          sincronizarCompleto();
+          //console.timeEnd('Sincronización completa');
+          //console.time('Sync OpenAI');
+          await syncOpenAI().catch((err) => {
+            console.error("Error actualizando el vector store:", err.response?.data ?? err);
+            process.exit(1);
+          });
+          //console.timeEnd('Sync OpenAI');
         } catch (err) {
           console.error('Error en job lun-vie:', err);
         }

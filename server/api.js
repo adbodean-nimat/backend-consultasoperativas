@@ -22,7 +22,7 @@ import fsConfig from './fsconfig.js';
 import jsonToTXT from './jsontotxt.js';
 import { enviarListaPreciosPorPerfil } from './whatsapp.js';
 import { logEnviadoOk, logErrorEnvio } from './whatsapp_logger.js';
-import { initJobs, startJobs, stopJobs, SyncOpenAIUpdate } from './jobs.js';
+import { initJobs, startJobs, stopJobs } from './jobs.js';
 
 // Solo una instancia en cluster
 if (process.env.NODE_APP_INSTANCE === '0') {
@@ -762,9 +762,6 @@ router.route('/jsontosheet').get((request,response)=>{
     console.error(err);
     response.status(500).send('Error en generación de planilla');
   });
-  if(process.env.NODE_APP_INSTANCE === '0'){
-    SyncOpenAIUpdate();
-  }
 })
 
 router.route('/jsontosheet2').get((request, response)=>{
