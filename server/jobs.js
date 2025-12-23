@@ -32,16 +32,16 @@ export async function initJobs() {
         try {
           await jsonToExcel.jsontosheet();
           await jsonToExcel.actualizadoWeb();
-          //console.log('Actualizado Web ✅');
-          //console.time('Sincronización completa');
-          sincronizarCompleto();
-          //console.timeEnd('Sincronización completa');
-          //console.time('Sync OpenAI');
+          console.log('Actualizado Web ✅');
+          console.time('Sincronización completa');
+          await sincronizarCompleto();
+          console.timeEnd('Sincronización completa');
+          console.time('Sync OpenAI');
           await syncOpenAI().catch((err) => {
             console.error("Error actualizando el vector store:", err.response?.data ?? err);
             process.exit(1);
           });
-          //console.timeEnd('Sync OpenAI');
+          console.timeEnd('Sync OpenAI');
         } catch (err) {
           console.error('Error en job lun-vie:', err);
         }

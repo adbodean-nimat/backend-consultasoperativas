@@ -642,33 +642,27 @@ ArrayRemitosVtas(); */
 
 async function AcopioCemento(fechaAlta){
   try{
-    const Array = [];
     let urlArrayNPaConsiderar = `${process.env.URL_API}` + 'npaconsiderar'
-    await axios.get(urlArrayNPaConsiderar, {httpsAgent, headers: {'Authorization': `Bearer ${token}`}})
-                                    .then(response => {results = []; data = response.data; for(var i = 0; i < data.length; i++){results.push(data[i]['cod_comp'])} return Array.push(results) })
-                                    .catch((error)=>{console.error(error)});
-    const NPaConsiderar = Array[0].map(x => `'${x}'`);
-    const NPaConsiderarWithCommas = NPaConsiderar.join(',');
-    const ArrayDepositoANoConsiderar = [];
-    let urlArray = `${process.env.URL_API}` + 'depositoanoconsiderarparastockfisico'
-    await axios.get(urlArray, {httpsAgent, headers: {'Authorization': `Bearer ${token}`}})
-                                  .then(response => {results = []; data = response.data; for(var i = 0; i < data.length; i++){results.push(data[i]['codigo_deposito'])} return ArrayDepositoANoConsiderar.push(results) })
-                                  .catch((error)=>{console.error(error)});
-    const DeposANoConsiderar = ArrayDepositoANoConsiderar[0]
-    const ArrayComprobantes = [];
+    const raw_array = (await axios(urlArrayNPaConsiderar, {httpsAgent, headers: {'Authorization': `Bearer ${token}`}})).data
+    const NPaConsiderarWithCommas = raw_array.map(item => `'${item['cod_comp']}'`).join(',');
+
+    let urlArrayDep = `${process.env.URL_API}` + 'depositoanoconsiderarparastockfisico'
+    const raw_array2 = (await axios(urlArrayDep, {httpsAgent, headers: {'Authorization': `Bearer ${token}`}})).data
+    const DepositoANoConsiderar = raw_array2.map(item => item['codigo_deposito']).join(',');
+    const DeposANoConsiderar = DepositoANoConsiderar[0]
+     
+    
     let urlArrayOmitir = `${process.env.URL_API}` + 'comprobantesaomitir'
-    await axios.get(urlArrayOmitir, {httpsAgent, headers: {'Authorization': `Bearer ${token}`}})
-    .then(response => {results = []; data = response.data; for(var i = 0; i < data.length; i++){results.push(data[i]['cod_comprobante'])} return ArrayComprobantes.push(results); })
-    .catch((error)=>{console.error(error)});
-    const CodComprobante = ArrayComprobantes[0].map(x => `'${x}'`);
-    const ComprobanteAOmitir = CodComprobante.join(',');
-    const ArrayComprobantes2 = [];
+    const raw_array3 = (await axios.get(urlArrayOmitir, {httpsAgent, headers: {'Authorization': `Bearer ${token}`}})).data
+    const ComprobanteAOmitir = raw_array3.map(item => `'${item['cod_comprobante']}'`).join(',');
+    console.log(ComprobanteAOmitir);
+
+    
     let urlArrayRto = `${process.env.URL_API}` + 'remitosvtas'
-    await axios.get(urlArrayRto, {httpsAgent, headers: {'Authorization': `Bearer ${token}`}})
-    .then(response => {results = []; data = response.data; for(var i = 0; i < data.length; i++){results.push(data[i]['cod_comprobante'])} return ArrayComprobantes2.push(results); })
-    .catch((error)=>{console.error(error)});
-    const CodRemitos = ArrayComprobantes2[0].map(x => `'${x}'`);
-    const RemitosVtas = CodRemitos.join(',');
+    const raw_array4 = (await axios.get(urlArrayRto, {httpsAgent, headers: {'Authorization': `Bearer ${token}`}})).data
+    const RemitosVtas = raw_array4.map(item => `'${item['cod_comprobante']}'`).join(',');
+    console.log(RemitosVtas);
+
     let pool = await sql.connect(plataforma);
     let listaAcopioCemento = await pool.request()
     .input('input_parameter', sql.Date, fechaAlta)
@@ -692,27 +686,20 @@ ArrayArticulos(); */
 
 async function StockNPOC_CalesCementosPlasticor(){
   try{
-  const Array = [];
-  let urlArrayNPaConsiderar = `${process.env.URL_API}` + 'npaconsiderar'
-  await axios.get(urlArrayNPaConsiderar, {httpsAgent, headers: {'Authorization': `Bearer ${token}`}})
-                                  .then(response => {results = []; data = response.data; for(var i = 0; i < data.length; i++){results.push(data[i]['cod_comp'])} return Array.push(results) })
-                                  .catch((error)=>{console.error(error)});
-  const NPaConsiderar = Array[0].map(x => `'${x}'`);
-  const NPaConsiderarWithCommas = NPaConsiderar.join(',');
-  const ArrayDepositoANoConsiderar = [];
-  let urlArray = `${process.env.URL_API}` + 'depositoanoconsiderarparastockfisico'
-  await axios.get(urlArray, {httpsAgent, headers: {'Authorization': `Bearer ${token}`}})
-                                  .then(response => {results = []; data = response.data; for(var i = 0; i < data.length; i++){results.push(data[i]['codigo_deposito'])} return ArrayDepositoANoConsiderar.push(results) })
-                                  .catch((error)=>{console.error(error)});
-  const DeposANoConsiderar = ArrayDepositoANoConsiderar[0]
-  const ArrayArticulosCalesCementosPlasticor = [];
-  let urlArrayCCP = `${process.env.URL_API}` + 'calescementosplasticor'
-  await axios.get(urlArrayCCP, {httpsAgent, headers: {'Authorization': `Bearer ${token}`}})
-    .then(response => {results = []; data = response.data; for(var i = 0; i < data.length; i++){results.push(data[i]['cod_articulos'])} return ArrayArticulosCalesCementosPlasticor.push(results); })
-    .catch((error)=>{console.error(error)});
-  const ArrayArtCalesCementosPlasticor = ArrayArticulosCalesCementosPlasticor[0].map(x => `'${x}'`);
-  const CalesCementosPlasticor = ArrayArtCalesCementosPlasticor.join(',');
-  
+    let urlArrayNPaConsiderar = `${process.env.URL_API}` + 'npaconsiderar'
+    const raw_array = (await axios(urlArrayNPaConsiderar, {httpsAgent, headers: {'Authorization': `Bearer ${token}`}})).data
+    const NPaConsiderarWithCommas = raw_array.map(item => `'${item['cod_comp']}'`).join(',');
+
+    let urlArrayDep = `${process.env.URL_API}` + 'depositoanoconsiderarparastockfisico'
+    const raw_array2 = (await axios(urlArrayDep, {httpsAgent, headers: {'Authorization': `Bearer ${token}`}})).data
+    const DepositoANoConsiderar = raw_array2.map(item => item['codigo_deposito']).join(',');
+    const DeposANoConsiderar = DepositoANoConsiderar[0]
+
+    let urlArrayCCP = `${process.env.URL_API}` + 'calescementosplasticor'
+    const raw_array3 = (await axios.get(urlArrayCCP, {httpsAgent, headers: {'Authorization': `Bearer ${token}`}})).data
+    const CalesCementosPlasticor = raw_array3.map(item => ` '${item['cod_articulos']}'`).join(',');
+    console.log(CalesCementosPlasticor);
+    
     let pool = await sql.connect(plataforma);
     let listaCalesCementosPlasticor = await pool.request()
     .query("DECLARE @AGMO_Stock_NP_0C1_NP2 TABLE(ARTS_ARTICULO_EMP VARCHAR(30), ARTS_NOMBRE VARCHAR(70), Pend_entreg_NP DECIMAL(14,4)) INSERT INTO @AGMO_Stock_NP_0C1_NP2 SELECT STOC_ARTS.ARTS_ARTICULO_EMP, STOC_ARTS.ARTS_NOMBRE, SUM([NPDE_CANT_PEDIDA]-[NPDE_CANT_ENTREG]) AS [Pend_entreg_NP] FROM(((((VENT_NPCA WITH (NOLOCK) INNER JOIN VENT_NPDE WITH (NOLOCK) ON (VENT_NPCA.NPCA_NUMERO_NPCA = VENT_NPDE.NPDE_NUMERO_NPCA) AND (VENT_NPCA.NPCA_TIPO_NPCA = VENT_NPDE.NPDE_TIPO_NPCA) AND (VENT_NPCA.NPCA_DIVISION_NPCA = VENT_NPDE.NPDE_DIVISION_NPCA)) INNER JOIN STOC_ARTS WITH (NOLOCK) ON VENT_NPDE.NPDE_ARTICULO = STOC_ARTS.ARTS_ARTICULO) INNER JOIN STOC_CA06 WITH (NOLOCK) ON STOC_ARTS.ARTS_CLASIF_6 = STOC_CA06.CA06_CLASIF_6) INNER JOIN STOC_CA02 WITH (NOLOCK) ON STOC_ARTS.ARTS_CLASIF_2 = STOC_CA02.CA02_CLASIF_2)) WHERE (((VENT_NPDE.NPDE_MOTIVO_CANC) Is Null) AND ((STOC_CA06.CA06_CLASIF_6)='0059') AND (STOC_ARTS.ARTS_ARTICULO_EMP IN ("+ CalesCementosPlasticor +")) AND (STOC_ARTS.ARTS_CLASIF_2 IN ('0011')) AND (VENT_NPCA.NPCA_TIPO_NPCA IN ("+ NPaConsiderarWithCommas +"))) GROUP BY STOC_ARTS.ARTS_ARTICULO_EMP, STOC_ARTS.ARTS_NOMBRE DECLARE @AGMO_Stock_NP_OC2_Stock TABLE(ARTS_ARTICULO INT, ARTS_ARTICULO_EMP VARCHAR(30), ARTS_NOMBRE VARCHAR(70), Stock_Uni_todos_los_depos DECIMAL(14,4)) INSERT INTO @AGMO_Stock_NP_OC2_Stock SELECT STOC_ARTS.ARTS_ARTICULO ,STOC_ARTS.ARTS_ARTICULO_EMP ,STOC_ARTS.ARTS_NOMBRE ,SUM([SDPP_STOCK_ACT]) AS [Stock_Uni_todos_los_depos] FROM STOC_CA06 WITH (NOLOCK) INNER JOIN (STOC_ARTS WITH (NOLOCK) LEFT JOIN STOC_SDPP WITH (NOLOCK) ON STOC_ARTS.ARTS_ARTICULO = STOC_SDPP.SDPP_ARTICULO) ON STOC_CA06.CA06_CLASIF_6 = STOC_ARTS.ARTS_CLASIF_6 WHERE (((STOC_SDPP.SDPP_DEPOSITO) NOT IN ("+ DeposANoConsiderar +")) AND (STOC_ARTS.ARTS_ARTICULO_EMP IN ("+ CalesCementosPlasticor +"))) GROUP BY STOC_ARTS.ARTS_ARTICULO, STOC_ARTS.ARTS_ARTICULO_EMP, STOC_ARTS.ARTS_NOMBRE DECLARE @AGMO_Stock_NP_OC3_OC2 TABLE(ARTS_ARTICULO_EMP VARCHAR(30), ARTS_NOMBRE VARCHAR(70), Cant_pend_ent_OC DECIMAL(14,4)) INSERT INTO @AGMO_Stock_NP_OC3_OC2 SELECT STOC_ARTS.ARTS_ARTICULO_EMP ,STOC_ARTS.ARTS_NOMBRE ,SUM(IIf([RODC_CANT_PEDIDA]-[RODC_CANT_RECIB]>0,[RODC_CANT_PEDIDA]-[RODC_CANT_RECIB],0)) AS [Cant_pend_ent_OC] FROM ((((CPAG_PROV WITH (NOLOCK) INNER JOIN ((((COMP_CODC WITH (NOLOCK) INNER JOIN COMP_RODC WITH (NOLOCK) ON (COMP_CODC.CODC_NUM_OC = COMP_RODC.RODC_NUM_OC) AND (COMP_CODC.CODC_TIPO_OC = COMP_RODC.RODC_TIPO_OC) AND (COMP_CODC.CODC_DIVISION = COMP_RODC.RODC_DIVISION)) INNER JOIN STOC_ARTS WITH (NOLOCK) ON COMP_RODC.RODC_ARTICULO = STOC_ARTS.ARTS_ARTICULO) INNER JOIN STOC_ARCO WITH (NOLOCK) ON COMP_RODC.RODC_ARTICULO = STOC_ARCO.ARCO_ARTICULO) INNER JOIN CPAG_RUBC WITH (NOLOCK) ON STOC_ARCO.ARCO_RUBRO_COMPRA = CPAG_RUBC.RUBC_RUBRO_COMPRA) ON CPAG_PROV.PROV_PROVEEDOR = COMP_CODC.CODC_PROVEEDOR) INNER JOIN STOC_CA02 WITH (NOLOCK) ON STOC_ARTS.ARTS_CLASIF_2 = STOC_CA02.CA02_CLASIF_2) INNER JOIN STOC_CA03 WITH (NOLOCK) ON STOC_ARTS.ARTS_CLASIF_3 = STOC_CA03.CA03_CLASIF_3) INNER JOIN STOC_CA06 WITH (NOLOCK) ON STOC_ARTS.ARTS_CLASIF_6 = STOC_CA06.CA06_CLASIF_6) INNER JOIN STOC_CA08 WITH (NOLOCK) ON STOC_ARTS.ARTS_CLASIF_8 = STOC_CA08.CA08_CLASIF_8 WHERE (((IIf([RODC_CANT_PEDIDA]-[RODC_CANT_RECIB]>0,[RODC_CANT_PEDIDA]-[RODC_CANT_RECIB],0))>0) AND ((COMP_RODC.RODC_MOTIVO_CANC) Is Null) AND (STOC_ARTS.ARTS_CLASIF_2 IN ('0011')) AND (STOC_ARTS.ARTS_ARTICULO_EMP IN ("+ CalesCementosPlasticor +"))) GROUP BY STOC_ARTS.ARTS_ARTICULO_EMP, STOC_ARTS.ARTS_NOMBRE SELECT STOC_ARTS.ARTS_ARTICULO_EMP ,STOC_ARTS.ARTS_NOMBRE ,[@AGMO_Stock_NP_OC2_Stock].[Stock_Uni_todos_los_depos] ,[@AGMO_Stock_NP_0C1_NP2].[Pend_entreg_NP] ,IIf([@AGMO_Stock_NP_OC2_Stock].[Stock_Uni_todos_los_depos]-[@AGMO_Stock_NP_0C1_NP2].[Pend_entreg_NP]<0,0,[@AGMO_Stock_NP_OC2_Stock].[Stock_Uni_todos_los_depos]-[@AGMO_Stock_NP_0C1_NP2].[Pend_entreg_NP]) AS [Stock_disponible] ,[@AGMO_Stock_NP_OC3_OC2].[Cant_pend_ent_OC] FROM ((STOC_ARTS LEFT JOIN @AGMO_Stock_NP_0C1_NP2 ON STOC_ARTS.ARTS_ARTICULO_EMP = [@AGMO_Stock_NP_0C1_NP2].ARTS_ARTICULO_EMP) LEFT JOIN @AGMO_Stock_NP_OC3_OC2 ON STOC_ARTS.ARTS_ARTICULO_EMP = [@AGMO_Stock_NP_OC3_OC2].ARTS_ARTICULO_EMP) LEFT JOIN @AGMO_Stock_NP_OC2_Stock ON STOC_ARTS.ARTS_ARTICULO_EMP = [@AGMO_Stock_NP_OC2_Stock].ARTS_ARTICULO_EMP WHERE STOC_ARTS.ARTS_CLASIF_2 IN ('0011') AND STOC_ARTS.ARTS_ARTICULO_EMP IN ("+ CalesCementosPlasticor +")");
@@ -737,37 +724,15 @@ async function ListaClientesPlataforma(){
 
 async function ListaClientesPlataformaCtaCte(){
   try{
-    const ArrayFiltrosClientes = [];
-    const ArrayFiltrosClientes2 = [];
     let urlArray = `${process.env.URL_API}` + 'filtroclientesplataforma'
-    await axios.get(urlArray, {httpsAgent, headers: {'Authorization': `Bearer ${token}`}})
-      .then(response => {results = []; data = response.data; for(var i = 0; i < data.length; i++){
-        for(var y = 0; y < data[i]['tipo_de_cliente']['tc'].length; y++){
-            results.push(data[i]['tipo_de_cliente']['tc'][y]);
-          }
-        } 
-        return ArrayFiltrosClientes.push(results); }).catch((error)=>{console.error(error)});
-    //console.log('ArrayFiltrosClientes', ArrayFiltrosClientes)
-    await axios.get(urlArray, {httpsAgent, headers: {'Authorization': `Bearer ${token}`}})
-    .then(response => {
-      results = []; 
-      data = response.data; 
-      for(var i = 0; i < data.length; i++){
-        for(var y = 0; y < data[i]['perfil_crediticio']['pc'].length; y++){
-          results.push(data[i]['perfil_crediticio']['pc'][y]);
-        }
-      } 
-      return ArrayFiltrosClientes2.push(results); }).catch((error)=>{console.error(error)});
-    // console.log('ArrayFiltrosClientes2', ArrayFiltrosClientes2)
-    const getListaTC = ArrayFiltrosClientes[0]
-    const ListaTC = getListaTC.map(x => `'${x}'`);
-    const ListaTCCommas = ListaTC.join(',');
-    const getListaPC = ArrayFiltrosClientes2[0]
-    const ListaPC = getListaPC.map(x => `'${x}'`);
-    const ListaPCCommas = ListaPC.join(',');  
+    const ListaTCCommas = (await axios.get(urlArray, {httpsAgent, headers: {'Authorization': `Bearer ${token}`}})).data.map(item => item.tipo_de_cliente.tc)[0]
+    
+    const ListaPCCommas = (await axios.get(urlArray, {httpsAgent, headers: {'Authorization': `Bearer ${token}`}})).data.map(item => item.perfil_crediticio.pc)[0]
+    console.log(ListaTCCommas);
+    console.log(ListaPCCommas);
     let pool = await sql.connect(plataforma);
     let listaClientesPlataformaCtaCte = await pool.request()
-    .query("SELECT CCOB_CLIE.CLIE_CLIENTE ,CCOB_CLIE.CLIE_NOMBRE ,CCOB_CLIE.CLIE_EMAIL FROM CCOB_CLIE WITH(NOLOCK) WHERE CCOB_CLIE.CLIE_TIPO_CLI IN ("+ ListaTCCommas +") AND CCOB_CLIE.CLIE_CLASIF_2 IN ("+ ListaPCCommas +") AND CCOB_CLIE.CLIE_FECHA_BAJA IS NULL");
+    .query("SELECT CCOB_CLIE.CLIE_CLIENTE ,CCOB_CLIE.CLIE_NOMBRE ,CCOB_CLIE.CLIE_EMAIL FROM CCOB_CLIE WITH(NOLOCK) WHERE CCOB_CLIE.CLIE_TIPO_CLI IN ("+ ListaTCCommas.map(x => `'${x}'`).join(',') +") AND CCOB_CLIE.CLIE_CLASIF_2 IN ("+ ListaPCCommas.map(x => `'${x}'`).join(',') +") AND CCOB_CLIE.CLIE_FECHA_BAJA IS NULL");
     return listaClientesPlataformaCtaCte.recordsets
   }
   catch(error){
