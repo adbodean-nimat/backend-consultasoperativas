@@ -93,5 +93,3 @@ export function stopJobs() {
   if (job_lunvie) job_lunvie.stop();
   if (job_sab) job_sab.stop();
 }
-
-initJobs();
