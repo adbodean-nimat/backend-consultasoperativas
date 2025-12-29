@@ -30,19 +30,16 @@ export async function initJobs() {
       data.actualizacion_cron_lunesaviernes,
       async function () {
         try {
-          console.time('Actualización web completa');
+          
           await jsonToExcel.jsontosheet();
           await jsonToExcel.actualizadoWeb();
-          console.timeEnd('Actualización web completa');          
-          console.time('Sincronización archivos completa');
+          
+          console.log("▶ Iniciando sincronización completa");
           await sincronizarCompleto();
-          console.timeEnd('Sincronización archivos completa');
-          console.time('Sincronización OpenAI completa');
-          await syncOpenAI().catch((err) => {
-            console.error("Error actualizando el vector store:", err.response?.data ?? err);
-            process.exit(1);
-          });
-          console.timeEnd('Sincronización OpenAI completa');
+          
+          console.log("▶ Iniciando SyncOpenAI");
+          await syncOpenAI();
+          
         } catch (err) {
           console.error('Error en job lun-vie:', err);
         }
@@ -58,12 +55,12 @@ export async function initJobs() {
         try {
           await jsonToExcel.jsontosheet();
           await jsonToExcel.actualizadoWeb();
-          console.log('Actualizado Web ✅');
+          
+          console.log("▶ Iniciando sincronización completa");
           await sincronizarCompleto();
-          await syncOpenAI().catch((err) => {
-            console.error("Error actualizando el vector store:", err.response?.data ?? err);
-            process.exit(1);
-          });
+          
+          console.log("▶ Iniciando SyncOpenAI");
+          await syncOpenAI();
         } catch (err) {
           console.error('Error en job sábado:', err);
         }
@@ -96,3 +93,5 @@ export function stopJobs() {
   if (job_lunvie) job_lunvie.stop();
   if (job_sab) job_sab.stop();
 }
+
+initJobs();
