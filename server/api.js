@@ -756,7 +756,6 @@ router.route('/planillaimportarwebcombo').get((request, response)=>{
 
 router.route('/jsontosheet').get((request,response)=>{
   jsonToExcel.jsontosheet().then((data)=>{
-    response.json(data);
     response.status(200).send('Generado correctamente');
   }).catch((err)=>{
     console.error(err);

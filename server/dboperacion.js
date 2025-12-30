@@ -655,13 +655,12 @@ async function AcopioCemento(fechaAlta){
     let urlArrayOmitir = `${process.env.URL_API}` + 'comprobantesaomitir'
     const raw_array3 = (await axios.get(urlArrayOmitir, {httpsAgent, headers: {'Authorization': `Bearer ${token}`}})).data
     const ComprobanteAOmitir = raw_array3.map(item => `'${item['cod_comprobante']}'`).join(',');
-    console.log(ComprobanteAOmitir);
+    //console.log(ComprobanteAOmitir);
 
-    
     let urlArrayRto = `${process.env.URL_API}` + 'remitosvtas'
     const raw_array4 = (await axios.get(urlArrayRto, {httpsAgent, headers: {'Authorization': `Bearer ${token}`}})).data
     const RemitosVtas = raw_array4.map(item => `'${item['cod_comprobante']}'`).join(',');
-    console.log(RemitosVtas);
+    //console.log(RemitosVtas);
 
     let pool = await sql.connect(plataforma);
     let listaAcopioCemento = await pool.request()
@@ -698,7 +697,7 @@ async function StockNPOC_CalesCementosPlasticor(){
     let urlArrayCCP = `${process.env.URL_API}` + 'calescementosplasticor'
     const raw_array3 = (await axios.get(urlArrayCCP, {httpsAgent, headers: {'Authorization': `Bearer ${token}`}})).data
     const CalesCementosPlasticor = raw_array3.map(item => ` '${item['cod_articulos']}'`).join(',');
-    console.log(CalesCementosPlasticor);
+    //console.log(CalesCementosPlasticor);
     
     let pool = await sql.connect(plataforma);
     let listaCalesCementosPlasticor = await pool.request()
@@ -726,10 +725,7 @@ async function ListaClientesPlataformaCtaCte(){
   try{
     let urlArray = `${process.env.URL_API}` + 'filtroclientesplataforma'
     const ListaTCCommas = (await axios.get(urlArray, {httpsAgent, headers: {'Authorization': `Bearer ${token}`}})).data.map(item => item.tipo_de_cliente.tc)[0]
-    
     const ListaPCCommas = (await axios.get(urlArray, {httpsAgent, headers: {'Authorization': `Bearer ${token}`}})).data.map(item => item.perfil_crediticio.pc)[0]
-    console.log(ListaTCCommas);
-    console.log(ListaPCCommas);
     let pool = await sql.connect(plataforma);
     let listaClientesPlataformaCtaCte = await pool.request()
     .query("SELECT CCOB_CLIE.CLIE_CLIENTE ,CCOB_CLIE.CLIE_NOMBRE ,CCOB_CLIE.CLIE_EMAIL FROM CCOB_CLIE WITH(NOLOCK) WHERE CCOB_CLIE.CLIE_TIPO_CLI IN ("+ ListaTCCommas.map(x => `'${x}'`).join(',') +") AND CCOB_CLIE.CLIE_CLASIF_2 IN ("+ ListaPCCommas.map(x => `'${x}'`).join(',') +") AND CCOB_CLIE.CLIE_FECHA_BAJA IS NULL");
@@ -1048,7 +1044,7 @@ async function gdc_itemreclamadosalproveedor() {
     const raw_array = (await axios(urlArray, {httpsAgent, headers: {'Authorization': `Bearer ${token}`}})).data;
     const response2 = raw_array.map(item => item.Cod_clasif8);
     let clasif8artquesecompran = response2.sort(function(a, b){return a - b}).join(','); 
-    console.log(clasif8artquesecompran);               
+    //console.log(clasif8artquesecompran);               
     let pool = await sql.connect(plataforma);
     let gdc_itemreclamadosalproveedor = await pool.request().query("WITH ArtQueSeCompranSegunClas8yRCMercado AS( SELECT STOC_ARCO.ARCO_RUBRO_COMPRA ,CPAG_RUBC.RUBC_NOMBRE ,STOC_ARTS.ARTS_ARTICULO ,STOC_ARTS.ARTS_ARTICULO_EMP ,STOC_ARTS.ARTS_NOMBRE ,STOC_CA08.CA08_CLASIF_8 ,STOC_CA08.CA08_NOMBRE FROM CPAG_RUBC WITH (NOLOCK) INNER JOIN ((STOC_ARCO WITH (NOLOCK) INNER JOIN STOC_ARTS WITH (NOLOCK) ON STOC_ARCO.ARCO_ARTICULO = STOC_ARTS.ARTS_ARTICULO) INNER JOIN STOC_CA08 WITH (NOLOCK) ON STOC_ARTS.ARTS_CLASIF_8 = STOC_CA08.CA08_CLASIF_8) ON CPAG_RUBC.RUBC_RUBRO_COMPRA = STOC_ARCO.ARCO_RUBRO_COMPRA WHERE (((CPAG_RUBC.RUBC_NOMBRE) LIKE '%(1)%')) AND STOC_CA08.CA08_CLASIF_8 IN ("+ clasif8artquesecompran +")) SELECT COMP_CODC.CODC_DIVISION ,COMP_CODC.CODC_TIPO_OC ,COMP_CODC.CODC_NUM_OC ,COMP_RODC.RODC_REN_OC ,FORMAT(COMP_CODC.CODC_FECHA_OC, 'dd/MM/yyyy') AS Fecha_OC ,STOC_ARTS.ARTS_ARTICULO_EMP ,STOC_ARTS.ARTS_NOMBRE ,SUM(IIf([RODC_CANT_PEDIDA]-[RODC_CANT_RECIB]>0,[RODC_CANT_PEDIDA]-[RODC_CANT_RECIB],0)) AS Pend_Entrega FROM ((COMP_CODC WITH (NOLOCK) INNER JOIN COMP_RODC WITH (NOLOCK) ON (COMP_CODC.CODC_NUM_OC = COMP_RODC.RODC_NUM_OC) AND (COMP_CODC.CODC_TIPO_OC = COMP_RODC.RODC_TIPO_OC) AND (COMP_CODC.CODC_DIVISION = COMP_RODC.RODC_DIVISION)) INNER JOIN STOC_ARTS WITH (NOLOCK) ON COMP_RODC.RODC_ARTICULO = STOC_ARTS.ARTS_ARTICULO) INNER JOIN ArtQueSeCompranSegunClas8yRCMercado ON STOC_ARTS.ARTS_ARTICULO = ArtQueSeCompranSegunClas8yRCMercado.ARTS_ARTICULO WHERE ((COMP_RODC.RODC_SECTOR)='100') AND ((IIf([RODC_CANT_PEDIDA]-[RODC_CANT_RECIB]>0,[RODC_CANT_PEDIDA]-[RODC_CANT_RECIB],0))>0) AND ((COMP_RODC.RODC_MOTIVO_CANC) Is Null) GROUP BY COMP_CODC.CODC_DIVISION ,COMP_CODC.CODC_TIPO_OC ,COMP_CODC.CODC_NUM_OC ,COMP_RODC.RODC_REN_OC ,COMP_CODC.CODC_FECHA_OC ,STOC_ARTS.ARTS_ARTICULO_EMP ,STOC_ARTS.ARTS_NOMBRE");
     return gdc_itemreclamadosalproveedor.recordsets;
