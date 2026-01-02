@@ -352,10 +352,10 @@ export async function sincronizarCompleto() {
         });
       }
 
-      // Descripción corta (si aporta contenido; puede estar vacía)
+      /* // Descripción corta (si aporta contenido; puede estar vacía)
       if (p.descripcion_corta) {
         mergeTokens(kw, p.descripcion_corta);
-      }
+      } */
 
       p.keywords = Array.from(kw);
     });
