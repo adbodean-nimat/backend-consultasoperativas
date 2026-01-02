@@ -237,10 +237,10 @@ async function jsontosheet2(){
         if (!fs.existsSync(folder)) {
             fs.mkdirSync(folder);
           }
-        //const routePath = normalize(folder);
-        const filePathXSLS = join(folder, '/Archivo.xlsx');
-        const filePathCSV = join(folder, '/Archivo.csv');
-        const filePathTXT = join(folder, '/Archivo.txt');
+        const routePath = path.normalize(folder);
+        const filePathXSLS = path.join(folder, '/Archivo.xlsx');
+        const filePathCSV = path.join(folder, '/Archivo.csv');
+        const filePathTXT = path.join(folder, '/Archivo.txt');
         const workSheet = XLSX.utils.json_to_sheet(raw_data, {dense: true});
         const wb = XLSX.utils.book_new();
         XLSX.CFB.utils.use_zlib(zlib);
@@ -272,10 +272,10 @@ async function jsontosheet3(getDates){
         if (!fs.existsSync(folder)) {
             fs.mkdirSync(folder);
           }
-        //const routePath = normalize(folder);
-        const filePathXSLS = join(folder, '/Archivo.xlsx');
-        const filePathCSV = join(folder, '/Archivo.csv');
-        const filePathTXT = join(folder, '/Archivo.txt');
+        const routePath = path.normalize(folder);
+        const filePathXSLS = path.join(folder, '/Archivo.xlsx');
+        const filePathCSV = path.join(folder, '/Archivo.csv');
+        const filePathTXT = path.join(folder, '/Archivo.txt');
         const workSheet = XLSX.utils.json_to_sheet(raw_data);
         const wb = XLSX.utils.book_new();
         XLSX.CFB.utils.use_zlib(zlib);
