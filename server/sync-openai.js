@@ -69,11 +69,11 @@ export async function syncOpenAI() {
     process.exit(1);
   }
 
-  console.log(`📂 Vector store: ${VECTOR_STORE_ID}`);
-  console.log(`📄 Archivos local: ${LOCAL_FILE_PATH_PRODUCTOS}, ${LOCAL_FILE_PATH_FAQ}, ${LOCAL_FILE_PATH_INFO}`);
+  //console.log(`📂 Vector store: ${VECTOR_STORE_ID}`);
+  //console.log(`📄 Archivos local: ${LOCAL_FILE_PATH_PRODUCTOS}, ${LOCAL_FILE_PATH_FAQ}, ${LOCAL_FILE_PATH_INFO}`);
 
   // 1) Buscar si ya existe un producto.json en el vector store (por filename real)
-  console.log("🔍 Buscando productos.json/faq.md/nimat_conocimiento_general.md existenten en el vector store...");
+  //console.log("🔍 Buscando productos.json/faq.md/nimat_conocimiento_general.md existenten en el vector store...");
   const existing = await findExistingFileByFilename(VECTOR_STORE_ID, TARGET_FILE_NAME_PRODUCTOS);
   const existingFAQ = await findExistingFileByFilename(VECTOR_STORE_ID, TARGET_FILE_NAME_FAQ);
   const existingINFO = await findExistingFileByFilename(VECTOR_STORE_ID, TARGET_FILE_NAME_INFO);
@@ -91,7 +91,7 @@ export async function syncOpenAI() {
   }
 
   // 2) Subir nuevo archivo a Files API
-  console.log("⬆️ Subiendo nuevo archivos a Files API...");
+  //console.log("⬆️ Subiendo nuevo archivos a Files API...");
   const uploadedFile = await client.files.create({
     file: fs.createReadStream(LOCAL_FILE_PATH_PRODUCTOS),
     purpose: "assistants",
@@ -106,7 +106,7 @@ export async function syncOpenAI() {
     purpose: "assistants"
   });
 
-  console.log(`Nuevo files subido. fileId: ${uploadedFile.id}, ${uploadedFileFAQ.id}, ${uploadedFileINFO.id}`);
+  //console.log(`Nuevo files subido. fileId: ${uploadedFile.id}, ${uploadedFileFAQ.id}, ${uploadedFileINFO.id}`);
 
   // 3) Asociar el nuevo file al vector store
   //console.log("📌 Asociando nuevo files al vector store...");
@@ -120,7 +120,7 @@ export async function syncOpenAI() {
     file_id: uploadedFileINFO.id,
   });
 
-  console.log("✅ Asociado correctamente.");
+  //console.log("✅ Asociado correctamente.");
 
   // 4) (Opcional) Eliminar el vínculo viejo del vector store
   if (existing?.vectorStoreFileId && existingFAQ?.vectorStoreFileId && existingINFO?.vectorStoreFileId) {

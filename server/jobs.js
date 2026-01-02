@@ -28,21 +28,18 @@ export async function initJobs() {
 
     job_lunvie = new CronJob(
       data.actualizacion_cron_lunesaviernes,
-      async function () {
+      async () => {
         try {
-          
+          console.log("▶ Iniciando actualización Web");
           await jsonToExcel.jsontosheet();
           await jsonToExcel.actualizadoWeb();
-          
-          console.log("▶ Iniciando sincronización completa");
+          console.log("▶ Iniciando sincronización");
           await sincronizarCompleto();
-          
           console.log("▶ Iniciando SyncOpenAI");
           await syncOpenAI();
-          
-        } catch (err) {
-          console.error('Error en job lun-vie:', err);
-        }
+        } catch (error) {
+          console.error('Error job_lunvie:', error);
+        } 
       },
       null,
       false,
@@ -51,19 +48,18 @@ export async function initJobs() {
 
     job_sab = new CronJob(
       data.actualizacion_cron_sabados,
-      async function () {
+      async () => {
         try {
+          console.log("▶ Iniciando actualización Web");
           await jsonToExcel.jsontosheet();
           await jsonToExcel.actualizadoWeb();
-          
-          console.log("▶ Iniciando sincronización completa");
+          console.log("▶ Iniciando sincronización");
           await sincronizarCompleto();
-          
           console.log("▶ Iniciando SyncOpenAI");
           await syncOpenAI();
-        } catch (err) {
-          console.error('Error en job sábado:', err);
-        }
+        } catch (error) {
+          console.error('Error job_sab:', error);
+        } 
       },
       null,
       false,
@@ -75,6 +71,8 @@ export async function initJobs() {
       job_sab.start();
       console.log('Actualización automática: Iniciado');
     } else {
+      job_lunvie.stop();
+      job_sab.stop();
       console.log('Actualización automática: Detenido');
     }
   } catch (error) {

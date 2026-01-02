@@ -257,41 +257,41 @@ function crearIndicesCategorias(productos, arbolCategorias) {
 
 export async function sincronizarCompleto() {
   try {
-    console.log('🚀 Iniciando sincronización completa...\n');
+    //console.log('🚀 Iniciando sincronización completa...\n');
     const token = await ensureAccessToken();
     const dbx = new Dropbox({ accessToken: token });
     
     // 1. Cargar Excel de Categorías
-    console.log('📥 Descargando categorías...');
+    //console.log('📥 Descargando categorías...');
     const resCat = await dbx.filesDownload({ path: EXCEL_CATEGORIAS });
     const wbCat = xlsx.read(resCat.result.fileBinary, { type: 'buffer' });
     const categorias = xlsx.utils.sheet_to_json(wbCat.Sheets[wbCat.SheetNames[0]]);
     
-    console.log(`   ✓ Categorías leídas: ${categorias.length}`);
+    //console.log(`   ✓ Categorías leídas: ${categorias.length}`);
     
     // 2. Construir árbol de categorías
-    console.log('🌳 Construyendo árbol de categorías...');
+    //console.log('🌳 Construyendo árbol de categorías...');
     const { arbol, mapa } = construirArbolCategorias(categorias);
     
     const categoriasActivas = Object.values(mapa).filter(c => c.visible);
-    console.log(`   ✓ Categorías activas: ${categoriasActivas.length}`);
-    console.log(`   ✓ Categorías principales: ${arbol.length}`);
+    //console.log(`   ✓ Categorías activas: ${categoriasActivas.length}`);
+    //console.log(`   ✓ Categorías principales: ${arbol.length}`);
     
     // 3. Cargar Excel de Productos
-    console.log('\n📥 Descargando productos...');
+    //console.log('\n📥 Descargando productos...');
     const resProd = await dbx.filesDownload({ path: EXCEL_PRODUCTOS });
     const wbProd = xlsx.read(resProd.result.fileBinary, { type: 'buffer' });
     const productosRaw = xlsx.utils.sheet_to_json(wbProd.Sheets[wbProd.SheetNames[0]]);
     
-    console.log(`   ✓ Productos leídos: ${productosRaw.length}`);
+    //console.log(`   ✓ Productos leídos: ${productosRaw.length}`);
     
     // 3.5. Cargar Excel de URLs
-    console.log('\n📥 Descargando URLs de productos...');
+    //console.log('\n📥 Descargando URLs de productos...');
     const resUrls = await dbx.filesDownload({ path: EXCEL_URLS });
     const wbUrls = xlsx.read(resUrls.result.fileBinary, { type: 'buffer' });
     const urlsRaw = xlsx.utils.sheet_to_json(wbUrls.Sheets[wbUrls.SheetNames[0]]);
     
-    console.log(`   ✓ URLs leídas: ${urlsRaw.length}`);
+    //console.log(`   ✓ URLs leídas: ${urlsRaw.length}`);
     
     // Crear mapa de URLs por SKU
     const urlsMap = {};
@@ -305,10 +305,10 @@ export async function sincronizarCompleto() {
       }
     });
     
-    console.log(`   ✓ URLs mapeadas: ${Object.keys(urlsMap).length}`);
+    //console.log(`   ✓ URLs mapeadas: ${Object.keys(urlsMap).length}`);
     
     // 4. Procesar productos (combinando con URLs)
-    console.log('\n🔄 Procesando productos...');
+    //console.log('\n🔄 Procesando productos...');
     const productosBase = productosRaw
       .filter(row => row.Published === 'TRUE' && row.VisibleIndividually === 'TRUE')
       .map((row, idx) => {
@@ -334,7 +334,7 @@ export async function sincronizarCompleto() {
       });
     
     // 5. Enriquecer productos con info de categorías
-    console.log('✨ Enriqueciendo productos con categorías...');
+    //console.log('✨ Enriqueciendo productos con categorías...');
     const productosEnriquecidos = enriquecerProductos(productosBase, mapa);
     
     // 6. Generar keywords (robusto y útil para búsquedas vagas)
@@ -361,7 +361,7 @@ export async function sincronizarCompleto() {
     });
 
     // 7. Crear índices
-    console.log('📑 Creando índices...');
+    //console.log('📑 Creando índices...');
     const indicesCategorias = crearIndicesCategorias(productosEnriquecidos, arbol);
     
     // Índices adicionales (por marca, precio, etc.)
@@ -413,10 +413,6 @@ export async function sincronizarCompleto() {
       
       productos: productosEnriquecidos
     };
-    
-    // 9. Guardar JSON
-    const catalogoCompletoToJSON = JSON.stringify(catalogoCompleto, null, 2);
-    const catalogoCompletoToTOON = encode(catalogoCompleto);
 
 // --- LÓGICA DE SELECCIÓN DE CATEGORÍA ---
 let rawData = catalogoCompleto.productos
@@ -526,8 +522,12 @@ const productosLimpios = rawData
     };
   });
 
+    // 9. Guardar JSON y TOON
+    const catalogoCompletoToJSON = JSON.stringify(productosLimpios, null, 2);
+    const catalogoCompletoToTOON = encode(catalogoCompleto);
+
     // Guardar productosLimpios en productos.json
-    fs.writeFileSync(OUTPUT_JSON, JSON.stringify(productosLimpios, null, 2), 'utf8');
+    fs.writeFileSync(OUTPUT_JSON, catalogoCompletoToJSON, 'utf8');
     fs.writeFileSync(OUTPUT_TOON, catalogoCompletoToTOON)
     
     // 10. Estadísticas finales
