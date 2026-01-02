@@ -237,7 +237,7 @@ async function jsontosheet2(){
         if (!fs.existsSync(folder)) {
             fs.mkdirSync(folder);
           }
-        const routePath = normalize(folder);
+        //const routePath = normalize(folder);
         const filePathXSLS = join(folder, '/Archivo.xlsx');
         const filePathCSV = join(folder, '/Archivo.csv');
         const filePathTXT = join(folder, '/Archivo.txt');
@@ -272,7 +272,7 @@ async function jsontosheet3(getDates){
         if (!fs.existsSync(folder)) {
             fs.mkdirSync(folder);
           }
-        const routePath = normalize(folder);
+        //const routePath = normalize(folder);
         const filePathXSLS = join(folder, '/Archivo.xlsx');
         const filePathCSV = join(folder, '/Archivo.csv');
         const filePathTXT = join(folder, '/Archivo.txt');
