@@ -2100,6 +2100,167 @@ const simulador_tiposdecomprobantes = async () => {
     }
 }
 
+// Tabla Registros Financieros (Gestión Admin)
+/* const getRegistrosFinancieros = (request, response) => {
+    // Permite filtrar por rango de fechas si vienen en los parametros de la URL (ej: ?desde=2023-01-01&hasta=2023-01-31)
+    const { desde, hasta } = request.query;
+    
+    let query = 'SELECT * FROM registros_financieros_dia';
+    let params = [];
+
+    if (desde && hasta) {
+        query += ' WHERE fecha BETWEEN $1 AND $2';
+        params = [desde, hasta];
+    }
+
+    query += ' ORDER BY fecha DESC, categoria ASC';
+
+    pool.query(query, params, (error, results) => {
+        if (error){
+            throw error
+        }
+        response.status(200).json(results.rows)
+    })
+}
+
+const getRegistrosFinancierosById = (request, response) => {
+    const id = parseInt(request.params.id)
+
+    pool.query('SELECT * FROM registros_financieros_dia WHERE id = $1', [id], (error, results) => {
+        if (error){
+            throw error
+        }
+        response.status(200).json(results.rows)
+    })
+}
+
+const createRegistroFinanciero = (request, response) => {
+    // El grupo es opcional, puede venir null
+    const { fecha, categoria, valor, grupo } = request.body
+
+    pool.query('INSERT INTO registros_financieros_dia (fecha, categoria, valor, grupo) VALUES ($1, $2, $3, $4) RETURNING *',
+    [fecha, categoria, valor, grupo], (error, results) => {
+        if (error){
+            throw error
+        }
+        response.status(201).send(`Registro agregado correctamente`)
+    })
+}
+
+const updateRegistroFinanciero = (request, response) => {
+    const id = parseInt(request.params.id)
+    const { fecha, categoria, valor, grupo } = request.body
+
+    pool.query(
+        'UPDATE registros_financieros_dia SET fecha = $1, categoria = $2, valor = $3, grupo = $4 WHERE id = $5',
+        [fecha, categoria, valor, grupo, id], (error, results) => {
+            if (error){
+                throw error
+            }
+            response.status(200).send(`Registro modificado correctamente`)
+        }
+    )
+}
+
+const deleteRegistroFinanciero = (request, response) => {
+    const id = parseInt(request.params.id)
+
+    pool.query('DELETE FROM registros_financieros_dia WHERE id = $1', [id], (error, results) => {
+        if (error){
+            throw error
+        }
+        response.status(200).send(`Registro eliminado correctamente`)
+    })
+} */
+
+    // --- FUNCIONES FINANCIERAS MULTITABLA ---
+
+// Helper para seleccionar la tabla correcta según el parámetro 'tipo'
+const getTableName = (tipo) => {
+    switch (tipo) {
+        case 'semana': return 'registros_finanzas_semana';
+        case 'indicadores': return 'registros_finanzas_indicadores';
+        case 'otros': return 'registros_finanzas_otros';
+        default: return 'registros_finanzas_dia'; // Por defecto
+    }
+};
+
+const getRegistrosFinancieros = (request, response) => {
+    const { desde, hasta, tipo } = request.query; // Recibimos el tipo
+    const tabla = getTableName(tipo);
+    
+    let query = `SELECT * FROM ${tabla}`; // Seguro porque viene de nuestra función switch
+    let params = [];
+
+    if (desde && hasta) {
+        query += ' WHERE fecha BETWEEN $1 AND $2';
+        params = [desde, hasta];
+    }
+    
+    // Ordenar: Las semanas a veces es mejor verlas por fecha
+    query += ' ORDER BY fecha DESC, id ASC';
+
+    pool.query(query, params, (error, results) => {
+        if (error) { console.error(error); return response.status(500).send(error); }
+        response.status(200).json(results.rows);
+    });
+};
+
+const createRegistroFinanciero = (request, response) => {
+    const { tipo } = request.query;
+    const tabla = getTableName(tipo);
+    const { fecha, categoria, valor, grupo } = request.body;
+
+    // Si la tabla no es DIA, no guardamos Grupo
+    const tieneGrupo = (tabla === 'registros_finanzas_dia');
+    
+    const query = tieneGrupo 
+        ? `INSERT INTO ${tabla} (fecha, categoria, valor, grupo) VALUES ($1, $2, $3, $4) RETURNING *`
+        : `INSERT INTO ${tabla} (fecha, categoria, valor) VALUES ($1, $2, $3) RETURNING *`;
+    
+    const params = tieneGrupo 
+        ? [fecha, categoria, valor, grupo]
+        : [fecha, categoria, valor];
+
+    pool.query(query, params, (error, results) => {
+        if (error) { console.error(error); return response.status(500).send(error); }
+        response.status(201).send(`Registro agregado a ${tabla}`);
+    });
+};
+
+const updateRegistroFinanciero = (request, response) => {
+    const id = parseInt(request.params.id);
+    const { tipo } = request.query;
+    const tabla = getTableName(tipo);
+    const { fecha, categoria, valor, grupo } = request.body;
+
+    const tieneGrupo = (tabla === 'registros_finanzas_dia');
+
+    const query = tieneGrupo
+        ? `UPDATE ${tabla} SET fecha = $1, categoria = $2, valor = $3, grupo = $4 WHERE id = $5`
+        : `UPDATE ${tabla} SET fecha = $1, categoria = $2, valor = $3 WHERE id = $4`;
+
+    const params = tieneGrupo
+        ? [fecha, categoria, valor, grupo, id]
+        : [fecha, categoria, valor, id];
+
+    pool.query(query, params, (error, results) => {
+        if (error) { console.error(error); return response.status(500).send(error); }
+        response.status(200).send(`Registro modificado en ${tabla}`);
+    });
+};
+
+const deleteRegistroFinanciero = (request, response) => {
+    const id = parseInt(request.params.id);
+    const { tipo } = request.query; // Necesitamos saber de qué tabla borrar
+    const tabla = getTableName(tipo);
+
+    pool.query(`DELETE FROM ${tabla} WHERE id = $1`, [id], (error, results) => {
+        if (error) { console.error(error); return response.status(500).send(error); }
+        response.status(200).send(`Registro eliminado de ${tabla}`);
+    });
+};
+
 export default {
     getDeposANoConsiderar, getDeposANoConsiderarByCod, createDepos, updateDepos, deleteDepos,
     getNPaConsiderar, getNPaConsiderarByCod, createNP, updateNP, deleteNP,
@@ -2141,5 +2302,6 @@ export default {
     getArticulosWeb2, getCategoriasWeb2,
     gdd_clientes_distribuciones, gdd_clientes_distribucionesCreate, gdd_clientes_distribucionesUpdate, gdd_clientes_distribucionesDelete,
     gdd_parametros_distribuciones, gdd_parametros_distribucionesCreate, gdd_parametros_distribucionesUpdate, gdd_parametros_distribucionesDelete,
-    simulador_tiposdecomprobantes
+    simulador_tiposdecomprobantes,
+    getRegistrosFinancieros, createRegistroFinanciero, updateRegistroFinanciero, deleteRegistroFinanciero
 }

@@ -10,6 +10,7 @@ import https from 'https';
 import fs from 'fs';
 import jwt from "jsonwebtoken";
 import helmet from 'helmet';
+import multer from 'multer';
 
 const app = express();
 
@@ -23,6 +24,7 @@ import jsonToTXT from './jsontotxt.js';
 import { enviarListaPreciosPorPerfil } from './whatsapp.js';
 import { logEnviadoOk, logErrorEnvio } from './whatsapp_logger.js';
 import { initJobs, startJobs, stopJobs } from './jobs.js';
+import { importarMasivoFinanzas } from './controllers/importController.js';
 
 // Solo una instancia en cluster
 if (process.env.NODE_APP_INSTANCE === '0') {
@@ -54,6 +56,7 @@ const verifyUserToken = (req, res, next) => {
     res.status(400).send("Token inválido.");
   }
 };
+const upload = multer({ dest: 'uploads/' });
 /* app.use(morgan('combined', { stream: accessLogStream })) */
 app.use(helmet());
 passport.use(new LdapStrategy({
@@ -1064,6 +1067,18 @@ router.route('/gdd/parametrosdistribuciones').get(Pg.gdd_parametros_distribucion
 router.route('/gdd/parametrosdistribuciones').post(Pg.gdd_parametros_distribucionesCreate)
 router.route('/gdd/parametrosdistribucionesdelete/:id').delete(Pg.gdd_parametros_distribucionesDelete)
 router.route('/gdd/parametrosdistribucionesupdate/:id').put(Pg.gdd_parametros_distribucionesUpdate)
+
+// Rutas CRUD de Finanzas
+router.route('/registros-financieros')
+    .get(Pg.getRegistrosFinancieros)
+    .post(Pg.createRegistroFinanciero);
+
+router.route('/registros-financieros/:id')
+    .put(Pg.updateRegistroFinanciero)
+    .delete(Pg.deleteRegistroFinanciero);
+
+// Ruta para subir el Excel/CSV de finanzas
+router.route('/importar-finanzas').post(upload.single('archivo'), importarMasivoFinanzas);
 
 router.route('/enviarxWhatsapp').post((request, response)=>{
   const { to, perfil } = request.body || {};
