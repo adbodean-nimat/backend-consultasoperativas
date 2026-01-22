@@ -128,6 +128,16 @@ export const importarMasivoFinanzas = async (req, res) => {
         // --- INSERCIÓN EN BASE DE DATOS ---
         await client.query('BEGIN');
 
+        // Borramos las 4 tablas de un solo golpe y reiniciamos los contadores de ID
+        await client.query(`
+            TRUNCATE TABLE 
+                registros_finanzas_dia, 
+                registros_finanzas_semana, 
+                registros_finanzas_indicadores, 
+                registros_finanzas_otros 
+            RESTART IDENTITY CASCADE
+        `);
+
         const insertarEnTabla = async (tabla, datos) => {
             const usaGrupo = (tabla === 'registros_finanzas_dia');
             for (const d of datos) {
