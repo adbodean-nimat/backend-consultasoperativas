@@ -118,7 +118,7 @@ async function getWebNimatCombo(){
                                 : "FALSE",
                                 Name: firstResponse[i].nombre_art,
                                 ShortDescription: firstResponse[i].copete == "" ? '' : '<span>'+ firstResponse[i].copete +'</span>',
-                                FullDescription: firstResponse[i].descripcion,
+                                FullDescription: '<p>El precio corresponde a pago en efectivo, tarjeta de débito o medios electrónicos.</p><p>Consúltanos por pagos en cuotas con tarjetas créditos.</p> ' + '<p>' + firstResponse[i].descripcion + '</p>',
                                 ProductTemplate: "Simple Product",
                                 ShowOnHomePage: firstResponse[i].mostrar_inicio === true ? "TRUE" : "FALSE",
                                 MetaKeywords: "",
