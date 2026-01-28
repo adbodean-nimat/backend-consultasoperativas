@@ -673,39 +673,51 @@ async function AcopioCemento(fechaAlta){
   }
 }
 
-/* var ArrayArticulosCalesCementosPlasticor = [];
-async function ArrayArticulos() {
-  let urlArray = `${process.env.URL_API}` + 'calescementosplasticor'
-  const response = await axios.get(urlArray, {httpsAgent, headers: {'Authorization': `Bearer ${token}`}})
-    .then(response => {results = []; data = response.data; for(var i = 0; i < data.length; i++){results.push(data[i]['cod_articulos'])} return results })
-    .catch((error)=>{console.error(error)});
-  return ArrayArticulosCalesCementosPlasticor.push(response);
-  } 
-ArrayArticulos(); */
+async function StockNPOC_CalesCementosPlasticor() {
+  try {
+    const urlApi = process.env.URL_API;
 
-async function StockNPOC_CalesCementosPlasticor(){
-  try{
-    let urlArrayNPaConsiderar = `${process.env.URL_API}` + 'npaconsiderar'
-    const raw_array = (await axios(urlArrayNPaConsiderar, {httpsAgent, headers: {'Authorization': `Bearer ${token}`}})).data
-    const NPaConsiderarWithCommas = raw_array.map(item => `'${item['cod_comp']}'`).join(',');
+    const [rawNp, rawDep, rawArt] = await Promise.all([
+      axios(`${urlApi}npaconsiderar`, { httpsAgent, headers: { Authorization: `Bearer ${token}` } }).then(r => r.data),
+      axios(`${urlApi}depositoanoconsiderarparastockfisico`, { httpsAgent, headers: { Authorization: `Bearer ${token}` } }).then(r => r.data),
+      axios(`${urlApi}calescementosplasticor`, { httpsAgent, headers: { Authorization: `Bearer ${token}` } }).then(r => r.data),
+    ]);
 
-    let urlArrayDep = `${process.env.URL_API}` + 'depositoanoconsiderarparastockfisico'
-    const raw_array2 = (await axios(urlArrayDep, {httpsAgent, headers: {'Authorization': `Bearer ${token}`}})).data
-    const DepositoANoConsiderar = raw_array2.map(item => item['codigo_deposito']).join(',');
-    const DeposANoConsiderar = DepositoANoConsiderar[0]
+    const tiposNpCsv = rawNp
+      .map(x => String(x.cod_comp).trim())
+      .filter(Boolean)
+      .join(",");
 
-    let urlArrayCCP = `${process.env.URL_API}` + 'calescementosplasticor'
-    const raw_array3 = (await axios.get(urlArrayCCP, {httpsAgent, headers: {'Authorization': `Bearer ${token}`}})).data
-    const CalesCementosPlasticor = raw_array3.map(item => ` '${item['cod_articulos']}'`).join(',');
-    //console.log(CalesCementosPlasticor);
-    
-    let pool = await sql.connect(plataforma);
-    let listaCalesCementosPlasticor = await pool.request()
-    .query("DECLARE @AGMO_Stock_NP_0C1_NP2 TABLE(ARTS_ARTICULO_EMP VARCHAR(30), ARTS_NOMBRE VARCHAR(70), Pend_entreg_NP DECIMAL(14,4)) INSERT INTO @AGMO_Stock_NP_0C1_NP2 SELECT STOC_ARTS.ARTS_ARTICULO_EMP, STOC_ARTS.ARTS_NOMBRE, SUM([NPDE_CANT_PEDIDA]-[NPDE_CANT_ENTREG]) AS [Pend_entreg_NP] FROM(((((VENT_NPCA WITH (NOLOCK) INNER JOIN VENT_NPDE WITH (NOLOCK) ON (VENT_NPCA.NPCA_NUMERO_NPCA = VENT_NPDE.NPDE_NUMERO_NPCA) AND (VENT_NPCA.NPCA_TIPO_NPCA = VENT_NPDE.NPDE_TIPO_NPCA) AND (VENT_NPCA.NPCA_DIVISION_NPCA = VENT_NPDE.NPDE_DIVISION_NPCA)) INNER JOIN STOC_ARTS WITH (NOLOCK) ON VENT_NPDE.NPDE_ARTICULO = STOC_ARTS.ARTS_ARTICULO) INNER JOIN STOC_CA06 WITH (NOLOCK) ON STOC_ARTS.ARTS_CLASIF_6 = STOC_CA06.CA06_CLASIF_6) INNER JOIN STOC_CA02 WITH (NOLOCK) ON STOC_ARTS.ARTS_CLASIF_2 = STOC_CA02.CA02_CLASIF_2)) WHERE (((VENT_NPDE.NPDE_MOTIVO_CANC) Is Null) AND ((STOC_CA06.CA06_CLASIF_6)='0059') AND (STOC_ARTS.ARTS_ARTICULO_EMP IN ("+ CalesCementosPlasticor +")) AND (STOC_ARTS.ARTS_CLASIF_2 IN ('0011')) AND (VENT_NPCA.NPCA_TIPO_NPCA IN ("+ NPaConsiderarWithCommas +"))) GROUP BY STOC_ARTS.ARTS_ARTICULO_EMP, STOC_ARTS.ARTS_NOMBRE DECLARE @AGMO_Stock_NP_OC2_Stock TABLE(ARTS_ARTICULO INT, ARTS_ARTICULO_EMP VARCHAR(30), ARTS_NOMBRE VARCHAR(70), Stock_Uni_todos_los_depos DECIMAL(14,4)) INSERT INTO @AGMO_Stock_NP_OC2_Stock SELECT STOC_ARTS.ARTS_ARTICULO ,STOC_ARTS.ARTS_ARTICULO_EMP ,STOC_ARTS.ARTS_NOMBRE ,SUM([SDPP_STOCK_ACT]) AS [Stock_Uni_todos_los_depos] FROM STOC_CA06 WITH (NOLOCK) INNER JOIN (STOC_ARTS WITH (NOLOCK) LEFT JOIN STOC_SDPP WITH (NOLOCK) ON STOC_ARTS.ARTS_ARTICULO = STOC_SDPP.SDPP_ARTICULO) ON STOC_CA06.CA06_CLASIF_6 = STOC_ARTS.ARTS_CLASIF_6 WHERE (((STOC_SDPP.SDPP_DEPOSITO) NOT IN ("+ DeposANoConsiderar +")) AND (STOC_ARTS.ARTS_ARTICULO_EMP IN ("+ CalesCementosPlasticor +"))) GROUP BY STOC_ARTS.ARTS_ARTICULO, STOC_ARTS.ARTS_ARTICULO_EMP, STOC_ARTS.ARTS_NOMBRE DECLARE @AGMO_Stock_NP_OC3_OC2 TABLE(ARTS_ARTICULO_EMP VARCHAR(30), ARTS_NOMBRE VARCHAR(70), Cant_pend_ent_OC DECIMAL(14,4)) INSERT INTO @AGMO_Stock_NP_OC3_OC2 SELECT STOC_ARTS.ARTS_ARTICULO_EMP ,STOC_ARTS.ARTS_NOMBRE ,SUM(IIf([RODC_CANT_PEDIDA]-[RODC_CANT_RECIB]>0,[RODC_CANT_PEDIDA]-[RODC_CANT_RECIB],0)) AS [Cant_pend_ent_OC] FROM ((((CPAG_PROV WITH (NOLOCK) INNER JOIN ((((COMP_CODC WITH (NOLOCK) INNER JOIN COMP_RODC WITH (NOLOCK) ON (COMP_CODC.CODC_NUM_OC = COMP_RODC.RODC_NUM_OC) AND (COMP_CODC.CODC_TIPO_OC = COMP_RODC.RODC_TIPO_OC) AND (COMP_CODC.CODC_DIVISION = COMP_RODC.RODC_DIVISION)) INNER JOIN STOC_ARTS WITH (NOLOCK) ON COMP_RODC.RODC_ARTICULO = STOC_ARTS.ARTS_ARTICULO) INNER JOIN STOC_ARCO WITH (NOLOCK) ON COMP_RODC.RODC_ARTICULO = STOC_ARCO.ARCO_ARTICULO) INNER JOIN CPAG_RUBC WITH (NOLOCK) ON STOC_ARCO.ARCO_RUBRO_COMPRA = CPAG_RUBC.RUBC_RUBRO_COMPRA) ON CPAG_PROV.PROV_PROVEEDOR = COMP_CODC.CODC_PROVEEDOR) INNER JOIN STOC_CA02 WITH (NOLOCK) ON STOC_ARTS.ARTS_CLASIF_2 = STOC_CA02.CA02_CLASIF_2) INNER JOIN STOC_CA03 WITH (NOLOCK) ON STOC_ARTS.ARTS_CLASIF_3 = STOC_CA03.CA03_CLASIF_3) INNER JOIN STOC_CA06 WITH (NOLOCK) ON STOC_ARTS.ARTS_CLASIF_6 = STOC_CA06.CA06_CLASIF_6) INNER JOIN STOC_CA08 WITH (NOLOCK) ON STOC_ARTS.ARTS_CLASIF_8 = STOC_CA08.CA08_CLASIF_8 WHERE (((IIf([RODC_CANT_PEDIDA]-[RODC_CANT_RECIB]>0,[RODC_CANT_PEDIDA]-[RODC_CANT_RECIB],0))>0) AND ((COMP_RODC.RODC_MOTIVO_CANC) Is Null) AND (STOC_ARTS.ARTS_CLASIF_2 IN ('0011')) AND (STOC_ARTS.ARTS_ARTICULO_EMP IN ("+ CalesCementosPlasticor +"))) GROUP BY STOC_ARTS.ARTS_ARTICULO_EMP, STOC_ARTS.ARTS_NOMBRE SELECT STOC_ARTS.ARTS_ARTICULO_EMP ,STOC_ARTS.ARTS_NOMBRE ,[@AGMO_Stock_NP_OC2_Stock].[Stock_Uni_todos_los_depos] ,[@AGMO_Stock_NP_0C1_NP2].[Pend_entreg_NP] ,IIf([@AGMO_Stock_NP_OC2_Stock].[Stock_Uni_todos_los_depos]-[@AGMO_Stock_NP_0C1_NP2].[Pend_entreg_NP]<0,0,[@AGMO_Stock_NP_OC2_Stock].[Stock_Uni_todos_los_depos]-[@AGMO_Stock_NP_0C1_NP2].[Pend_entreg_NP]) AS [Stock_disponible] ,[@AGMO_Stock_NP_OC3_OC2].[Cant_pend_ent_OC] FROM ((STOC_ARTS LEFT JOIN @AGMO_Stock_NP_0C1_NP2 ON STOC_ARTS.ARTS_ARTICULO_EMP = [@AGMO_Stock_NP_0C1_NP2].ARTS_ARTICULO_EMP) LEFT JOIN @AGMO_Stock_NP_OC3_OC2 ON STOC_ARTS.ARTS_ARTICULO_EMP = [@AGMO_Stock_NP_OC3_OC2].ARTS_ARTICULO_EMP) LEFT JOIN @AGMO_Stock_NP_OC2_Stock ON STOC_ARTS.ARTS_ARTICULO_EMP = [@AGMO_Stock_NP_OC2_Stock].ARTS_ARTICULO_EMP WHERE STOC_ARTS.ARTS_CLASIF_2 IN ('0011') AND STOC_ARTS.ARTS_ARTICULO_EMP IN ("+ CalesCementosPlasticor +")");
-    return listaCalesCementosPlasticor.recordsets;
-  }
-  catch(error){
+    const deposNoCsv = rawDep
+      .map(x => String(x.codigo_deposito).trim())
+      .filter(Boolean)
+      .join(",");
+
+    console.log(rawArt);
+    const articulosCsv = rawArt
+      .map(x => String(x.cod_articulos).trim())
+      .filter(Boolean)
+      .join(",");
+
+    //console.log("Artículos para consulta de stock y NPs pendientes:", articulosCsv);
+    //console.log("Depósitos para consulta de stock:", deposNoCsv);
+    //console.log("Tipos de NP para consulta de stock:", tiposNpCsv);
+
+    // Si no hay artículos, no tiene sentido consultar
+    if (!articulosCsv) return [];
+
+    const pool = await sql.connect(plataforma);
+
+    const result = await pool.request()
+      .input("pArticulosCsv", sql.NVarChar(sql.MAX), articulosCsv)
+      .input("pDeposNoCsv",   sql.NVarChar(sql.MAX), deposNoCsv || "")
+      .input("pTiposNpCsv",   sql.NVarChar(sql.MAX), tiposNpCsv || "")
+      .query("DECLARE @ArticulosCsv NVARCHAR(MAX) = @pArticulosCsv; DECLARE @DeposNoCsv NVARCHAR(MAX) = @pDeposNoCsv; DECLARE @TiposNpCsv NVARCHAR(MAX) = @pTiposNpCsv; WITH Articulos AS( SELECT LTRIM(RTRIM(value)) AS ARTS_ARTICULO_EMP FROM STRING_SPLIT(@ArticulosCsv, ',') WHERE LTRIM(RTRIM(value)) <> ''), DeposNo AS ( SELECT TRY_CAST(LTRIM(RTRIM(value)) AS INT) AS Deposito FROM STRING_SPLIT(@DeposNoCsv, ',') WHERE LTRIM(RTRIM(value)) <> '' ), TiposNp AS ( SELECT LTRIM(RTRIM(value)) AS TipoNP FROM STRING_SPLIT(@TiposNpCsv, ',') WHERE LTRIM(RTRIM(value)) <> '' ), NP_Pendiente AS ( SELECT a.ARTS_ARTICULO_EMP, a.ARTS_NOMBRE, SUM(d.NPDE_CANT_PEDIDA - d.NPDE_CANT_ENTREG) AS Pend_entreg_NP FROM dbo.VENT_NPDE d WITH (NOLOCK) INNER JOIN dbo.VENT_NPCA c WITH (NOLOCK) ON c.NPCA_NUMERO_NPCA = d.NPDE_NUMERO_NPCA AND c.NPCA_TIPO_NPCA = d.NPDE_TIPO_NPCA AND c.NPCA_DIVISION_NPCA = d.NPDE_DIVISION_NPCA INNER JOIN dbo.STOC_ARTS a WITH (NOLOCK) ON a.ARTS_ARTICULO = d.NPDE_ARTICULO INNER JOIN Articulos ax ON ax.ARTS_ARTICULO_EMP = a.ARTS_ARTICULO_EMP WHERE d.NPDE_MOTIVO_CANC IS NULL AND a.ARTS_CLASIF_2 = '0011' AND a.ARTS_CLASIF_6 = '0059' AND EXISTS ( SELECT 1 FROM TiposNp t WHERE t.TipoNP = CAST(c.NPCA_TIPO_NPCA AS NVARCHAR(50)) ) GROUP BY a.ARTS_ARTICULO_EMP, a.ARTS_NOMBRE ), Stock_Depos AS ( SELECT a.ARTS_ARTICULO_EMP, a.ARTS_NOMBRE, SUM(s.SDPP_STOCK_ACT) AS Stock_Uni_todos_los_depos FROM dbo.STOC_ARTS a WITH (NOLOCK) INNER JOIN Articulos ax ON ax.ARTS_ARTICULO_EMP = a.ARTS_ARTICULO_EMP LEFT JOIN dbo.STOC_SDPP s WITH (NOLOCK) ON s.SDPP_ARTICULO = a.ARTS_ARTICULO WHERE a.ARTS_CLASIF_2 = '0011' AND (s.SDPP_DEPOSITO IS NULL OR NOT EXISTS ( SELECT 1 FROM DeposNo dn WHERE dn.Deposito = s.SDPP_DEPOSITO )) GROUP BY a.ARTS_ARTICULO_EMP, a.ARTS_NOMBRE ), OC_Pendiente AS ( SELECT a.ARTS_ARTICULO_EMP, a.ARTS_NOMBRE, SUM(CASE WHEN (r.RODC_CANT_PEDIDA - r.RODC_CANT_RECIB) > 0 THEN (r.RODC_CANT_PEDIDA - r.RODC_CANT_RECIB) ELSE 0 END) AS Cant_pend_ent_OC FROM dbo.COMP_RODC r WITH (NOLOCK) INNER JOIN dbo.STOC_ARTS a WITH (NOLOCK) ON a.ARTS_ARTICULO = r.RODC_ARTICULO INNER JOIN Articulos ax ON ax.ARTS_ARTICULO_EMP = a.ARTS_ARTICULO_EMP WHERE r.RODC_MOTIVO_CANC IS NULL AND a.ARTS_CLASIF_2 = '0011' AND (r.RODC_CANT_PEDIDA - r.RODC_CANT_RECIB) > 0 GROUP BY a.ARTS_ARTICULO_EMP, a.ARTS_NOMBRE ) SELECT a.ARTS_ARTICULO_EMP, a.ARTS_NOMBRE, COALESCE(s.Stock_Uni_todos_los_depos, 0) AS Stock_Uni_todos_los_depos, COALESCE(n.Pend_entreg_NP, 0) AS Pend_entreg_NP, CASE WHEN COALESCE(s.Stock_Uni_todos_los_depos, 0) - COALESCE(n.Pend_entreg_NP, 0) < 0 THEN 0 ELSE COALESCE(s.Stock_Uni_todos_los_depos, 0) - COALESCE(n.Pend_entreg_NP, 0) END AS Stock_disponible, COALESCE(o.Cant_pend_ent_OC, 0) AS Cant_pend_ent_OC FROM dbo.STOC_ARTS a WITH (NOLOCK) INNER JOIN Articulos ax ON ax.ARTS_ARTICULO_EMP = a.ARTS_ARTICULO_EMP LEFT JOIN Stock_Depos s ON s.ARTS_ARTICULO_EMP = a.ARTS_ARTICULO_EMP LEFT JOIN NP_Pendiente n ON n.ARTS_ARTICULO_EMP = a.ARTS_ARTICULO_EMP LEFT JOIN OC_Pendiente o ON o.ARTS_ARTICULO_EMP = a.ARTS_ARTICULO_EMP WHERE a.ARTS_CLASIF_2 = '0011' ORDER BY a.ARTS_ARTICULO_EMP;");
+
+    return result.recordsets;
+  } catch (error) {
     console.error(error);
+    throw error;
   }
 }
 
