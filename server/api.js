@@ -25,6 +25,8 @@ import { enviarListaPreciosPorPerfil } from './whatsapp.js';
 import { logEnviadoOk, logErrorEnvio } from './whatsapp_logger.js';
 import { initJobs, startJobs, stopJobs } from './jobs.js';
 import { importarMasivoFinanzas } from './controllers/importController.js';
+import { sincronizarCompleto } from './sync-productos-cateogorias.js';
+import { syncOpenAI } from './sync-openai.js';
 
 // Solo una instancia en cluster
 if (process.env.NODE_APP_INSTANCE === '0') {
@@ -645,6 +647,13 @@ router.route('/gdc/itemsvinculadosaoc/').get((request, response)=>{
   })
 })
 
+
+router.route('/gdc/controlcementoscales/:semanasAtras').get((request, response)=>{
+  Db.gdc_ControlCalesCementos(request.params.semanasAtras).then((data)=>{
+    response.json(data);
+  })
+})
+
 router.route('/gdd/clientesdistribuciones/:codcliente').get((request, response)=>{
   Db.getClientesDistribuciones(request.params.codcliente).then((data)=>{ 
     response.json(data[0]);
@@ -757,20 +766,23 @@ router.route('/planillaimportarwebcombo').get((request, response)=>{
   });
 })
 
-router.route('/jsontosheet').get((request,response)=>{
-  jsonToExcel.jsontosheet().then((data)=>{
-    response.status(200).send('Generado correctamente');
-  }).catch((err)=>{
-    console.error(err);
-    response.status(500).send('Error en generación de planilla');
-  });
-})
+router.route('/jsontosheet').get(async (req, res) => {
+  try {
+    console.log("▶ Iniciando actualización web");
+    await jsonToExcel.jsontosheet();
+    
+    console.log("▶ Iniciando sincronización los productos, categorías y urls");
+    await sincronizarCompleto();
 
-router.route('/jsontosheet2').get((request, response)=>{
-  jsonToExcel.jsontosheet2().then((data)=>{
-    response.status(200).send('Generado correctamente');
-  })
-})
+    console.log("▶ Iniciando sincronización OpenAI");
+    await syncOpenAI();
+
+    return res.status(200).send('Generado correctamente');
+  } catch (err) {
+    console.error(err);
+    return res.status(500).send('Error en generación de planilla');
+  }
+});
 
 router.route('/jsontosheet3/').get((request, response)=>{
   const getDatesDesde = request.query.fechadesde
@@ -1067,6 +1079,26 @@ router.route('/gdd/parametrosdistribuciones').get(Pg.gdd_parametros_distribucion
 router.route('/gdd/parametrosdistribuciones').post(Pg.gdd_parametros_distribucionesCreate)
 router.route('/gdd/parametrosdistribucionesdelete/:id').delete(Pg.gdd_parametros_distribucionesDelete)
 router.route('/gdd/parametrosdistribucionesupdate/:id').put(Pg.gdd_parametros_distribucionesUpdate)
+
+router.route('/gdc/articuloscontrol').get(Pg.gdc_articuloscontrol)
+router.route('/gdc/articuloscontrol').post(Pg.gdc_articuloscontrolCreate)
+router.route('/gdc/articuloscontroldelete/:id').delete(Pg.gdc_articuloscontrolDelete)
+router.route('/gdc/articuloscontrolupdate/:id').put(Pg.gdc_articuloscontrolUpdate)
+
+router.route('/gdc/tiposremitosvtas').get(Pg.gdc_tiposremitosvtas)
+router.route('/gdc/tiposremitosvtasupdate').post(Pg.gdc_tiposremitosvtasUpdate)
+router.route('/gdc/tiposremitosvtasdelete/:id').delete(Pg.gdc_tiposremitosvtasDelete)
+/* router.route('/gdc/tiposremitosvtasupdate/:id').put(Pg.gdc_tiposremitosvtasUpdate) */
+
+router.route('/gdc/npaconsiderar').get(Pg.gdc_npaconsiderar)
+/* router.route('/gdc/npaconsiderar').post(Pg.gdc_npaconsiderarCreate) */
+router.route('/gdc/npaconsiderardelete/:id').delete(Pg.gdc_npaconsiderarDelete)
+router.route('/gdc/npaconsiderarupdate').post(Pg.gdc_npaconsiderarUpdate)
+
+router.route('/gdc/deposanoconsiderarpstockfisico').get(Pg.gdc_deposanoconsiderarpstockfisico)
+router.route('/gdc/deposanoconsiderarpstockfisicoupdate').post(Pg.gdc_deposanoconsiderarpstockfisicoUpdate)
+router.route('/gdc/deposanoconsiderarpstockfisicodelete/:id').delete(Pg.gdc_deposanoconsiderarpstockfisicoDelete)
+/* router.route('/gdc/deposanoconsiderarpstockfisicoupdate/:id').put(Pg.gdc_deposanoconsiderarpstockfisicoUpdate) */
 
 // Rutas CRUD de Finanzas
 router.route('/registros-financieros')

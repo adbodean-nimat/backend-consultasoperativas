@@ -2261,6 +2261,202 @@ const deleteRegistroFinanciero = (request, response) => {
     });
 };
 
+const gdc_npaconsiderar = (request, response) => {
+    pool.query('SELECT * FROM gdc_npaconsiderar ORDER BY id ASC', (error, results) => {
+        if (error){
+            throw error
+        }
+        response.status(200).json(results.rows)
+    })
+}
+
+const gdc_npaconsiderarCreate = (request, response) => {
+    const {cod_comp, nomb_comp} = request.body
+
+    pool.query(
+        'INSERT INTO gdc_npaconsiderar(cod_comp, nomb_comp) VALUES ($1, $2) RETURNING *', 
+        [cod_comp, nomb_comp], (error, results) => {
+        if (error){
+            throw error
+        }
+        response.status(201).send(`Agregar correctamente`)
+    })
+}
+
+const gdc_npaconsiderarUpdate = (request, response) => {
+    const {id, cod_comp, nomb_comp} = request.body
+
+    pool.query(
+        /* 'UPDATE gdc_npaconsiderar SET id= $1, cod_comp= $2, nomb_comp= $3 WHERE id = $1', */
+        'INSERT INTO public.gdc_npaconsiderar(id, "cod_comp", "nomb_comp") VALUES ($1, $2, $3) ON CONFLICT (id) DO UPDATE SET "cod_comp" = $2, "nomb_comp" = $3;',
+        [id, cod_comp, nomb_comp ], (error, results) => {
+            if (error){
+                throw error
+            }
+            response.status(200).send(`Modificado correctamente`)
+        }
+    )
+}
+
+const gdc_npaconsiderarDelete = (request, response) => {
+    const id = parseInt(request.params.id)
+    pool.query(
+        'DELETE FROM gdc_npaconsiderar WHERE id = $1',
+        [id], (error, results) => {
+            if (error){
+                throw error
+            }
+            response.status(200).send(`Eliminado correctamente`)
+        }
+    )
+}
+
+const gdc_deposanoconsiderarpstockfisico = (request, response) => {
+    pool.query('SELECT * FROM gdc_deposanoconsiderarpstockfisico ORDER BY id ASC', (error, results) => {
+        if (error){
+            throw error
+        }
+        response.status(200).json(results.rows)
+    })
+}
+
+const gdc_deposanoconsiderarpstockfisicoCreate = (request, response) => {
+    const {Cod_Depos, Nombre_Depos} = request.body
+
+    pool.query(
+        'INSERT INTO gdc_deposanoconsiderarpstockfisico(Cod_Depos, Nombre_Depos) VALUES ($1, $2) RETURNING *', 
+        [Cod_Depos, Nombre_Depos], (error, results) => {
+        if (error){
+            throw error
+        }
+        response.status(201).send(`Agregar correctamente`)
+    })
+}
+
+const gdc_deposanoconsiderarpstockfisicoUpdate = (request, response) => {
+    const {id, Cod_Depos, Nombre_Depos} = request.body
+
+    pool.query(
+        'INSERT INTO gdc_deposanoconsiderarpstockfisico(id, "Cod_Depos", "Nombre_Depos") VALUES ($1, $2, $3) ON CONFLICT (id) DO UPDATE SET "Cod_Depos" = $2, "Nombre_Depos" = $3;',
+        [id, Cod_Depos, Nombre_Depos], (error, results) => {
+            if (error){
+                throw error
+            }
+            response.status(200).send(`Modificado correctamente`)
+        }
+    )
+}
+
+const gdc_deposanoconsiderarpstockfisicoDelete = (request, response) => {
+    const id = parseInt(request.params.id)
+    pool.query(
+        'DELETE FROM gdc_deposanoconsiderarpstockfisico WHERE id = $1',
+        [id], (error, results) => {
+            if (error){
+                throw error
+            }
+            response.status(200).send(`Eliminado correctamente`)
+        }
+    )
+}
+
+const gdc_articuloscontrol = (request, response) => {
+    pool.query('SELECT * FROM gdc_articulos_control ORDER BY id ASC', (error, results) => {
+        if (error){
+            throw error
+        }
+        response.status(200).json(results.rows)
+    })
+}
+
+const gdc_articuloscontrolCreate = (request, response) => {
+    const {cod_art, nomb_art} = request.body
+
+    pool.query(
+        'INSERT INTO gdc_articulos_control(cod_art, nomb_art) VALUES ($1, $2) RETURNING *', 
+        [cod_art, nomb_art], (error, results) => {
+        if (error){
+            throw error
+        }
+        response.status(201).send(`Agregar correctamente`)
+    })
+}
+
+const gdc_articuloscontrolUpdate = (request, response) => {
+    const {id, cod_art, nomb_art} = request.body
+    pool.query(
+        'UPDATE gdc_articulos_control SET id= $1, cod_art= $2, nomb_art= $3 WHERE id = $1',
+        [id, cod_art, nomb_art], (error, results) => {
+            if (error){
+                throw error
+            }
+            response.status(200).send(`Modificado correctamente`)
+        }
+    )
+}
+
+const gdc_articuloscontrolDelete = (request, response) => {
+    const id = parseInt(request.params.id)
+    pool.query(
+        'DELETE FROM gdc_articulos_control WHERE id = $1',
+        [id], (error, results) => {
+            if (error){
+                throw error
+            }
+            response.status(200).send(`Eliminado correctamente`)
+        }
+    )
+}
+
+const gdc_tiposremitosvtas = (request, response) => {
+    pool.query('SELECT * FROM gdc_tiposremitosvtas ORDER BY id ASC', (error, results) => {
+        if (error){
+            throw error
+        }
+        response.status(200).json(results.rows)
+    })
+}
+
+const gdc_tiposremitosvtasCreate = (request, response) => {
+    const {cod_comp, nombre_comp} = request.body
+
+    pool.query(
+        'INSERT INTO gdc_tiposremitosvtas(cod_comp, nombre_comp) VALUES ($1, $2) RETURNING *', 
+        [cod_comp, nombre_comp], (error, results) => {
+        if (error){
+            throw error
+        }
+        response.status(201).send(`Agregar correctamente`)
+    })
+}
+
+const gdc_tiposremitosvtasUpdate = (request, response) => {
+    const {id, cod_comp, nombre_comp} = request.body
+
+    pool.query(
+        'INSERT INTO gdc_tiposremitosvtas(id, "cod_comp", "nombre_comp") VALUES ($1, $2, $3) ON CONFLICT (id) DO UPDATE SET "cod_comp" = $2, "nombre_comp" = $3;',
+        [id, cod_comp, nombre_comp ], (error, results) => {
+            if (error){
+                throw error
+            }
+            response.status(200).send(`Modificado correctamente`)
+        }
+    )
+}
+
+const gdc_tiposremitosvtasDelete = (request, response) => {
+    const id = parseInt(request.params.id)
+    pool.query(
+        'DELETE FROM gdc_tiposremitosvtas WHERE id = $1',
+        [id], (error, results) => {
+            if (error){
+                throw error
+            }
+            response.status(200).send(`Eliminado correctamente`)
+        }
+    )
+}
+
 export default {
     getDeposANoConsiderar, getDeposANoConsiderarByCod, createDepos, updateDepos, deleteDepos,
     getNPaConsiderar, getNPaConsiderarByCod, createNP, updateNP, deleteNP,
@@ -2303,5 +2499,9 @@ export default {
     gdd_clientes_distribuciones, gdd_clientes_distribucionesCreate, gdd_clientes_distribucionesUpdate, gdd_clientes_distribucionesDelete,
     gdd_parametros_distribuciones, gdd_parametros_distribucionesCreate, gdd_parametros_distribucionesUpdate, gdd_parametros_distribucionesDelete,
     simulador_tiposdecomprobantes,
-    getRegistrosFinancieros, createRegistroFinanciero, updateRegistroFinanciero, deleteRegistroFinanciero
+    getRegistrosFinancieros, createRegistroFinanciero, updateRegistroFinanciero, deleteRegistroFinanciero,
+    gdc_npaconsiderar, gdc_npaconsiderarCreate, gdc_npaconsiderarUpdate, gdc_npaconsiderarDelete,
+    gdc_deposanoconsiderarpstockfisico, gdc_deposanoconsiderarpstockfisicoCreate, gdc_deposanoconsiderarpstockfisicoUpdate, gdc_deposanoconsiderarpstockfisicoDelete,
+    gdc_articuloscontrol, gdc_articuloscontrolCreate, gdc_articuloscontrolUpdate, gdc_articuloscontrolDelete,
+    gdc_tiposremitosvtas, gdc_tiposremitosvtasCreate, gdc_tiposremitosvtasUpdate, gdc_tiposremitosvtasDelete
 }

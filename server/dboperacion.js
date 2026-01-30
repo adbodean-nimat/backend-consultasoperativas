@@ -693,7 +693,6 @@ async function StockNPOC_CalesCementosPlasticor() {
       .filter(Boolean)
       .join(",");
 
-    console.log(rawArt);
     const articulosCsv = rawArt
       .map(x => String(x.cod_articulos).trim())
       .filter(Boolean)
@@ -1107,6 +1106,95 @@ async function tiemposEntregas(fecha) {
     }
   }
 
+  async function gdc_ControlCalesCementos(semanasAtras){
+    try {
+      const urlApi = process.env.URL_API;
+
+      const [rawNp, rawDep, rawArt, rawMsva] = await Promise.all([
+        axios(`${urlApi}/gdc/npaconsiderar`, { httpsAgent, headers: { Authorization: `Bearer ${token}` } }).then(r => r.data),
+        axios(`${urlApi}/gdc/deposanoconsiderarpstockfisico`, { httpsAgent, headers: { Authorization: `Bearer ${token}` } }).then(r => r.data),
+        axios(`${urlApi}/gdc/articuloscontrol`, { httpsAgent, headers: { Authorization: `Bearer ${token}` } }).then(r => r.data),
+        axios(`${urlApi}/gdc/tiposremitosvtas`, { httpsAgent, headers: { Authorization: `Bearer ${token}` } }).then(r => r.data),
+      ]);
+
+      const tiposNpCsv = rawNp
+        .map(x => String(x.cod_comp).trim())
+        .filter(Boolean)
+        .join(",");
+
+      const deposNoCsv = rawDep
+        .map(x => String(x.Cod_Depos).trim())
+        .filter(Boolean)
+        .join(",");
+
+      const articulosCsv = rawArt
+        .map(x => String(x.cod_art).trim())
+        .filter(Boolean)
+        .join(",");
+
+      const tiposMsvaCsv = rawMsva
+        .map(x => String(x.cod_comp).trim())
+        .filter(Boolean)
+        .join(",");
+
+      let pool = await sql.connect(plataforma);
+      let listaControlCalesCementos = await pool.request()
+      .input("pArticulosCsv",  sql.NVarChar(sql.MAX), articulosCsv)
+      .input("pDeposNoCsv",    sql.NVarChar(sql.MAX), deposNoCsv)
+      .input("pTiposNpCsv",    sql.NVarChar(sql.MAX), tiposNpCsv)
+      .input("pTiposMsvaCsv",  sql.NVarChar(sql.MAX), tiposMsvaCsv)
+      .input("pSemanasAtras",  sql.Int, semanasAtras)
+      .input("pAsOfDate",      sql.Date, null)
+      .query("SET NOCOUNT ON; SET DATEFIRST 7; DECLARE @Hoy DATE = COALESCE(@pAsOfDate, CAST(GETDATE() AS DATE)); DECLARE @InicioSemanaActual DATE = DATEADD(DAY, 1 - DATEPART(WEEKDAY, @Hoy), @Hoy); DECLARE @FinSemanaActual DATE = DATEADD(DAY, 6, @InicioSemanaActual); DECLARE @FechaDesde DATE = DATEADD(DAY, -7 *(@pSemanasAtras - 1), @InicioSemanaActual); DECLARE @FechaHasta DATE = @FinSemanaActual; SELECT LTRIM(RTRIM(value)) AS ARTS_ARTICULO_EMP INTO #Articulos FROM STRING_SPLIT(@pArticulosCsv, ',') WHERE LTRIM(RTRIM(value)) <> ''; SELECT TRY_CAST(LTRIM(RTRIM(value)) AS INT) AS Deposito INTO #DeposNo FROM STRING_SPLIT(@pDeposNoCsv, ',') WHERE LTRIM(RTRIM(value)) <> ''; SELECT LTRIM(RTRIM(value)) AS TipoNP INTO #TiposNp FROM STRING_SPLIT(@pTiposNpCsv, ',') WHERE LTRIM(RTRIM(value)) <> ''; SELECT LTRIM(RTRIM(value)) AS TipoMSVA INTO #TiposMsva FROM STRING_SPLIT(@pTiposMsvaCsv, ',') WHERE LTRIM(RTRIM(value)) <> ''; SELECT TOP (400) ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) - 1 AS n INTO #N FROM sys.all_objects; SELECT 1 + n AS WeekIndex, DATEADD(DAY, -7*n, @InicioSemanaActual) AS SemanaDesde, DATEADD(DAY, -7*n + 6, @InicioSemanaActual) AS SemanaHasta, DATEPART(WEEK, DATEADD(DAY, -7*n, @InicioSemanaActual)) AS SemanaNumero, CONCAT('Sem. ', DATEPART(WEEK, DATEADD(DAY, -7*n, @InicioSemanaActual))) AS SemanaLabel INTO #Semanas FROM #N WHERE (1 + n) <= @pSemanasAtras; SELECT a.ARTS_ARTICULO_EMP, SUM(d.NPDE_CANT_PEDIDA - d.NPDE_CANT_ENTREG) AS Pend_entreg_NP INTO #NP_Pendiente FROM dbo.VENT_NPDE d WITH (NOLOCK) INNER JOIN dbo.VENT_NPCA c WITH (NOLOCK) ON c.NPCA_NUMERO_NPCA = d.NPDE_NUMERO_NPCA AND c.NPCA_TIPO_NPCA = d.NPDE_TIPO_NPCA AND c.NPCA_DIVISION_NPCA = d.NPDE_DIVISION_NPCA INNER JOIN dbo.STOC_ARTS a WITH (NOLOCK) ON a.ARTS_ARTICULO = d.NPDE_ARTICULO INNER JOIN #Articulos ax ON ax.ARTS_ARTICULO_EMP = a.ARTS_ARTICULO_EMP WHERE d.NPDE_MOTIVO_CANC IS NULL AND a.ARTS_CLASIF_2 = '0011' AND a.ARTS_CLASIF_6 = '0059' AND EXISTS ( SELECT 1 FROM #TiposNp t WHERE t.TipoNP = CAST(c.NPCA_TIPO_NPCA AS NVARCHAR(50))) GROUP BY a.ARTS_ARTICULO_EMP; SELECT a.ARTS_ARTICULO_EMP, SUM(s.SDPP_STOCK_ACT) AS Stock_Uni_todos_los_depos INTO #Stock_Depos FROM dbo.STOC_ARTS a WITH (NOLOCK) INNER JOIN #Articulos ax ON ax.ARTS_ARTICULO_EMP = a.ARTS_ARTICULO_EMP LEFT JOIN dbo.STOC_SDPP s WITH (NOLOCK) ON s.SDPP_ARTICULO = a.ARTS_ARTICULO WHERE a.ARTS_CLASIF_2 = '0011' AND (s.SDPP_DEPOSITO IS NULL OR NOT EXISTS ( SELECT 1 FROM #DeposNo dn WHERE dn.Deposito = s.SDPP_DEPOSITO )) GROUP BY a.ARTS_ARTICULO_EMP; SELECT a.ARTS_ARTICULO_EMP, SUM(CASE WHEN (r.RODC_CANT_PEDIDA - r.RODC_CANT_RECIB) > 0 THEN (r.RODC_CANT_PEDIDA - r.RODC_CANT_RECIB) ELSE 0 END) AS Cant_pend_ent_OC INTO #OC_Pendiente FROM dbo.COMP_RODC r WITH (NOLOCK) INNER JOIN dbo.STOC_ARTS a WITH (NOLOCK) ON a.ARTS_ARTICULO = r.RODC_ARTICULO INNER JOIN #Articulos ax ON ax.ARTS_ARTICULO_EMP = a.ARTS_ARTICULO_EMP WHERE r.RODC_MOTIVO_CANC IS NULL AND a.ARTS_CLASIF_2 = '0011' AND (r.RODC_CANT_PEDIDA - r.RODC_CANT_RECIB) > 0 GROUP BY a.ARTS_ARTICULO_EMP; SELECT a.ARTS_ARTICULO_EMP, DATEADD(DAY, 1 - DATEPART(WEEKDAY, CAST(mo.MOST_FECHA_EMI AS DATE)), CAST(mo.MOST_FECHA_EMI AS DATE)) AS SemanaDesde, SUM(CASE WHEN d.MOSD_SIGNO = 'E' THEN -1 ELSE 1 END * d.MOSD_CANT_ING) AS Cantidad_de_remitos INTO #RemitosAgg FROM dbo.STOC_MOST mo WITH (NOLOCK) INNER JOIN dbo.STOC_MSMV mv WITH (NOLOCK) ON mo.MOST_MOVSTO_MOST = mv.MSMV_MOVSTO_MOST INNER JOIN dbo.STOC_MOSD d WITH (NOLOCK) ON mv.MSMV_MOVSTO_MOST = d.MOSD_MOVSTO_MOST INNER JOIN dbo.STOC_ARTS a WITH (NOLOCK) ON d.MOSD_ARTICULO = a.ARTS_ARTICULO INNER JOIN #Articulos ax ON ax.ARTS_ARTICULO_EMP = a.ARTS_ARTICULO_EMP WHERE mo.MOST_FECHA_EMI >= @FechaDesde AND mo.MOST_FECHA_EMI < DATEADD(DAY, 1, @FechaHasta) AND EXISTS ( SELECT 1 FROM #TiposMsva t WHERE t.TipoMSVA = CAST(mv.MSMV_TIPO_MSVA AS NVARCHAR(50)) ) GROUP BY a.ARTS_ARTICULO_EMP, DATEADD(DAY, 1 - DATEPART(WEEKDAY, CAST(mo.MOST_FECHA_EMI AS DATE)), CAST(mo.MOST_FECHA_EMI AS DATE)); SELECT ax.ARTS_ARTICULO_EMP, s.WeekIndex, s.SemanaNumero, s.SemanaLabel, s.SemanaDesde, s.SemanaHasta, COALESCE(r.Cantidad_de_remitos, 0) AS Cantidad_de_remitos INTO #RemitosPorSemana FROM #Articulos ax CROSS JOIN #Semanas s LEFT JOIN #RemitosAgg r ON r.ARTS_ARTICULO_EMP = ax.ARTS_ARTICULO_EMP AND r.SemanaDesde = s.SemanaDesde; SELECT WeekIndex, SemanaNumero, SemanaLabel, SemanaDesde, SemanaHasta, @FechaDesde AS Rango_FechaDesde, @FechaHasta AS Rango_FechaHasta FROM #Semanas ORDER BY WeekIndex; SELECT a.ARTS_ARTICULO_EMP AS Codigo_producto, a.ARTS_NOMBRE AS Nombre, COALESCE(s.Stock_Uni_todos_los_depos, 0) AS Stock, COALESCE(n.Pend_entreg_NP, 0) AS Pte_NP_con_y_sin_reserva, CAST(0 AS DECIMAL(14,4)) AS Pte_NP_reservadas, COALESCE(o.Cant_pend_ent_OC, 0) AS Pendiente_en_OC, @FechaDesde AS Rango_FechaDesde, @FechaHasta AS Rango_FechaHasta FROM dbo.STOC_ARTS a WITH (NOLOCK) INNER JOIN #Articulos ax ON ax.ARTS_ARTICULO_EMP = a.ARTS_ARTICULO_EMP LEFT JOIN #Stock_Depos s ON s.ARTS_ARTICULO_EMP = a.ARTS_ARTICULO_EMP LEFT JOIN #NP_Pendiente n ON n.ARTS_ARTICULO_EMP = a.ARTS_ARTICULO_EMP LEFT JOIN #OC_Pendiente o ON o.ARTS_ARTICULO_EMP = a.ARTS_ARTICULO_EMP WHERE a.ARTS_CLASIF_2 = '0011' ORDER BY a.ARTS_ARTICULO_EMP; SELECT r.ARTS_ARTICULO_EMP AS Codigo_producto, r.WeekIndex, r.SemanaNumero, r.SemanaLabel, r.SemanaDesde, r.SemanaHasta, r.Cantidad_de_remitos, SUM(r.Cantidad_de_remitos) OVER (PARTITION BY r.ARTS_ARTICULO_EMP) AS Total_cant_remitida FROM #RemitosPorSemana r ORDER BY r.ARTS_ARTICULO_EMP, r.WeekIndex; DROP TABLE IF EXISTS #Articulos, #DeposNo, #TiposNp, #TiposMsva, #N, #Semanas, #NP_Pendiente, #Stock_Depos, #OC_Pendiente, #RemitosAgg, #RemitosPorSemana;");
+      
+      const toYMD = (v) => {
+        if (!v) return null;
+        const d = new Date(v);
+        // YYYY-MM-DD
+        return d.toISOString().slice(0, 10);
+      };
+
+      const semanas = listaControlCalesCementos.recordsets[0].map(r => ({
+        WeekIndex: Number(r.WeekIndex),
+        SemanaNumero: Number(r.SemanaNumero),
+        SemanaLabel: r.SemanaLabel,
+        SemanaDesde: toYMD(r.SemanaDesde),
+        SemanaHasta: toYMD(r.SemanaHasta),
+      }));
+
+      const resumen = listaControlCalesCementos.recordsets[1].map(r => ({
+        ...r,
+        Stock: Number(r.Stock),
+        Pte_NP_con_y_sin_reserva: Number(r.Pte_NP_con_y_sin_reserva),
+        Pte_NP_reservadas: Number(r.Pte_NP_reservadas),
+        Pendiente_en_OC: Number(r.Pendiente_en_OC),
+      }));
+
+      const remitosPorSemana = listaControlCalesCementos.recordsets[2].map(r => ({
+        Codigo_producto: r.Codigo_producto,
+        WeekIndex: Number(r.WeekIndex),
+        SemanaNumero: Number(r.SemanaNumero),
+        SemanaLabel: r.SemanaLabel,
+        SemanaDesde: toYMD(r.SemanaDesde),
+        SemanaHasta: toYMD(r.SemanaHasta),
+        Cantidad_de_remitos: Number(r.Cantidad_de_remitos),
+        Total_cant_remitida: Number(r.Total_cant_remitida),
+      }));
+
+      // rango (si viene en los recordsets)
+      const rango = {
+        FechaDesde: toYMD(listaControlCalesCementos.recordsets[0]?.[0]?.Rango_FechaDesde),
+        FechaHasta: toYMD(listaControlCalesCementos.recordsets[0]?.[0]?.Rango_FechaHasta),
+      };
+
+      return { rango, semanas, resumen, remitosPorSemana };
+
+    }
+    catch (error) {
+      console.error(error);
+    }
+  }
+
   export default {
      getControl: getControl,
      getOrder: getOrder,
@@ -1173,5 +1261,6 @@ async function tiemposEntregas(fecha) {
      gdc_itemsVinculadosAOC: gdc_itemsVinculadosAOC,
      getClientesDistribuciones: getClientesDistribuciones,
      tiemposEntregas: tiemposEntregas,
-     gdc_grilla_consolidacion: gdc_grilla_consolidacion
+     gdc_grilla_consolidacion: gdc_grilla_consolidacion,
+     gdc_ControlCalesCementos: gdc_ControlCalesCementos
   };
