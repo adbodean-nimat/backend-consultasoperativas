@@ -78,24 +78,27 @@ app.use(bodyParser.json());
 app.use(passport.initialize());
 app.use('/api', verifyUserToken, router);
 app.post('/login', function (req, res, next){
-  passport.authenticate('ldapauth', {session: false}, function(err, user, info) {
-    var error = err || info
+  try {
+    passport.authenticate('ldapauth', {session: false}, function(err, user, info) {
+            
+      if (req.statusCode){
+        return res.status(req.statusCode).json(info.message) 
+      }
+      
+      if (!user) {
+        return res.status(400).send(info.message)
+      }
+      
+      const avatar = user._raw.thumbnailPhoto ? Buffer.from(user._raw.thumbnailPhoto).toString('base64') : '';
+      const token = process.env.JWT_TOKEN;
+      delete user._raw; // Eliminar el campo raw para no incluirlo en el token
+      const jwtToken = jwt.sign({user, avatar, token}, process.env.JWT_SECRET);
+      return res.status(200).json({"token": jwtToken});
+    })(req, res, next)
+  } catch (error) {
     console.error(error);
-    if (req.statusCode){
-      return res.status(req.statusCode).json(info.message) 
-    }
-    /* if (error) 
-      return res.status(500).json({error}) */
-    if (!user) {
-      return res.status(400).send(info.message)
-    }
-    // res.status(200).send(user)
-    //create token
-    const avatar = user._raw.thumbnailPhoto ? Buffer.from(user._raw.thumbnailPhoto).toString('base64') : '';
-    delete user._raw
-    const token = jwt.sign({ user }, process.env.JWT_SECRET);
-    return res.status(200).json({"token": token, user, avatar});
-  })(req, res, next)
+    return res.status(500).json({error})
+  }
 })
 
 /* app.post('/login', function (req, res, next){
