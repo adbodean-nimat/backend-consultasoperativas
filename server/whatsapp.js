@@ -17,6 +17,7 @@ const {
   PDF_FILENAME_REA,
   PDF_FILENAME_REB,
   TIMEZONE,
+  GOOGLE_APPLICATION_CREDENTIALS
 } = process.env;
 
 if (!WHATSAPP_TOKEN || !WABA_PHONE_NUMBER_ID) {
@@ -27,7 +28,7 @@ if (!GDRIVE_FILE_ID_REA || !GDRIVE_FILE_ID_REB) {
   console.error('❌ Faltan GDRIVE_FILE_ID_REA o GDRIVE_FILE_ID_REB en .env');
   process.exit(1);
 }
-if (!process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+if (!GOOGLE_APPLICATION_CREDENTIALS) {
   console.error('❌ Falta GOOGLE_APPLICATION_CREDENTIALS en .env');
   process.exit(1);
 }
@@ -58,7 +59,7 @@ function asegurarE164(num) {
   return n;
 }
 
-/* async function descargarDesdeDrive(fileId, targetPath) {
+async function descargarDesdeDrive(fileId, targetPath) {
   const url = `https://drive.google.com/uc?export=download&id=${fileId}`;
   const resp = await axios.get(url, {
     responseType: 'stream', maxRedirects: 5,
@@ -70,11 +71,11 @@ function asegurarE164(num) {
   }
   await pipeline(resp.data, fs.createWriteStream(targetPath));
   return targetPath;
-} */
+}
 
-export async function descargarDesdeDriveAPI(fileId, targetPath) {
+/* export async function descargarDesdeDriveAPI(fileId, targetPath) {
   const auth = new google.auth.GoogleAuth({
-    keyFile: process.env.GOOGLE_APPLICATION_CREDENTIALS, // ruta al JSON
+    keyFile: GOOGLE_APPLICATION_CREDENTIALS, // ruta al JSON
     scopes: ['https://www.googleapis.com/auth/drive.readonly'],
   });
 
@@ -94,7 +95,7 @@ export async function descargarDesdeDriveAPI(fileId, targetPath) {
   });
 
   return targetPath;
-}
+} */
 
 async function subirPdfAWhatsApp(filePath, fileName) {
   if (!fs.existsSync(filePath)) {
@@ -170,7 +171,7 @@ export default async function enviarListaPreciosPorPerfil({ to, perfil }) {
 
   try {
     // 1) Descargar PDF desde Drive a /tmp
-    await descargarDesdeDriveAPI(fileId, tmp);
+    await descargarDesdeDrive(fileId, tmp);
 
     // 2) Subir a WhatsApp → media_id
     const mediaId = await subirPdfAWhatsApp(tmp, filename);
