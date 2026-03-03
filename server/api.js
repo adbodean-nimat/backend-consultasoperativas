@@ -21,7 +21,7 @@ import Pg from './dboperacion_pg.js';
 import jConfig from './jconfig.js';
 import fsConfig from './fsconfig.js';
 import jsonToTXT from './jsontotxt.js';
-import enviarxWhatsapp from './whatsapp.js';
+import enviarListaPreciosPorPerfil from './whatsapp.js';
 import { logEnviadoOk, logErrorEnvio } from './whatsapp_logger.js';
 import { initJobs, startJobs, stopJobs } from './jobs.js';
 import { importarMasivoFinanzas } from './controllers/importController.js';
@@ -1119,7 +1119,7 @@ router.route('/enviarxWhatsapp').post(async (request, response) => {
   const { to, perfil } = request.body || {};
 
   try {
-    const data = await enviarxWhatsapp({ to, perfil });
+    const data = await enviarListaPreciosPorPerfil({ to, perfil });
 
     if (!data.ok) {
       const msg = data?.error || 'Error';
@@ -1127,26 +1127,32 @@ router.route('/enviarxWhatsapp').post(async (request, response) => {
       return response.status(isBadReq ? 400 : 500).json(data);
     }
 
-    const filename =
-      data.perfil === 'REA' ? process.env.PDF_FILENAME_REA : process.env.PDF_FILENAME_REB;
+    const filename = data.perfil === 'REA' ? process.env.PDF_FILENAME_REA : process.env.PDF_FILENAME_REB;
+    
+    if (data.ok) {
+      logEnviadoOk({
+        to: data?.to,
+        perfil: data?.perfil,
+        messageId: data?.wa?.messages?.[0]?.id,
+        messageStatus: data?.wa?.messages?.[0]?.message_status,
+        templateName: process.env.TEMPLATE_NAME,
+        filename,
+        mediaId: data?.mediaId,
+      });
 
-    logEnviadoOk({
-      to: data?.to,
-      perfil: data?.perfil,
-      messageId: data?.wa?.messages?.[0]?.id,
-      messageStatus: data?.wa?.messages?.[0]?.message_status,
-      templateName: process.env.TEMPLATE_NAME,
-      filename,
-      mediaId: data?.mediaId,
-    });
+      return response.status(200).json({
+        ok: true,
+        to: data.to,
+        perfil: data.perfil,
+        mediaId: data.mediaId,
+        messageId: data?.wa?.messages?.[0]?.id,
+        messageStatus: data?.wa?.messages?.[0]?.message_status,
+      });
+    }
 
-    return response.status(200).json({
-      ok: true,
-      to: data.to,
-      perfil: data.perfil,
-      mediaId: data.mediaId,
-      messageId: data?.wa?.messages?.[0]?.id,
-      messageStatus: data?.wa?.messages?.[0]?.message_status,
+    return response.status(400).json({
+      ok: false,
+      error: data.error,
     });
   } catch (err) {
     const msg = err?.message || 'Error inesperado';
