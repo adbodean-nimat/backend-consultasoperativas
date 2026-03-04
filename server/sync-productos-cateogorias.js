@@ -31,6 +31,40 @@ const OUTPUT_TOON = process.env.OUTPUT_TOON
   return res.json();
 } */
 
+async function getAccessToken() {
+  const body = new URLSearchParams({
+    grant_type: "refresh_token",
+    refresh_token: process.env.DROPBOX_REFRESH_TOKEN,
+  });
+
+  const auth = Buffer.from(
+    `${process.env.DROPBOX_APP_KEY}:${process.env.DROPBOX_APP_SECRET}`
+  ).toString("base64");
+
+  try {
+    const res = await axios.post(
+      "https://api.dropboxapi.com/oauth2/token",
+      body.toString(),
+      {
+        headers: {
+          Authorization: `Basic ${auth}`,
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        timeout: 10000 // recomendable
+      }
+    );
+
+    return res.data;
+  } catch (error) {
+    if (error.response) {
+      throw new Error(
+        `OAuth token error ${error.response.status}: ${JSON.stringify(error.response.data)}`
+      );
+    }
+    throw error;
+  }
+}
+
 /** backoff exponencial con jitter */
 function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
