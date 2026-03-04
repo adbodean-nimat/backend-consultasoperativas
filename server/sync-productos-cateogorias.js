@@ -370,12 +370,7 @@ export async function sincronizarCompleto() {
   try {
     //console.log('🚀 Iniciando sincronización completa...\n');
     const token = await ensureAccessToken();
-    const dbx = new Dropbox(
-      { 
-        accessToken: token,
-        fetch: (...args) => fetch(...args, { timeout: 10000 }) // recomendable
-      }
-    );
+    const dbx = new Dropbox({ accessToken: token });
     
     const [listPath, resCat, resProd, resUrls] = await Promise.all([
       await dbx.filesListFolder({ path: "" }),
