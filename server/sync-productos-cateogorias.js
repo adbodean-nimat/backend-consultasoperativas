@@ -370,35 +370,26 @@ export async function sincronizarCompleto() {
   try {
     //console.log('🚀 Iniciando sincronización completa...\n');
     const token = await ensureAccessToken();
-   /*  const dbx = new Dropbox(
+    const dbx = new Dropbox(
       { 
         accessToken: token,
         fetch: (...args) => fetch(...args, { timeout: 10000 }) // recomendable
       }
-    ); */
-    const dbx = new Dropbox({ accessToken: token });
-    const list = await dbx.filesListFolder({ path: "" });
-    console.log(list.result.entries.map(e => e.path_display));
-  
-    /*  const [bufCat, bufProd, bufUrls] = await Promise.all([
-      dropboxDownloadBuffer(token, EXCEL_CATEGORIAS),
-      dropboxDownloadBuffer(token, EXCEL_PRODUCTOS),
-      dropboxDownloadBuffer(token, EXCEL_URLS),
-    ]); */
+    );
+    
+    const [listPath, resCat, resProd, resUrls] = await Promise.all([
+      await dbx.filesListFolder({ path: "" }),
+      await dbx.filesDownload({ path: EXCEL_CATEGORIAS }),
+      await dbx.filesDownload({ path: EXCEL_PRODUCTOS }),
+      await dbx.filesDownload({ path: EXCEL_URLS }),
+    ]);
 
-    //const wbCat  = xlsx.read(bufCat,  { type: "buffer" });
-    //const wbProd = xlsx.read(bufProd, { type: "buffer" });
-    //const wbUrls = xlsx.read(bufUrls, { type: "buffer" });
+    console.log(listPath.result.entries.map(e => e.path_display));
 
     // 1. Cargar Excel de Categorías
     //console.log('📥 Descargando categorías...');
-    //const resCat = await dbx.filesDownload({ path: EXCEL_CATEGORIAS });
-    //const wbCat = xlsx.read(resCat.result.fileBinary, { type: 'buffer' });
-    console.time("download categorias");
-    const bufCat = await dropboxDownloadBuffer(token, EXCEL_CATEGORIAS);
-    console.timeEnd("download categorias");
-    const wbCat = xlsx.read(bufCat, { type: "buffer" });
-    const categorias = xlsx.utils.sheet_to_json(wbCat.Sheets[wbCat.SheetNames[0]]);
+    const wbCat = xlsx.read(resCat.result.fileBinary, { type: 'buffer' });
+    const categorias = xlsx.utils.sheet_to_json(wbCat.Sheets[wbCat.SheetNames[0]]);    
     
     //console.log(`   ✓ Categorías leídas: ${categorias.length}`);
     
@@ -412,24 +403,14 @@ export async function sincronizarCompleto() {
     
     // 3. Cargar Excel de Productos
     //console.log('\n📥 Descargando productos...');
-    //const resProd = await dbx.filesDownload({ path: EXCEL_PRODUCTOS });
-    //const wbProd = xlsx.read(resProd.result.fileBinary, { type: 'buffer' });
-    console.time("download productos");
-    const bufProd = await dropboxDownloadBuffer(token, EXCEL_PRODUCTOS);
-    console.timeEnd("download productos");
-    const wbProd = xlsx.read(bufProd, { type: "buffer" });
+    const wbProd = xlsx.read(resProd.result.fileBinary, { type: 'buffer' });
     const productosRaw = xlsx.utils.sheet_to_json(wbProd.Sheets[wbProd.SheetNames[0]]);
     
     //console.log(`   ✓ Productos leídos: ${productosRaw.length}`);
     
     // 3.5. Cargar Excel de URLs
     //console.log('\n📥 Descargando URLs de productos...');
-    //const resUrls = await dbx.filesDownload({ path: EXCEL_URLS });
-    //const wbUrls = xlsx.read(resUrls.result.fileBinary, { type: 'buffer' });
-    console.time("download urls");
-    const bufUrls = await dropboxDownloadBuffer(token, EXCEL_URLS);
-    console.timeEnd("download urls");
-    const wbUrls = xlsx.read(bufUrls, { type: "buffer" });
+    const wbUrls = xlsx.read(resUrls.result.fileBinary, { type: 'buffer' });
     const urlsRaw = xlsx.utils.sheet_to_json(wbUrls.Sheets[wbUrls.SheetNames[0]]);
     
     //console.log(`   ✓ URLs leídas: ${urlsRaw.length}`);
