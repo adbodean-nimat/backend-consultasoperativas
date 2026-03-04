@@ -3,6 +3,7 @@ import { Dropbox } from 'dropbox';
 import xlsx from 'xlsx';
 import fs from 'fs';
 import { encode } from '@toon-format/toon'
+import axios from 'axios';
 
 dotenv.config();
 
@@ -12,7 +13,7 @@ const EXCEL_URLS = process.env.EXCEL_URLS_PATH
 const OUTPUT_JSON = process.env.OUTPUT_JSON
 const OUTPUT_TOON = process.env.OUTPUT_TOON 
 
-async function getAccessToken() {
+/* async function getAccessToken() {
   const body = new URLSearchParams({
     grant_type: "refresh_token",
     refresh_token: process.env.DROPBOX_REFRESH_TOKEN,
@@ -28,6 +29,71 @@ async function getAccessToken() {
     throw new Error(`OAuth token error ${res.status}: ${errText}`);
   }
   return res.json();
+} */
+
+/** backoff exponencial con jitter */
+function sleep(ms) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+function isRetryable(err) {
+  const code = err?.code;
+  const status = err?.response?.status;
+
+  // Timeouts / red
+  if (code === "ETIMEDOUT" || code === "ECONNRESET" || code === "EAI_AGAIN") return true;
+
+  // Dropbox puede devolver 429 o 5xx
+  if (status === 429) return true;
+  if (status && status >= 500) return true;
+
+  return false;
+}
+
+async function withRetry(fn, { retries = 4, baseDelayMs = 600 } = {}) {
+  let lastErr;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await fn(attempt);
+    } catch (err) {
+      lastErr = err;
+      if (!isRetryable(err) || attempt === retries) break;
+
+      const retryAfter = Number(err?.response?.headers?.["retry-after"] || 0);
+      const backoff = baseDelayMs * Math.pow(2, attempt);
+      const jitter = Math.floor(Math.random() * 250);
+      const waitMs = (retryAfter > 0 ? retryAfter * 1000 : backoff) + jitter;
+
+      console.warn(
+        `⚠️ Retry ${attempt + 1}/${retries} en ${waitMs}ms - motivo:`,
+        err?.code || err?.response?.status || err?.message
+      );
+
+      await sleep(waitMs);
+    }
+  }
+  throw lastErr;
+}
+
+async function dropboxDownloadBuffer(accessToken, path) {
+  return withRetry(async () => {
+    const res = await axios.post(
+      "https://content.dropboxapi.com/2/files/download",
+      null,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Dropbox-API-Arg": JSON.stringify({ path }),
+        },
+        responseType: "arraybuffer",
+        timeout: 30_000, // 👈 importante
+        maxBodyLength: Infinity,
+        maxContentLength: Infinity,
+      }
+    );
+
+    return Buffer.from(res.data);
+  });
 }
 
 let _cachedAccess = null;
@@ -259,12 +325,28 @@ export async function sincronizarCompleto() {
   try {
     //console.log('🚀 Iniciando sincronización completa...\n');
     const token = await ensureAccessToken();
+   /*  const dbx = new Dropbox(
+      { 
+        accessToken: token,
+        fetch: (...args) => fetch(...args, { timeout: 10000 }) // recomendable
+      }
+    ); */
     const dbx = new Dropbox({ accessToken: token });
     
+    const [bufCat, bufProd, bufUrls] = await Promise.all([
+      dropboxDownloadBuffer(token, EXCEL_CATEGORIAS),
+      dropboxDownloadBuffer(token, EXCEL_PRODUCTOS),
+      dropboxDownloadBuffer(token, EXCEL_URLS),
+    ]);
+
+    const wbCat  = xlsx.read(bufCat,  { type: "buffer" });
+    const wbProd = xlsx.read(bufProd, { type: "buffer" });
+    const wbUrls = xlsx.read(bufUrls, { type: "buffer" });
+
     // 1. Cargar Excel de Categorías
     //console.log('📥 Descargando categorías...');
-    const resCat = await dbx.filesDownload({ path: EXCEL_CATEGORIAS });
-    const wbCat = xlsx.read(resCat.result.fileBinary, { type: 'buffer' });
+    //const resCat = await dbx.filesDownload({ path: EXCEL_CATEGORIAS });
+    //const wbCat = xlsx.read(resCat.result.fileBinary, { type: 'buffer' });
     const categorias = xlsx.utils.sheet_to_json(wbCat.Sheets[wbCat.SheetNames[0]]);
     
     //console.log(`   ✓ Categorías leídas: ${categorias.length}`);
@@ -279,16 +361,16 @@ export async function sincronizarCompleto() {
     
     // 3. Cargar Excel de Productos
     //console.log('\n📥 Descargando productos...');
-    const resProd = await dbx.filesDownload({ path: EXCEL_PRODUCTOS });
-    const wbProd = xlsx.read(resProd.result.fileBinary, { type: 'buffer' });
+    //const resProd = await dbx.filesDownload({ path: EXCEL_PRODUCTOS });
+    //const wbProd = xlsx.read(resProd.result.fileBinary, { type: 'buffer' });
     const productosRaw = xlsx.utils.sheet_to_json(wbProd.Sheets[wbProd.SheetNames[0]]);
     
     //console.log(`   ✓ Productos leídos: ${productosRaw.length}`);
     
     // 3.5. Cargar Excel de URLs
     //console.log('\n📥 Descargando URLs de productos...');
-    const resUrls = await dbx.filesDownload({ path: EXCEL_URLS });
-    const wbUrls = xlsx.read(resUrls.result.fileBinary, { type: 'buffer' });
+    //const resUrls = await dbx.filesDownload({ path: EXCEL_URLS });
+    //const wbUrls = xlsx.read(resUrls.result.fileBinary, { type: 'buffer' });
     const urlsRaw = xlsx.utils.sheet_to_json(wbUrls.Sheets[wbUrls.SheetNames[0]]);
     
     //console.log(`   ✓ URLs leídas: ${urlsRaw.length}`);
