@@ -127,7 +127,7 @@ router.use((request, response, next) => {
   });
 
 router.route('/clientescad').get((request, response)=>{
-  DbCAD.getListaClientesCAD().then((data)=>{
+  DbCAD().then((data)=>{
     response.json(data[0]);
   })
 })
