@@ -109,15 +109,26 @@ async function withRetry(fn, { retries = 4, baseDelayMs = 600 } = {}) {
   throw lastErr;
 }
 
+function normalizeDropboxPath(p) {
+  if (!p || typeof p !== "string") return null;
+  const s = p.trim();
+  if (!s) return null;
+  return s.startsWith("/") ? s : `/${s}`;
+}
+
 async function dropboxDownloadBuffer(accessToken, path) {
+  const p = normalizeDropboxPath(path);
+  if (!p) throw new Error(`Path inválido: ${path}`);
+
   return withRetry(async () => {
     const res = await axios.post(
       "https://content.dropboxapi.com/2/files/download",
-      null,
+      {},
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
-          "Dropbox-API-Arg": JSON.stringify({ path }),
+          "Dropbox-API-Arg": JSON.stringify({ path: p }),
+          "Content-Type": "application/octet-stream"
         },
         responseType: "arraybuffer",
         timeout: 30_000, // 👈 importante
@@ -366,8 +377,10 @@ export async function sincronizarCompleto() {
       }
     ); */
     const dbx = new Dropbox({ accessToken: token });
-    
-  /*  const [bufCat, bufProd, bufUrls] = await Promise.all([
+    const list = await dbx.filesListFolder({ path: "" });
+    console.log(list.result.entries.map(e => e.path_display));
+  
+    /*  const [bufCat, bufProd, bufUrls] = await Promise.all([
       dropboxDownloadBuffer(token, EXCEL_CATEGORIAS),
       dropboxDownloadBuffer(token, EXCEL_PRODUCTOS),
       dropboxDownloadBuffer(token, EXCEL_URLS),
