@@ -200,6 +200,7 @@ async function getFamiliaArts2() {
                             Codigo_producto: firstResponse[i].Codigo_producto,
                             Orden_producto: firstResponse[i].Orden_producto,
                             Cod_Familia_producto: firstResponse[i].Cod_Familia_producto,
+                            Url_imagen: firstResponse[i].Url_imagen,
                             nombre_familia: secundResponse[j].nombre_familia,
                             orden_familia: secundResponse[j].orden_familia
                         });
@@ -311,6 +312,7 @@ async function getVN_2() {
                             cod_familia_art: firstResponse[i].id,
                             nombre_familia_art: firstResponse[i].nombre_familia,
                             nro_orden_familia: firstResponse[i].orden_familia,
+                            Url_imagen: firstResponse[i].Url_imagen,
                             ARTS_ARTICULO: secundResponse[j].ARTS_ARTICULO,
                             ARTS_ARTICULO_EMP: secundResponse[j].ARTS_ARTICULO_EMP,
                             ARTS_NOMBRE: secundResponse[j].ARTS_NOMBRE,
@@ -389,6 +391,7 @@ async function getLPDistribucion(){
                             PRECIO_LISTA_CON_IVA: secundResponse[j].PRECIO_LISTA_CON_IVA,
                             Fecha_Ult_Modif: secundResponse[j].Fecha_Ult_Modif,
                             Delay_cambio_precio: secundResponse[j].Delay_cambio_precio,
+                            Url_imagen: secundResponse[j].Url_imagen,
                         });
                     }
                 }

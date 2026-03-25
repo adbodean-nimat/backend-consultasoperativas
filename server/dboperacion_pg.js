@@ -744,11 +744,11 @@ const getProductosDistribucionByCod = (request, response) => {
 
 const updateProductosDistribucion = (request, response) => {
     const id = parseInt(request.params.id)
-    const {Codigo_producto, Orden_producto, Cod_Familia_producto} = request.body
+    const {Codigo_producto, Orden_producto, Cod_Familia_producto, Url_imagen} = request.body
 
     pool.query(
-        'UPDATE public.productos_para_distribucion SET id = $4, "Codigo_producto" = $1, "Orden_producto" = $2, "Cod_Familia_producto" = $3 WHERE id = $4',
-        [Codigo_producto, Orden_producto, Cod_Familia_producto, id], (error, results) => {
+        'UPDATE public.productos_para_distribucion SET id = $4, "Codigo_producto" = $1, "Orden_producto" = $2, "Cod_Familia_producto" = $3, "Url_imagen" = $5 WHERE id = $4',
+        [Codigo_producto, Orden_producto, Cod_Familia_producto, id, Url_imagen], (error, results) => {
             if (error){
                 throw error
             }
@@ -758,11 +758,11 @@ const updateProductosDistribucion = (request, response) => {
 }
 
 const createProductosDistribucion = (request, response) => {
-    const {Codigo_producto, Orden_producto, Cod_Familia_producto} = request.body
+    const {Codigo_producto, Orden_producto, Cod_Familia_producto, Url_imagen} = request.body
 
     pool.query(
-        'INSERT INTO public.productos_para_distribucion ("Codigo_producto", "Orden_producto", "Cod_Familia_producto") VALUES ($1, $2, $3)', 
-        [Codigo_producto, Orden_producto, Cod_Familia_producto], (error, results) => {
+        'INSERT INTO public.productos_para_distribucion ("Codigo_producto", "Orden_producto", "Cod_Familia_producto", "Url_imagen") VALUES ($1, $2, $3, $4) RETURNING *', 
+        [Codigo_producto, Orden_producto, Cod_Familia_producto, Url_imagen], (error, results) => {
         if (error){
             throw error
         }

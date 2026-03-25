@@ -11,6 +11,7 @@ import fs from 'fs';
 import jwt from "jsonwebtoken";
 import helmet from 'helmet';
 import multer from 'multer';
+import net from 'net';
 
 const app = express();
 
@@ -76,6 +77,7 @@ app.use(compression());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 app.use(passport.initialize());
+/* app.use('/imagenes', express.static('public/img')); */
 app.use('/api', verifyUserToken, router);
 app.post('/login', function (req, res, next){
   try {
@@ -92,7 +94,17 @@ app.post('/login', function (req, res, next){
       const avatar = user._raw.thumbnailPhoto ? Buffer.from(user._raw.thumbnailPhoto).toString('base64') : '';
       const token = process.env.JWT_TOKEN;
       delete user._raw; // Eliminar el campo raw para no incluirlo en el token
-      const jwtToken = jwt.sign({user, avatar, token}, process.env.JWT_SECRET);
+      const payload = {
+          cn: user.cn,
+          mail: user.mail,
+          memberOf: user.memberOf,
+          displayName: user.displayName,
+          givenName: user.givenName,
+          sn: user.sn,
+          name: user.name,
+          sAMAccountName: user.sAMAccountName
+      }
+      const jwtToken = jwt.sign({"user": payload, avatar, token}, process.env.JWT_SECRET, { expiresIn: '6d' });
       return res.status(200).json({"token": jwtToken});
     })(req, res, next)
   } catch (error) {
@@ -121,10 +133,106 @@ app.post('/login', function (req, res, next){
   })(req, res, next)
 }) */
 
+// Configuración de la impresora industrial Zebra ZT231
+const PRINTER_IP = "192.168.0.57"; // cambiá por la IP real de tu Zebra
+const PRINTER_PORT = 9100;
+
+function escapeZplText(text = "") {
+  // Evita null/undefined y limpia saltos raros
+  return String(text).replace(/\r?\n/g, " ");
+}
+
+function buildQrZpl({ content, labelTitle = "CODIGO QR" }) {
+  const safeContent = escapeZplText(content);
+  const safeTitle = escapeZplText(labelTitle);
+
+  return `
+^XA
+^CI28
+^PW600
+^LL400
+
+^FO40,30^A0N,35,35^FD${safeTitle}^FS
+
+^FO40,90
+^BQN,2,6
+^FDQA,${safeContent}^FS
+
+^FO220,140^A0N,28,28^FD${safeContent}^FS
+
+^XZ
+`;
+}
+
+function sendToZebra(zpl, ip = PRINTER_IP, port = PRINTER_PORT) {
+  return new Promise((resolve, reject) => {
+    const client = new net.Socket();
+    let finished = false;
+
+    client.connect(port, ip, () => {
+      client.write(zpl, "utf8", () => {
+        client.end();
+      });
+    });
+
+    client.on("close", () => {
+      if (!finished) {
+        finished = true;
+        resolve({ ok: true });
+      }
+    });
+
+    client.on("error", (err) => {
+      if (!finished) {
+        finished = true;
+        reject(err);
+      }
+    });
+  });
+}
+
 router.use((request, response, next) => {
     console.log('middleware -', new Date() + ' - ' + request.method + ' - ' + request.url);
     next();
   });
+
+router.route('/healthprinter').get((_, res) => {
+  res.json({ ok: true, printer: PRINTER_IP, port: PRINTER_PORT });
+});
+
+router.route('/qrcode').post(async (req, res) => {
+  try {
+    const { text, title, copies = 1 } = req.body;
+
+    if (!text || !String(text).trim()) {
+      return res.status(400).json({
+        ok: false,
+        error: 'Falta "text" para generar el QR',
+      });
+    }
+
+    const qty = Math.max(1, Math.min(Number(copies) || 1, 20));
+    const zpl = buildQrZpl({
+      content: text,
+      labelTitle: title || "CODIGO QR",
+    });
+
+    for (let i = 0; i < qty; i++) {
+      await sendToZebra(zpl);
+    }
+
+    return res.json({
+      ok: true,
+      message: `Impresión enviada correctamente (${qty} copia/s)`,
+    });
+  } catch (error) {
+    console.error("Error imprimiendo:", error);
+    return res.status(500).json({
+      ok: false,
+      error: error.message || "No se pudo imprimir",
+    });
+  }
+});
 
 router.route('/clientescad').get((request, response)=>{
   DbCAD().then((data)=>{
