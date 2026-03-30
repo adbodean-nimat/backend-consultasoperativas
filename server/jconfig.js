@@ -131,6 +131,7 @@ async function getFamiliaArts() {
                             cod_art: firstResponse[i].cod_art,
                             cod_familia: firstResponse[i].cod_familia,
                             orden_art_familia: firstResponse[i].orden_art_familia,
+                            url_imagen: firstResponse[i].url_imagen,
                             nombre_fami_art: secundResponse[j].nombre_fami_art,
                             nro_orden_de_la_fami: secundResponse[j].nro_orden_de_la_fami,
                             set_ventas: secundResponse[j].set_ventas
@@ -147,6 +148,7 @@ async function getFamiliaArts() {
                             cod_art: result[x].cod_art,
                             cod_familia: result[x].cod_familia,
                             orden_art_familia: result[x].orden_art_familia,
+                            url_imagen: result[x].url_imagen,
                             nombre_fami_art: result[x].nombre_fami_art,
                             nro_orden_de_la_fami: result[x].nro_orden_de_la_fami,
                             set_ventas: result[x].set_ventas,
@@ -256,6 +258,7 @@ async function getVN_1() {
                             nombre_set_art: firstResponse[i].nombre_set_art,
                             cod_familia: firstResponse[i].cod_familia,
                             nombre_fami_art: firstResponse[i].nombre_fami_art,
+                            url_imagen: firstResponse[i].url_imagen,
                             nro_orden_de_la_fami: firstResponse[i].nro_orden_de_la_fami,
                             orden_art_familia: firstResponse[i].orden_art_familia,
                             ARTS_ARTICULO: secundResponse[j].ARTS_ARTICULO,

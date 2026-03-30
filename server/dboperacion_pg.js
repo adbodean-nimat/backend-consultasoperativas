@@ -684,11 +684,11 @@ const getVincularArtFamiliaByCod = (request, response) => {
 
 const updateVincularArtFamilia = (request, response) => {
     const id = parseInt(request.params.id)
-    const {cod_art, cod_familia, orden_art_familia} = request.body
+    const {cod_art, cod_familia, orden_art_familia, url_imagen} = request.body
 
     pool.query(
-        'UPDATE public.vincular_articulos_a_familia SET cod_art = $1 , cod_familia = $2 , orden_art_familia = $3 WHERE cod = $4',
-        [cod_art, cod_familia, orden_art_familia, id], (error, results) => {
+        'UPDATE public.vincular_articulos_a_familia SET cod_art = $1 , cod_familia = $2 , orden_art_familia = $3, url_imagen = $4 WHERE cod = $5',
+        [cod_art, cod_familia, orden_art_familia, url_imagen, id], (error, results) => {
             if (error){
                 throw error
             }
@@ -698,11 +698,11 @@ const updateVincularArtFamilia = (request, response) => {
 }
 
 const createVincularArtFamilia = (request, response) => {
-    const {cod_art, cod_familia, orden_art_familia} = request.body
+    const {cod_art, cod_familia, orden_art_familia, url_imagen} = request.body
 
     pool.query(
-        'INSERT INTO public.vincular_articulos_a_familia (cod_art, cod_familia, orden_art_familia) VALUES ($1, $2, $3) RETURNING *', 
-        [cod_art, cod_familia, orden_art_familia], (error, results) => {
+        'INSERT INTO public.vincular_articulos_a_familia (cod_art, cod_familia, orden_art_familia, url_imagen) VALUES ($1, $2, $3, $4) RETURNING *', 
+        [cod_art, cod_familia, orden_art_familia, url_imagen], (error, results) => {
         if (error){
             throw error
         }
