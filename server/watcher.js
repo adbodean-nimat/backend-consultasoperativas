@@ -24,8 +24,10 @@ async function getLatest() {
   const pool = await sql.connect(sqlConfig);
   const q = `
     SELECT TOP (1)
-        COTI_MONEDA1, COTI_MONEDA2,
-        COTI_FECHA, COTI_COTIZACION
+        COTI_MONEDA1, 
+        COTI_MONEDA2,
+        COTI_FECHA,
+        COTI_COTIZACION
     FROM dbo.vw_cotizaciones_dl_ps
     WHERE COTI_FECHA <= GETDATE()
     ORDER BY COTI_FECHA DESC
@@ -48,11 +50,12 @@ async function tick() {
         const payload = {
             source: 'SIST_COTI',
             detectedAt: dayjs().tz("America/Argentina/Buenos_Aires").format(),
+            detectedLast: dayjs((row.COTI_FECHA).toISOString().replace('Z', '')).tz("America/Argentina/Buenos_Aires").format(),
             items: [row].map(r => ({
-            COTI_MONEDA1: r.COTI_MONEDA1,
-            COTI_MONEDA2: r.COTI_MONEDA2,
-            COTI_FECHA: new Date(r.COTI_FECHA).toISOString(),
-            COTI_COTIZACION: Number(r.COTI_COTIZACION),
+              COTI_MONEDA1: r.COTI_MONEDA1,
+              COTI_MONEDA2: r.COTI_MONEDA2,
+              COTI_FECHA: new Date(r.COTI_FECHA).toISOString(),
+              COTI_COTIZACION: Number(r.COTI_COTIZACION),
             })),
         };
         const raw = JSON.stringify(payload);

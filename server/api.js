@@ -339,6 +339,18 @@ router.route('/stoctiar').get((request, response) => {
   })
 })
 
+router.route('/clasificacion2').get((request, response) => {
+  Db.getSQL_STOC_CA02().then((data)=> {
+    response.json(data[0]);
+  })
+})
+
+router.route('/clasificacion6').get((request, response) => {
+  Db.getSQL_STOC_CA06().then((data)=> {
+    response.json(data[0]);
+  })
+})
+
 router.route('/clasificacion8').get((request, response) => {
   Db.getSQL_STOC_CA08().then((data)=> {
     response.json(data[0]);
@@ -365,6 +377,12 @@ router.route('/stoctcst').get((request, response) => {
 
 router.route('/cpagrubc').get((request, response) => {
   Db.getSQL_CPAG_RUBC().then((data)=> {
+    response.json(data[0]);
+  })
+})
+
+router.route('/cpagprov').get((request, response) => {
+  Db.getSQL_CPAG_PROV().then((data)=> {
     response.json(data[0]);
   })
 })
@@ -1201,6 +1219,12 @@ router.route('/gdc/tiposremitosvtasupdate').post(Pg.gdc_tiposremitosvtasUpdate)
 router.route('/gdc/tiposremitosvtasdelete/:id').delete(Pg.gdc_tiposremitosvtasDelete)
 /* router.route('/gdc/tiposremitosvtasupdate/:id').put(Pg.gdc_tiposremitosvtasUpdate) */
 
+
+router.route('/gdc/tiposcompstock').get(Pg.gdc_tiposcompstock)
+router.route('/gdc/tiposcompstockupdate').post(Pg.gdc_tiposcompstockUpdate)
+router.route('/gdc/tiposcompstockdelete/:id').delete(Pg.gdc_tiposcompstockDelete)
+/* router.route('/gdc/tiposcompstockupdate/:id').put(Pg.gdc_tiposcompstockUpdate) */
+
 router.route('/gdc/npaconsiderar').get(Pg.gdc_npaconsiderar)
 /* router.route('/gdc/npaconsiderar').post(Pg.gdc_npaconsiderarCreate) */
 router.route('/gdc/npaconsiderardelete/:id').delete(Pg.gdc_npaconsiderarDelete)
@@ -1284,36 +1308,140 @@ router.route('/enviarxWhatsapp').post(async (request, response) => {
   }
 });
 
-/* router.route('/enviarxWhatsapp').post((request, response)=>{
-  const { to, perfil } = request.body || {};
+function parseDate(value) {
+  if (!value || !String(value).trim()) return null;
+
+  const trimmed = String(value).trim();
+  const isValid = /^\d{4}-\d{2}-\d{2}$/.test(trimmed);
+
+  return isValid ? trimmed : null;
+}
+
+function parseIntOrNull(value) {
+  if (!value || !String(value).trim()) return null;
+
+  const n = Number.parseInt(value, 10);
+  return Number.isNaN(n) ? null : n;
+}
+
+function parseBit(value) {
+  if (!value) return false;
+
+  const normalized = String(value).toLowerCase().trim();
+  return normalized === '1' || normalized === 'true' || normalized === 'si' || normalized === 'sí';
+}
+
+function parseStringOrNull(value, maxLength) {
+  if (!value || !String(value).trim()) return null;
+  return String(value).trim().slice(0, maxLength || 255);
+}
+
+function formatDateToYMD(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function getDefaultFechaAuditoriaDesde() {
+  const today = new Date();
+  const from = new Date(today);
+  from.setDate(today.getDate() - 90);
+  return formatDateToYMD(from);
+}
+
+function getDefaultFechaAuditoriaHasta() {
+  return formatDateToYMD(new Date());
+}
+
+router.route('/recepcion-proveedores').get(async (request, response) => {
   try {
-    const out = enviarListaPreciosPorPerfil({ to, perfil }).then((data)=>{   
-      //console.log('Mensaje enviado:', data.wa.messages[0].message_status); 
-      const filename = perfil === 'REA' ? process.env.PDF_FILENAME_REA : process.env.PDF_FILENAME_REB;
-      logEnviadoOk({
-        to: data?.to,
-        perfil: data?.perfil,
-        messageId: data?.wa?.messages[0].id,
-        messageStatus: data?.wa?.messages[0].message_status,
-        templateName: process.env.TEMPLATE_NAME,
-        filename,
-        mediaId: data?.mediaId,
+    const diasParaVencPart = parseIntOrNull(request.query.diasParaVencPart) ?? 30;
+    const fechaAuditoriaDesde = parseDate(request.query.fechaAuditoriaDesde) || getDefaultFechaAuditoriaDesde();
+    const fechaAuditoriaHasta = parseDate(request.query.fechaAuditoriaHasta) || getDefaultFechaAuditoriaHasta();
+    const fechaComprobanteDesde = parseDate(request.query.fechaComprobanteDesde);
+    const fechaComprobanteHasta = parseDate(request.query.fechaComprobanteHasta);
+    const comprador = parseStringOrNull(request.query.comprador, 10);
+    const proveedorId = parseIntOrNull(request.query.proveedorId);
+    const codigoArticulo = parseStringOrNull(request.query.codigoArticulo, 50);
+    const tipoComprobante = parseStringOrNull(request.query.tipoComprobante, 10);
+    const clasif2 = parseStringOrNull(request.query.clasif2, 10);
+    const clasif6 = parseStringOrNull(request.query.clasif6, 10);
+    const soloIRO = parseBit(request.query.soloIRO);
+
+    if (diasParaVencPart < 0 || diasParaVencPart > 9999) {
+      return response.status(400).json({
+        ok: false,
+        message: 'diasParaVencPart debe estar entre 0 y 9999'
       });
-    })
-    response.status(200).json(out);
-    } catch (err) {
-    //const msg = err?.message || 'Error inesperado';
-    //const isBadReq = /E\.164|perfil inválido|Drive devolvió HTML/i.test(msg);
-    logErrorEnvio({
-      to,
-      perfil,
-      err,
-      templateName: process.env.TEMPLATE_NAME,
-      filename: perfil === 'REA' ? process.env.PDF_FILENAME_REA : process.env.PDF_FILENAME_REB
-    });
-    response.status(400).json({ ok: false, error: err?.message || 'Error' });
     }
-}) */
+
+    if (fechaAuditoriaDesde > fechaAuditoriaHasta) {
+      return response.status(400).json({
+        ok: false,
+        message: 'fechaAuditoriaDesde no puede ser mayor que fechaAuditoriaHasta'
+      });
+    }
+
+    if (
+      fechaComprobanteDesde &&
+      fechaComprobanteHasta &&
+      fechaComprobanteDesde > fechaComprobanteHasta
+    ) {
+      return response.status(400).json({
+        ok: false,
+        message: 'fechaComprobanteDesde no puede ser mayor que fechaComprobanteHasta'
+      });
+    }
+
+    const data = {
+      diasParaVencPart,
+      fechaAuditoriaDesde,
+      fechaAuditoriaHasta,
+      fechaComprobanteDesde,
+      fechaComprobanteHasta,
+      comprador,
+      proveedorId,
+      codigoArticulo,
+      tipoComprobante,
+      clasif2,
+      clasif6,
+      soloIRO
+    };
+    
+    //console.log('▶ Consulta recepción de proveedores con filtros:', data);
+
+    const result = await Db.getRecepcionProveedores(data);
+    
+    return response.json({
+      ok: true,
+      filters: {
+        diasParaVencPart,
+        fechaAuditoriaDesde,
+        fechaAuditoriaHasta,
+        fechaComprobanteDesde,
+        fechaComprobanteHasta,
+        comprador,
+        proveedorId,
+        codigoArticulo,
+        tipoComprobante,
+        clasif2,
+        clasif6,
+        soloIRO
+      },
+      total: result.length,
+      rows: result
+    });
+
+  } catch (error) {
+    console.error('Error en /api/recepcion-proveedores:', error);
+
+    return response.status(500).json({
+      ok: false,
+      message: 'Ocurrió un error al consultar recepción de proveedores'
+    });
+  } 
+});
 
 const httpPort = 8099;
 const httpsPort = 8090;

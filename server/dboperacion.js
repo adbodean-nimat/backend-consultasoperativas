@@ -68,10 +68,57 @@ async function getListaConstSecoSQL(){
   }
 }
 
+async function getSQL_CPAG_PROV(){
+  try {
+    let pool = await sql.connect(plataforma);
+    let infoLista = await pool.request().query(
+      `SELECT [PROV_PROVEEDOR],
+      [PROV_NOMBRE],
+      LTRIM([PROV_NOMBRE_LEGAL]) AS [PROV_NOMBRE_LEGAL]
+      FROM [CPAG_PROV] WITH (NOLOCK)
+      ORDER BY PROV_NOMBRE_LEGAL ASC`
+    );
+    return infoLista.recordsets
+  }
+  catch (error){
+    console.error(error);
+  }
+}
+
 async function getSQL_STOC_TIAR(){
   try {
     let pool = await sql.connect(plataforma);
     let infoLista = await pool.request().query("SELECT * FROM STOC_TIAR WITH (NOLOCK)");
+    return infoLista.recordsets
+  }
+  catch (error){
+    console.error(error);
+  }
+}
+
+async function getSQL_STOC_CA02(){
+  try {
+    let pool = await sql.connect(plataforma);
+    let infoLista = await pool.request().query(
+      `SELECT [CA02_CLASIF_2]
+      ,[CA02_NOMBRE]
+      FROM [STOC_CA02] WITH (NOLOCK)
+      WHERE [CA02_UTILIZABLE] = 1`);
+    return infoLista.recordsets
+  }
+  catch (error){
+    console.error(error);
+  }
+}
+
+async function getSQL_STOC_CA06(){
+  try {
+    let pool = await sql.connect(plataforma);
+    let infoLista = await pool.request().query(
+      `SELECT [CA06_CLASIF_6]
+      ,[CA06_NOMBRE]
+      FROM [STOC_CA06] WITH (NOLOCK)
+      WHERE [CA06_UTILIZABLE] = 1`);
     return infoLista.recordsets
   }
   catch (error){
@@ -1199,6 +1246,289 @@ async function tiemposEntregas(fecha) {
     }
   }
 
+async function getRecepcionProveedores(data){
+  try {
+    const urlApi = process.env.URL_API;
+
+    const [rawTiposCompStock] = await Promise.all([
+      axios(`${urlApi}/gdc/tiposcompstock`, { httpsAgent, headers: { Authorization: `Bearer ${token}` } }).then(r => r.data),
+    ]);
+    
+    const tiposCompStock = rawTiposCompStock
+        .map(x => String(x.cod_comp).trim())
+        .filter(Boolean)
+        .join(",");
+    
+    const query = `
+      WITH TiposCompStock AS (
+        SELECT UPPER(LTRIM(RTRIM(value))) AS TipoMSVA
+        FROM STRING_SPLIT(@pTiposCompStock, ',')
+        WHERE LTRIM(RTRIM(value)) <> ''
+      ),
+      base AS (
+          SELECT
+              p.PROV_NOMBRE AS proveedorNombre,
+              CONVERT(date, a.AUDI_FECHA) AS fechaAuditoria,
+              CONVERT(date, m.MOST_FECHA_EMI) AS fechaComprobante,
+
+              mv.MSMV_DIVISION_MSVA AS division,
+              mv.MSMV_SUCURSAL_MSVA AS sucursal,
+              mv.MSMV_TIPO_MSVA AS tipoComprobante,
+              mv.MSMV_NUMERO_MSVA AS numeroComprobante,
+
+              CONCAT(
+                  RIGHT('0000' + CAST(mv.MSMV_DIVISION_MSVA AS varchar(4)), 4),
+                  '-',
+                  mv.MSMV_TIPO_MSVA,
+                  '-',
+                  RIGHT('0000000000' + CAST(mv.MSMV_NUMERO_MSVA AS varchar(10)), 10)
+              ) AS comprobante,
+
+              m.MOST_REFERENCIA AS referenciaComprobante,
+              d.MOSD_DESCRIPCION AS descripcionMovimiento,
+              d.MOSD_ARTICULO AS articuloId,
+              ar.ARTS_ARTICULO_EMP AS codigoArticulo,
+              ar.ARTS_NOMBRE AS nombreArticulo,
+
+              d.MOSD_CANT_ING AS cantidadOriginal,
+              d.MOSD_SIGNO AS signoMovimiento,
+              mp.MOSP_CANT_ING AS cantidadPartida,
+
+              mp.MOSP_CANT_ING * CASE
+                  WHEN d.MOSD_SIGNO = 'S' THEN -1
+                  ELSE 1
+              END AS cantidad,
+
+              CASE
+                  WHEN d.MOSD_SIGNO = 'S' THEN 'Devolución'
+                  ELSE 'Recepción'
+              END AS tipoMovimiento,
+
+              CONVERT(date, pt.PART_FECHA_VTO) AS fechaVencimientoPartida,
+
+              CASE
+                  WHEN pt.PART_FECHA_VTO IS NOT NULL
+                   AND m.MOST_FECHA_EMI IS NOT NULL
+                  THEN DATEDIFF(
+                          DAY,
+                          CONVERT(date, m.MOST_FECHA_EMI),
+                          CONVERT(date, pt.PART_FECHA_VTO)
+                       )
+                  ELSE NULL
+              END AS diasVencimientoPartida,
+
+              aucs.AUCS_PROVEEDOR AS proveedorId,
+
+              c2.CA02_CLASIF_2 AS clasif2,
+              c2.CA02_NOMBRE AS clasif2Nombre,
+              c6.CA06_CLASIF_6 AS clasif6,
+              c6.CA06_NOMBRE AS clasif6Nombre,
+
+              ar.ARTS_FACTOR_HOMSTO AS factorHomogeneizacion,
+              ar.ARTS_PESO_EMB_UMS AS pesoTeoricoXUni,
+              d.MOSD_NUMERO_1 AS peso,
+              msva.MSVA_ES_FACTURABLE AS esFacturable,
+
+              arco.ARCO_RUBRO_COMPRA AS rubroCompra,
+              LEFT(rubc.RUBC_NOMBRE, 3) AS compradorCodigo,
+              rubc.RUBC_NOMBRE AS compradorNombre,
+              CONCAT(arco.ARCO_RUBRO_COMPRA, ' - ', rubc.RUBC_NOMBRE) AS rubroCompraNombre,
+
+              ardp.ARDP_CODIGO_ART AS codigoArticuloProveedor
+          FROM STOC_MSMV mv WITH (NOLOCK)
+          INNER JOIN TiposCompStock tcs
+              ON mv.MSMV_TIPO_MSVA = tcs.TipoMSVA
+          INNER JOIN STOC_MOSD d WITH (NOLOCK)
+              ON mv.MSMV_MOVSTO_MOST = d.MOSD_MOVSTO_MOST
+          INNER JOIN STOC_ARTS ar WITH (NOLOCK)
+              ON d.MOSD_ARTICULO = ar.ARTS_ARTICULO
+          INNER JOIN STOC_MOSP mp WITH (NOLOCK)
+              ON d.MOSD_MOVSTO_MOST = mp.MOSP_MOVSTO_MOST
+             AND d.MOSD_RENGLON_MOSD = mp.MOSP_RENGLON_MOSD
+          INNER JOIN STOC_PART pt WITH (NOLOCK)
+              ON mp.MOSP_PARTIDA = pt.PART_PARTIDA
+          INNER JOIN STOC_AUCS aucs WITH (NOLOCK)
+              ON mv.MSMV_NUMERO_MSVA = aucs.AUCS_NUMERO_COMP
+             AND mv.MSMV_TIPO_MSVA = aucs.AUCS_TIPO_COMP
+          INNER JOIN SEGU_AUDI a WITH (NOLOCK)
+              ON aucs.AUCS_AUDITOR = a.AUDI_AUDITOR
+          INNER JOIN CPAG_PROV p WITH (NOLOCK)
+              ON aucs.AUCS_PROVEEDOR = p.PROV_PROVEEDOR
+          INNER JOIN STOC_MOST m WITH (NOLOCK)
+              ON mv.MSMV_MOVSTO_MOST = m.MOST_MOVSTO_MOST
+          INNER JOIN STOC_MSVA msva WITH (NOLOCK)
+              ON mv.MSMV_NUMERO_MSVA = msva.MSVA_NUMERO_MSVA
+             AND mv.MSMV_SUCURSAL_MSVA = msva.MSVA_SUCURSAL_MSVA
+             AND mv.MSMV_TIPO_MSVA = msva.MSVA_TIPO_MSVA
+             AND mv.MSMV_DIVISION_MSVA = msva.MSVA_DIVISION_MSVA
+          INNER JOIN STOC_CA02 c2 WITH (NOLOCK)
+              ON ar.ARTS_CLASIF_2 = c2.CA02_CLASIF_2
+          INNER JOIN STOC_CA06 c6 WITH (NOLOCK)
+              ON ar.ARTS_CLASIF_6 = c6.CA06_CLASIF_6
+          LEFT JOIN STOC_ARCO arco WITH (NOLOCK)
+              ON d.MOSD_ARTICULO = arco.ARCO_ARTICULO
+          LEFT JOIN CPAG_RUBC rubc WITH (NOLOCK)
+              ON arco.ARCO_RUBRO_COMPRA = rubc.RUBC_RUBRO_COMPRA
+          LEFT JOIN COMP_ARDP ardp WITH (NOLOCK)
+              ON ardp.ARDP_ARTICULO = d.MOSD_ARTICULO
+             AND ardp.ARDP_PROVEEDOR = aucs.AUCS_PROVEEDOR
+          WHERE a.AUDI_PROGRAMA = 'COM1200'
+            AND CONVERT(date, a.AUDI_FECHA) >= @fechaAuditoriaDesde
+            AND CONVERT(date, a.AUDI_FECHA) <= @fechaAuditoriaHasta
+            AND (@fechaComprobanteDesde IS NULL OR CONVERT(date, m.MOST_FECHA_EMI) >= @fechaComprobanteDesde)
+            AND (@fechaComprobanteHasta IS NULL OR CONVERT(date, m.MOST_FECHA_EMI) <= @fechaComprobanteHasta)
+            AND (@comprador IS NULL OR LEFT(rubc.RUBC_NOMBRE, 3) = @comprador)
+            AND (@proveedorId IS NULL OR aucs.AUCS_PROVEEDOR = @proveedorId)
+            AND (@codigoArticulo IS NULL OR ar.ARTS_ARTICULO_EMP = @codigoArticulo)
+            AND (@tipoComprobante IS NULL OR mv.MSMV_TIPO_MSVA = @tipoComprobante)
+            AND (@clasif2 IS NULL OR c2.CA02_CLASIF_2 = @clasif2)
+            AND (@clasif6 IS NULL OR c6.CA06_CLASIF_6 = @clasif6)
+            AND (@soloIRO = 0 OR mv.MSMV_TIPO_MSVA = 'IRO')
+      ),
+      iros AS (
+          SELECT
+              ENAP_PK,
+              TRY_CONVERT(int, LEFT(ENAP_PK, 4)) AS divisionIRO,
+              TRY_CONVERT(int, SUBSTRING(ENAP_PK, 6, 4)) AS sucursalIRO,
+              SUBSTRING(ENAP_PK, 11, 3) AS tipoIRO,
+              TRY_CONVERT(int, RIGHT(ENAP_PK, 10)) AS numeroIRO
+          FROM SIST_ENAP
+      ),
+      final_data AS (
+          SELECT
+              b.*,
+              i.ENAP_PK AS enapPk,
+
+              CASE
+                  WHEN b.diasVencimientoPartida IS NOT NULL
+                   AND b.diasVencimientoPartida < @diasParaVencPart
+                  THEN CAST(1 AS bit)
+                  ELSE CAST(0 AS bit)
+              END AS destacarVencimiento,
+
+              CASE
+                  WHEN b.tipoComprobante = 'IRO' THEN CAST(1 AS bit)
+                  ELSE CAST(0 AS bit)
+              END AS esIRO,
+
+              CASE
+                  WHEN i.ENAP_PK IS NOT NULL AND i.ENAP_PK <> '' THEN CAST(0 AS bit)
+                  WHEN b.tipoComprobante = 'IRO' THEN CAST(1 AS bit)
+                  ELSE CAST(0 AS bit)
+              END AS iroAVerificar
+          FROM base b
+          LEFT JOIN iros i
+              ON b.numeroComprobante = i.numeroIRO
+             AND b.tipoComprobante = i.tipoIRO
+             AND b.sucursal = i.sucursalIRO
+             AND b.division = i.divisionIRO
+      )
+      SELECT
+          rubroCompra,
+          compradorCodigo,
+          compradorNombre,
+          rubroCompraNombre,
+          proveedorId,
+          proveedorNombre,
+          fechaAuditoria,
+          fechaComprobante,
+          division,
+          sucursal,
+          tipoComprobante,
+          numeroComprobante,
+          comprobante,
+          referenciaComprobante,
+          descripcionMovimiento,
+          articuloId,
+          codigoArticulo,
+          nombreArticulo,
+          codigoArticuloProveedor,
+          cantidadOriginal,
+          signoMovimiento,
+          cantidad,
+          tipoMovimiento,
+          fechaVencimientoPartida,
+          diasVencimientoPartida,
+          @diasParaVencPart AS diasParametroVencimiento,
+          destacarVencimiento,
+          esIRO,
+          iroAVerificar,
+          clasif2,
+          clasif2Nombre,
+          clasif6,
+          clasif6Nombre,
+
+          CASE
+              WHEN clasif2 = '0004'
+              THEN (1.0 / NULLIF(factorHomogeneizacion, 0)) * cantidad
+              ELSE NULL
+          END AS m2Recibidos,
+
+          ROUND(
+              CASE
+                  WHEN clasif2 = '0027' THEN peso
+                  ELSE NULL
+              END,
+              2
+          ) AS kgRecibidos,
+
+          CAST(
+              ROUND(
+                  CASE
+                      WHEN clasif2 = '0027' THEN peso / NULLIF(cantidad, 0)
+                      ELSE NULL
+                  END,
+                  2
+              ) AS decimal(10,2)
+          ) AS pesoRealXUni,
+
+          CASE
+              WHEN clasif2 = '0027' THEN pesoTeoricoXUni
+              ELSE NULL
+          END AS pesoTeoricoXUni,
+
+          CASE
+              WHEN clasif2 = '0027'
+               AND NULLIF(cantidad, 0) IS NOT NULL
+               AND NULLIF(peso / NULLIF(cantidad, 0), 0) IS NOT NULL
+              THEN (pesoTeoricoXUni / NULLIF(peso / NULLIF(cantidad, 0), 0)) - 1
+              ELSE NULL
+          END AS kgTeoricoVsPesoReal,
+
+          CASE
+              WHEN esFacturable = 1 THEN 'Es total'
+              ELSE 'Sin facturar'
+          END AS estadoFacturacion
+      FROM final_data
+      ORDER BY
+          fechaAuditoria DESC,
+          rubroCompra,
+          comprobante,
+          nombreArticulo;
+    `;
+    let pool = await sql.connect(plataforma);
+    let getResponse = await pool.request()
+    .input('diasParaVencPart', sql.Int, data.diasParaVencPart)
+    .input('fechaAuditoriaDesde', sql.Date, data.fechaAuditoriaDesde)
+    .input('fechaAuditoriaHasta', sql.Date, data.fechaAuditoriaHasta)
+    .input('fechaComprobanteDesde', sql.Date, data.fechaComprobanteDesde)
+    .input('fechaComprobanteHasta', sql.Date, data.fechaComprobanteHasta)
+    .input('comprador', sql.VarChar(10), data.comprador)
+    .input('proveedorId', sql.Int, data.proveedorId)
+    .input('codigoArticulo', sql.VarChar(50), data.codigoArticulo)
+    .input('tipoComprobante', sql.VarChar(10), data.tipoComprobante)
+    .input('clasif2', sql.VarChar(10), data.clasif2)
+    .input('clasif6', sql.VarChar(10), data.clasif6)
+    .input('soloIRO', sql.Bit, data.soloIRO ? 1 : 0)
+    .input('pTiposCompStock', sql.NVarChar(sql.MAX), tiposCompStock)
+    .query(query);
+    return getResponse.recordset;
+  }
+  catch (error) {
+    console.error(error);
+  }
+}
+
   export default {
      getControl: getControl,
      getOrder: getOrder,
@@ -1255,16 +1585,20 @@ async function tiemposEntregas(fecha) {
      gdc_itemsReclamadosAlProveedor: gdc_itemsReclamadosAlProveedor,
      gdc_itemsVinculadasAOC: gdc_itemsVinculadasAOC,
      getSQL_STOC_TIAR: getSQL_STOC_TIAR,
+     getSQL_STOC_CA02: getSQL_STOC_CA02,
+     getSQL_STOC_CA06: getSQL_STOC_CA06,
      getSQL_STOC_CA08: getSQL_STOC_CA08,
      getSQL_STOC_DPOS: getSQL_STOC_DPOS,
      getSQL_VENT_TCVE: getSQL_VENT_TCVE,
      getSQL_STOC_TCST: getSQL_STOC_TCST,
      getSQL_CPAG_RUBC: getSQL_CPAG_RUBC,
+     getSQL_CPAG_PROV: getSQL_CPAG_PROV,
      gdc_itemreclamadosalproveedor: gdc_itemreclamadosalproveedor,
      gdc_getArtsDerivados: gdc_getArtsDerivados,
      gdc_itemsVinculadosAOC: gdc_itemsVinculadosAOC,
      getClientesDistribuciones: getClientesDistribuciones,
      tiemposEntregas: tiemposEntregas,
      gdc_grilla_consolidacion: gdc_grilla_consolidacion,
-     gdc_ControlCalesCementos: gdc_ControlCalesCementos
+     gdc_ControlCalesCementos: gdc_ControlCalesCementos,
+     getRecepcionProveedores: getRecepcionProveedores
   };

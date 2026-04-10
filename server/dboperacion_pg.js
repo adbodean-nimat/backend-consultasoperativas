@@ -2457,6 +2457,55 @@ const gdc_tiposremitosvtasDelete = (request, response) => {
     )
 }
 
+const gdc_tiposcompstock = (request, response) => {
+    pool.query('SELECT * FROM gdc_tiposcompstock ORDER BY id ASC', (error, results) => {
+        if (error){
+            throw error
+        }
+        response.status(200).json(results.rows)
+    })
+}
+
+const gdc_tiposcompstockCreate = (request, response) => {
+    const {cod_comp, nombre_comp} = request.body
+
+    pool.query(
+        'INSERT INTO gdc_tiposcompstock(cod_comp, nombre_comp) VALUES ($1, $2) RETURNING *', 
+        [cod_comp, nombre_comp], (error, results) => {
+        if (error){
+            throw error
+        }
+        response.status(201).send(`Agregar correctamente`)
+    })
+}
+
+const gdc_tiposcompstockUpdate = (request, response) => {
+    const {id, cod_comp, nombre_comp} = request.body
+
+    pool.query(
+        'INSERT INTO gdc_tiposcompstock(id, "cod_comp", "nombre_comp") VALUES ($1, $2, $3) ON CONFLICT (id) DO UPDATE SET "cod_comp" = $2, "nombre_comp" = $3;',
+        [id, cod_comp, nombre_comp ], (error, results) => {
+            if (error){
+                throw error
+            }
+            response.status(200).send(`Modificado correctamente`)
+        }
+    )
+}
+
+const gdc_tiposcompstockDelete = (request, response) => {
+    const id = parseInt(request.params.id)
+    pool.query(
+        'DELETE FROM gdc_tiposcompstock WHERE id = $1',
+        [id], (error, results) => {
+            if (error){
+                throw error
+            }
+            response.status(200).send(`Eliminado correctamente`)
+        }
+    )
+}
+
 export default {
     getDeposANoConsiderar, getDeposANoConsiderarByCod, createDepos, updateDepos, deleteDepos,
     getNPaConsiderar, getNPaConsiderarByCod, createNP, updateNP, deleteNP,
@@ -2503,5 +2552,6 @@ export default {
     gdc_npaconsiderar, gdc_npaconsiderarCreate, gdc_npaconsiderarUpdate, gdc_npaconsiderarDelete,
     gdc_deposanoconsiderarpstockfisico, gdc_deposanoconsiderarpstockfisicoCreate, gdc_deposanoconsiderarpstockfisicoUpdate, gdc_deposanoconsiderarpstockfisicoDelete,
     gdc_articuloscontrol, gdc_articuloscontrolCreate, gdc_articuloscontrolUpdate, gdc_articuloscontrolDelete,
-    gdc_tiposremitosvtas, gdc_tiposremitosvtasCreate, gdc_tiposremitosvtasUpdate, gdc_tiposremitosvtasDelete
+    gdc_tiposremitosvtas, gdc_tiposremitosvtasCreate, gdc_tiposremitosvtasUpdate, gdc_tiposremitosvtasDelete,
+    gdc_tiposcompstock, gdc_tiposcompstockCreate, gdc_tiposcompstockUpdate, gdc_tiposcompstockDelete
 }
