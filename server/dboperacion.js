@@ -1853,15 +1853,14 @@ async function getRecepcionProveedores(data) {
           SELECT
               m.MOST_MOVSTO_MOST AS movimientoId,
               d.MOSD_RENGLON_MOSD AS renglonMovimiento,
-
-              CONCAT(RIGHT('0000' + CAST(oc.OCCF_DIVISION_CODC AS varchar(4)), 4),
-                  '-',
-                  oc.OCCF_TIPO_CODC,
-                  '-',
-                  RIGHT('0000000000' + CAST(oc.OCCF_NUMERO_CODC AS varchar(10)), 10),
-                  '/',
-                  RIGHT('000' + CAST(oc.OCCF_RENGLON_RODC AS nvarchar(3)), 3)
-              ) AS OrdenCompra,
+              CONCAT(RIGHT('0000' + CAST(ro.RODC_DIVISION AS varchar(4)), 4),
+					'-',
+					ro.RODC_TIPO_OC,
+					'-',
+					RIGHT('0000000000' + CAST(ro.RODC_NUM_OC AS varchar(10)), 10),
+					'/',
+					RIGHT('000' + CAST(ro.RODC_REN_OC AS nvarchar(3)), 3)
+			  ) AS OrdenCompra,
               co.CODC_FECHA_OC AS fechaOrdenCompra,
               CASE
                 WHEN a.AUDI_FECHA IS NOT NULL
@@ -1942,61 +1941,57 @@ async function getRecepcionProveedores(data) {
               CONCAT(arco.ARCO_RUBRO_COMPRA, ' - ', rubc.RUBC_NOMBRE) AS rubroCompraNombre,
 
               ardp.ARDP_CODIGO_ART AS codigoArticuloProveedor
-          FROM STOC_MSMV mv WITH (NOLOCK)
-          INNER JOIN COMP_MCRF cm WITH (NOLOCK) 
-              ON mv.MSMV_MOVSTO_MOST = cm.MCRF_MOVSTO_MOST
-          INNER JOIN TiposCompStock tcs
-              ON mv.MSMV_TIPO_MSVA = tcs.TipoMSVA
-          INNER JOIN STOC_MOSD d WITH (NOLOCK)
-              ON mv.MSMV_MOVSTO_MOST = d.MOSD_MOVSTO_MOST
-          INNER JOIN STOC_ARTS ar WITH (NOLOCK)
-              ON d.MOSD_ARTICULO = ar.ARTS_ARTICULO
-          INNER JOIN STOC_MOSP mp WITH (NOLOCK)
-              ON d.MOSD_MOVSTO_MOST = mp.MOSP_MOVSTO_MOST
-             AND d.MOSD_RENGLON_MOSD = mp.MOSP_RENGLON_MOSD
-             AND cm.MCRF_MOVSTO_MOST = mp.MOSP_MOVSTO_MOST
-             AND cm.MCRF_RENGLON_MOSD = mp.MOSP_RENGLON_MOSD
-          INNER JOIN STOC_PART pt WITH (NOLOCK)
-              ON mp.MOSP_PARTIDA = pt.PART_PARTIDA
-          INNER JOIN STOC_AUCS aucs WITH (NOLOCK)
-              ON mv.MSMV_NUMERO_MSVA = aucs.AUCS_NUMERO_COMP
-             AND mv.MSMV_TIPO_MSVA = aucs.AUCS_TIPO_COMP
-          INNER JOIN SEGU_AUDI a WITH (NOLOCK)
-              ON aucs.AUCS_AUDITOR = a.AUDI_AUDITOR
-          INNER JOIN CPAG_PROV p WITH (NOLOCK)
-              ON aucs.AUCS_PROVEEDOR = p.PROV_PROVEEDOR
-          INNER JOIN STOC_MOST m WITH (NOLOCK)
-              ON mv.MSMV_MOVSTO_MOST = m.MOST_MOVSTO_MOST
-          INNER JOIN STOC_MSVA msva WITH (NOLOCK)
-              ON mv.MSMV_NUMERO_MSVA = msva.MSVA_NUMERO_MSVA
-             AND mv.MSMV_SUCURSAL_MSVA = msva.MSVA_SUCURSAL_MSVA
-             AND mv.MSMV_TIPO_MSVA = msva.MSVA_TIPO_MSVA
-             AND mv.MSMV_DIVISION_MSVA = msva.MSVA_DIVISION_MSVA
-          INNER JOIN STOC_CA02 c2 WITH (NOLOCK)
-              ON ar.ARTS_CLASIF_2 = c2.CA02_CLASIF_2
-          INNER JOIN STOC_CA06 c6 WITH (NOLOCK)
-              ON ar.ARTS_CLASIF_6 = c6.CA06_CLASIF_6
-          LEFT JOIN STOC_ARCO arco WITH (NOLOCK)
-              ON d.MOSD_ARTICULO = arco.ARCO_ARTICULO
-          LEFT JOIN CPAG_RUBC rubc WITH (NOLOCK)
-              ON arco.ARCO_RUBRO_COMPRA = rubc.RUBC_RUBRO_COMPRA
-          LEFT JOIN COMP_ARDP ardp WITH (NOLOCK)
-              ON ardp.ARDP_ARTICULO = d.MOSD_ARTICULO
-             AND ardp.ARDP_PROVEEDOR = aucs.AUCS_PROVEEDOR
-          LEFT JOIN COMP_OCCF oc WITH (NOLOCK)
-              ON cm.MCRF_DIVISION_CDPR = oc.OCCF_DIVISION_CDPR
-              AND cm.MCRF_TIPO_CDPR = oc.OCCF_TIPO_CDPR
-              AND cm.MCRF_NUMERO_CDPR = oc.OCCF_NUMERO_CDPR
-              AND cm.MCRF_RENGLON_CCRF = oc.OCCF_RENGLON_CDPR
-          LEFT JOIN COMP_RODC ro WITH (NOLOCK)
-              ON oc.OCCF_DIVISION_CODC = ro.RODC_DIVISION
-              AND oc.OCCF_TIPO_CODC = ro.RODC_TIPO_OC
-              AND oc.OCCF_NUMERO_CODC = ro.RODC_NUM_OC
-              AND oc.OCCF_RENGLON_RODC = ro.RODC_REN_OC
-          LEFT JOIN COMP_CODC co WITH (NOLOCK)
-              ON ro.RODC_DIVISION = co.CODC_DIVISION
-              AND ro.RODC_TIPO_OC = co.CODC_TIPO_OC
-              AND ro.RODC_NUM_OC = co.CODC_NUM_OC
+          	  FROM STOC_MSMV mv WITH (NOLOCK)    
+				INNER JOIN TiposCompStock tcs
+					ON mv.MSMV_TIPO_MSVA = tcs.TipoMSVA
+				INNER JOIN STOC_MOSD d WITH (NOLOCK)
+					ON mv.MSMV_MOVSTO_MOST = d.MOSD_MOVSTO_MOST
+				INNER JOIN STOC_ARTS ar WITH (NOLOCK)
+					ON d.MOSD_ARTICULO = ar.ARTS_ARTICULO
+				INNER JOIN COMP_OCCE occe WITH (NOLOCK) 
+					ON d.MOSD_MOVSTO_MOST = occe.OCCE_MOVSTO_MOST
+					AND d.MOSD_RENGLON_MOSD = occe.OCCE_RENGLON_MOSD
+				INNER JOIN STOC_MOSP mp WITH (NOLOCK)
+					ON d.MOSD_MOVSTO_MOST = mp.MOSP_MOVSTO_MOST
+				AND d.MOSD_RENGLON_MOSD = mp.MOSP_RENGLON_MOSD
+				AND occe.OCCE_MOVSTO_MOST = mp.MOSP_MOVSTO_MOST
+				AND occe.OCCE_RENGLON_MOSD = mp.MOSP_RENGLON_MOSD
+				INNER JOIN STOC_PART pt WITH (NOLOCK)
+					ON mp.MOSP_PARTIDA = pt.PART_PARTIDA
+				INNER JOIN STOC_AUCS aucs WITH (NOLOCK)
+					ON mv.MSMV_NUMERO_MSVA = aucs.AUCS_NUMERO_COMP
+				AND mv.MSMV_TIPO_MSVA = aucs.AUCS_TIPO_COMP
+				INNER JOIN SEGU_AUDI a WITH (NOLOCK)
+					ON aucs.AUCS_AUDITOR = a.AUDI_AUDITOR
+				INNER JOIN CPAG_PROV p WITH (NOLOCK)
+					ON aucs.AUCS_PROVEEDOR = p.PROV_PROVEEDOR
+				INNER JOIN STOC_MOST m WITH (NOLOCK)
+					ON mv.MSMV_MOVSTO_MOST = m.MOST_MOVSTO_MOST
+				INNER JOIN STOC_MSVA msva WITH (NOLOCK)
+					ON mv.MSMV_NUMERO_MSVA = msva.MSVA_NUMERO_MSVA
+				AND mv.MSMV_SUCURSAL_MSVA = msva.MSVA_SUCURSAL_MSVA
+				AND mv.MSMV_TIPO_MSVA = msva.MSVA_TIPO_MSVA
+				AND mv.MSMV_DIVISION_MSVA = msva.MSVA_DIVISION_MSVA
+				INNER JOIN STOC_CA02 c2 WITH (NOLOCK)
+					ON ar.ARTS_CLASIF_2 = c2.CA02_CLASIF_2
+				INNER JOIN STOC_CA06 c6 WITH (NOLOCK)
+					ON ar.ARTS_CLASIF_6 = c6.CA06_CLASIF_6
+				LEFT JOIN STOC_ARCO arco WITH (NOLOCK)
+					ON d.MOSD_ARTICULO = arco.ARCO_ARTICULO
+				LEFT JOIN CPAG_RUBC rubc WITH (NOLOCK)
+					ON arco.ARCO_RUBRO_COMPRA = rubc.RUBC_RUBRO_COMPRA
+				LEFT JOIN COMP_ARDP ardp WITH (NOLOCK)
+					ON ardp.ARDP_ARTICULO = d.MOSD_ARTICULO
+				AND ardp.ARDP_PROVEEDOR = aucs.AUCS_PROVEEDOR
+				LEFT JOIN COMP_RODC ro WITH (NOLOCK)
+					ON occe.OCCE_DIVISION_CODC = ro.RODC_DIVISION
+					AND occe.OCCE_TIPO_CODC = ro.RODC_TIPO_OC
+					AND occe.OCCE_NUMERO_CODC = ro.RODC_NUM_OC
+					AND occe.OCCE_RENGLON_RODC = ro.RODC_REN_OC
+				LEFT JOIN COMP_CODC co WITH (NOLOCK)
+					ON ro.RODC_DIVISION = co.CODC_DIVISION
+					AND ro.RODC_TIPO_OC = co.CODC_TIPO_OC
+					AND ro.RODC_NUM_OC = co.CODC_NUM_OC
           WHERE a.AUDI_PROGRAMA = 'COM1200'
             AND CONVERT(date, a.AUDI_FECHA) >= @fechaAuditoriaDesde
             AND CONVERT(date, a.AUDI_FECHA) <= @fechaAuditoriaHasta
