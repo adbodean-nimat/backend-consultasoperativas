@@ -33,12 +33,10 @@ import { startCron, stopCron, estadoCron, inicializarCronEnviosDesdeDB, recargar
 // Solo una instancia en cluster
 if (process.env.NODE_APP_INSTANCE === '0') {
     initJobs();
+    inicializarCronEnviosDesdeDB()
+        .then((estado) => console.log('Cron avisos deuda:', estado))
+        .catch((error) => console.error('Error inicializando cron:', error));
 }
-
-inicializarCronEnviosDesdeDB()
-    .then((estado) => console.log('Cron avisos deuda:', estado))
-    .catch((error) => console.error('Error inicializando cron:', error));
-
 /* const accessLogStream = rfs.createStream('api.log', {
   interval: '',
   path: path.join(__dirname, 'logs')
