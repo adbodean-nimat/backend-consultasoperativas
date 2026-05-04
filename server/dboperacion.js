@@ -2012,12 +2012,6 @@ async function StockRotNPOC(params) {
             .filter(Boolean)
             .join(',');
 
-        /* console.log('▶ StockRotNPOC:', params);
-        console.log('▶ StockRotNPOC: comp_stock_eval:', comp_stock_eval);
-        console.log('▶ StockRotNPOC: depos_no_considerar:', depos_no_considerar);
-        console.log('▶ StockRotNPOC: np_considerar:', np_considerar);
-        console.log('▶ StockRotNPOC: recepcion_proveed:', recepcion_proveed); */
-
         let pool = await sql.connect(plataforma);
         let getResponse = await pool
             .request()
@@ -2035,6 +2029,92 @@ async function StockRotNPOC(params) {
     } catch (error) {
         console.error(error);
     }
+}
+
+async function StockRotNPOCTerminacion(params) {
+    try {
+        const urlApi = process.env.URL_API;
+
+        const [rawNp, rawDep, rawCom, rawRec] = await Promise.all([
+            axios(`${urlApi}/gde/npaconsiderar`, {
+                httpsAgent,
+                headers: { Authorization: `Bearer ${token}` },
+            }).then((r) => r.data),
+            axios(`${urlApi}/gde/deposanoconsiderar`, {
+                httpsAgent,
+                headers: { Authorization: `Bearer ${token}` },
+            }).then((r) => r.data),
+            axios(`${urlApi}/gde/comprobantestock`, {
+                httpsAgent,
+                headers: { Authorization: `Bearer ${token}` },
+            }).then((r) => r.data),
+            axios(`${urlApi}/gde/recepcionproveedoraconsiderar`, {
+                httpsAgent,
+                headers: { Authorization: `Bearer ${token}` },
+            }).then((r) => r.data),
+        ]);
+
+        const np_considerar = rawNp
+            .map((x) => String(x.cod_comp).trim())
+            .filter(Boolean)
+            .join(',');
+
+        const depos_no_considerar = rawDep
+            .map((x) => String(x.cod_depos).trim())
+            .filter(Boolean)
+            .join(',');
+
+        const comp_stock_eval = rawCom
+            .map((x) => String(x.cod_comp).trim())
+            .filter(Boolean)
+            .join(',');
+
+        const recepcion_proveed = rawRec
+            .map((x) => String(x.cod_comp).trim())
+            .filter(Boolean)
+            .join(',');
+
+        let pool = await sql.connect(plataforma);
+        let getResponse = await pool
+            .request()
+            .input('clasif2', sql.VarChar(10), params.clasif2)
+            .input('comp_stock_eval', sql.VarChar(1000), comp_stock_eval)
+            .input('depos_no_considerar', sql.VarChar(1000), depos_no_considerar)
+            .input('np_considerar', sql.VarChar(1000), np_considerar)
+            .input('recepcion_proveed', sql.VarChar(1000), recepcion_proveed)
+            .input('dias_previos', sql.Int, params.diasprevios)
+            .input('dias_dura', sql.Int, params.diasdura)
+            .query(
+                "DECLARE @hoy DATE = CAST(GETDATE() AS date); DECLARE @fecha_desde DATE = DATEADD(DAY, -@dias_previos, @hoy); DECLARE @fecha_hasta DATE = DATEADD(DAY, -@dias_previos + @dias_dura, @hoy); ;WITH split_comp_stock_eval AS( SELECT UPPER(LTRIM(RTRIM(value))) AS cod_comp FROM STRING_SPLIT(@comp_stock_eval, ',')), split_depos_no_considerar AS ( SELECT TRY_CAST(LTRIM(RTRIM(value)) AS INT) AS cod_depos FROM STRING_SPLIT(@depos_no_considerar, ',') WHERE TRY_CAST(LTRIM(RTRIM(value)) AS INT) IS NOT NULL ), split_np_considerar AS ( SELECT UPPER(LTRIM(RTRIM(value))) AS cod_comp FROM STRING_SPLIT(@np_considerar, ',') ), split_recepcion_proveed AS ( SELECT UPPER(LTRIM(RTRIM(value))) AS cod_comp FROM STRING_SPLIT(@recepcion_proveed, ',') ), arts_base AS ( SELECT a.ARTS_ARTICULO, a.ARTS_ARTICULO_EMP, a.ARTS_NOMBRE, a.ARTS_UNIMED_HOMSTO, a.ARTS_UNIMED_STOCK, a.ARTS_FACTOR_HOMSTO, a.ARTS_CLASIF_1, a.ARTS_CLASIF_2, a.ARTS_CLASIF_3, a.ARTS_CLASIF_4, a.ARTS_CLASIF_5, a.ARTS_CLASIF_6, a.ARTS_CLASIF_7, a.ARTS_CLASIF_8 FROM STOC_ARTS a WHERE a.ARTS_CLASIF_2 = @clasif2 ), stock_1 AS ( SELECT ab.ARTS_ARTICULO, ab.ARTS_ARTICULO_EMP AS [Cód Art], ab.ARTS_NOMBRE AS [Nombre Art], SUM(sd.SDPP_STOCK_ACT) AS [Stock Uni], ab.ARTS_UNIMED_HOMSTO AS [Uni HS], ab.ARTS_FACTOR_HOMSTO, ab.ARTS_CLASIF_1, ab.ARTS_CLASIF_2, ab.ARTS_CLASIF_3, ab.ARTS_CLASIF_4, ab.ARTS_CLASIF_5, ab.ARTS_CLASIF_6, ab.ARTS_CLASIF_7, ab.ARTS_CLASIF_8 FROM arts_base ab LEFT JOIN STOC_SDPP sd ON ab.ARTS_ARTICULO = sd.SDPP_ARTICULO LEFT JOIN split_depos_no_considerar dnc ON sd.SDPP_DEPOSITO = dnc.cod_depos WHERE dnc.cod_depos IS NULL GROUP BY ab.ARTS_ARTICULO, ab.ARTS_ARTICULO_EMP, ab.ARTS_NOMBRE, ab.ARTS_UNIMED_HOMSTO, ab.ARTS_FACTOR_HOMSTO, ab.ARTS_CLASIF_1, ab.ARTS_CLASIF_2, ab.ARTS_CLASIF_3, ab.ARTS_CLASIF_4, ab.ARTS_CLASIF_5, ab.ARTS_CLASIF_6, ab.ARTS_CLASIF_7, ab.ARTS_CLASIF_8 ), lista_precios_100_1 AS ( SELECT ap.ARPV_ARTICULO, ap.ARPV_PRECIO_VTA, ap.ARPV_MONEDA, MAX(sc.COTI_FECHA) AS max_coti_fecha, si.CIMP_TASA FROM arts_base ab INNER JOIN VENT_ARPV ap ON ab.ARTS_ARTICULO = ap.ARPV_ARTICULO LEFT JOIN SIST_COTI sc ON ap.ARPV_MONEDA = sc.COTI_MONEDA1 INNER JOIN VENT_ARVI vi ON ap.ARPV_ARTICULO = vi.ARVI_ARTICULO INNER JOIN SIST_CIMP si ON vi.ARVI_CATEGORIA_IMP = si.CIMP_CATEGORIA_IMP AND vi.ARVI_IMPUESTO = si.CIMP_IMPUESTO WHERE ap.ARPV_LISTA_PRECVTA = 100 GROUP BY ap.ARPV_ARTICULO, ap.ARPV_PRECIO_VTA, ap.ARPV_MONEDA, si.CIMP_TASA ), lista_precios_100_2 AS ( SELECT l.ARPV_ARTICULO, l.ARPV_PRECIO_VTA, l.ARPV_MONEDA, sc.COTI_COTIZACION, l.CIMP_TASA, CASE WHEN sc.COTI_COTIZACION IS NOT NULL THEN l.ARPV_PRECIO_VTA * sc.COTI_COTIZACION ELSE l.ARPV_PRECIO_VTA END AS [Precio base pesos SI], ROUND( CASE WHEN sc.COTI_COTIZACION IS NOT NULL THEN l.ARPV_PRECIO_VTA * sc.COTI_COTIZACION ELSE l.ARPV_PRECIO_VTA END, 2 ) AS [Pre Cdo sin IVA L100] FROM lista_precios_100_1 l LEFT JOIN SIST_COTI sc ON l.max_coti_fecha = sc.COTI_FECHA AND l.ARPV_MONEDA = sc.COTI_MONEDA1 ), lista_precios_1_1 AS ( SELECT ap.ARPV_ARTICULO, ap.ARPV_PRECIO_VTA, ap.ARPV_MONEDA, MAX(sc.COTI_FECHA) AS max_coti_fecha, si.CIMP_TASA FROM arts_base ab INNER JOIN VENT_ARPV ap ON ab.ARTS_ARTICULO = ap.ARPV_ARTICULO LEFT JOIN SIST_COTI sc ON ap.ARPV_MONEDA = sc.COTI_MONEDA1 INNER JOIN VENT_ARVI vi ON ap.ARPV_ARTICULO = vi.ARVI_ARTICULO INNER JOIN SIST_CIMP si ON vi.ARVI_CATEGORIA_IMP = si.CIMP_CATEGORIA_IMP AND vi.ARVI_IMPUESTO = si.CIMP_IMPUESTO WHERE ap.ARPV_LISTA_PRECVTA = 1 GROUP BY ap.ARPV_ARTICULO, ap.ARPV_PRECIO_VTA, ap.ARPV_MONEDA, si.CIMP_TASA ), lista_precios_1_2 AS ( SELECT l.ARPV_ARTICULO, l.ARPV_PRECIO_VTA, l.ARPV_MONEDA, sc.COTI_COTIZACION, l.CIMP_TASA, CASE WHEN sc.COTI_COTIZACION IS NOT NULL THEN l.ARPV_PRECIO_VTA * sc.COTI_COTIZACION ELSE l.ARPV_PRECIO_VTA END AS [Precio base pesos SI], ROUND( ( CASE WHEN sc.COTI_COTIZACION IS NOT NULL THEN l.ARPV_PRECIO_VTA * sc.COTI_COTIZACION ELSE l.ARPV_PRECIO_VTA END ) * 0.8 * (1 + l.CIMP_TASA / 100.0), 2 ) AS [Pre Cdo con IVA L1] FROM lista_precios_1_1 l LEFT JOIN SIST_COTI sc ON l.ARPV_MONEDA = sc.COTI_MONEDA1 AND l.max_coti_fecha = sc.COTI_FECHA ), stock_2 AS ( SELECT s1.ARTS_ARTICULO, s1.[Cód Art], s1.[Nombre Art], s1.[Stock Uni], ca03.CA03_NOMBRE AS [AGRUP B MEDIA], ca05.CA05_NOMBRE AS [AGRUP D MINI], ca04.CA04_NOMBRE AS [AGRUP C MENOR], ca06.CA06_NOMBRE AS [AGRUP E MARCA], s1.ARTS_CLASIF_8, ca08.CA08_NOMBRE AS [STOCK Y PRODUCCION], lp1.[Pre Cdo con IVA L1], lp100.[Pre Cdo sin IVA L100], ROUND(s1.[Stock Uni] * lp100.[Pre Cdo sin IVA L100], 2) AS [Costo L100 sin IVA item] FROM stock_1 s1 INNER JOIN STOC_CA03 ca03 ON s1.ARTS_CLASIF_3 = ca03.CA03_CLASIF_3 INNER JOIN STOC_CA04 ca04 ON s1.ARTS_CLASIF_4 = ca04.CA04_CLASIF_4 INNER JOIN STOC_CA05 ca05 ON s1.ARTS_CLASIF_5 = ca05.CA05_CLASIF_5 INNER JOIN STOC_CA06 ca06 ON s1.ARTS_CLASIF_6 = ca06.CA06_CLASIF_6 INNER JOIN STOC_CA08 ca08 ON s1.ARTS_CLASIF_8 = ca08.CA08_CLASIF_8 LEFT JOIN lista_precios_1_2 lp1 ON s1.ARTS_ARTICULO = lp1.ARPV_ARTICULO LEFT JOIN lista_precios_100_2 lp100 ON s1.ARTS_ARTICULO = lp100.ARPV_ARTICULO ), pendientes_en_oc AS ( SELECT ab.ARTS_ARTICULO_EMP, SUM(r.RODC_CANT_PEDIDA - r.RODC_CANT_RECIB) AS [Pend Ent OC] FROM arts_base ab INNER JOIN COMP_RODC r ON ab.ARTS_ARTICULO = r.RODC_ARTICULO INNER JOIN COMP_CODC c ON c.CODC_NUM_OC = r.RODC_NUM_OC AND c.CODC_TIPO_OC = r.RODC_TIPO_OC AND c.CODC_DIVISION = r.RODC_DIVISION INNER JOIN CPAG_PROV p ON p.PROV_PROVEEDOR = c.CODC_PROVEEDOR WHERE (r.RODC_CANT_PEDIDA - r.RODC_CANT_RECIB) > 0 AND r.RODC_MOTIVO_CANC IS NULL GROUP BY ab.ARTS_ARTICULO_EMP ), fecha_ultima_vta AS ( SELECT ab.ARTS_ARTICULO_EMP, MAX(CAST(c.CVCL_FECHA_EMI AS date)) AS [Ultima Vta] FROM arts_base ab INNER JOIN VENT_CVRF r ON ab.ARTS_ARTICULO = r.CVRF_ARTICULO INNER JOIN CCOB_CVCL c ON c.CVCL_NUMERO_CVCL = r.CVRF_NUMERO_CVCL AND c.CVCL_TIPO_VAR = r.CVRF_TIPO_CVCL AND c.CVCL_SUCURSAL_IMP = r.CVRF_SUCURSAL_CVCL AND c.CVCL_DIVISION_CVCL = r.CVRF_DIVISION_CVCL INNER JOIN CCOB_CLIE cl ON cl.CLIE_CLIENTE = c.CVCL_CLIENTE GROUP BY ab.ARTS_ARTICULO_EMP ), rotacion_rtos AS ( SELECT ab.ARTS_ARTICULO_EMP, SUM( mosd.MOSD_CANT_ING * CASE WHEN mosd.MOSD_SIGNO = 'E' THEN -1 ELSE 1 END ) AS [Cant Rtos] FROM arts_base ab INNER JOIN STOC_MOSD mosd ON ab.ARTS_ARTICULO = mosd.MOSD_ARTICULO INNER JOIN STOC_MOST most ON mosd.MOSD_MOVSTO_MOST = most.MOST_MOVSTO_MOST INNER JOIN STOC_MSMV msmv ON most.MOST_MOVSTO_MOST = msmv.MSMV_MOVSTO_MOST INNER JOIN CCOB_CLIE cl ON cl.CLIE_CLIENTE = most.MOST_CLIENTE WHERE most.MOST_FECHA_EMI >= @fecha_desde AND most.MOST_FECHA_EMI < DATEADD(DAY, 1, @fecha_hasta) AND msmv.MSMV_TIPO_MSVA IN (SELECT cod_comp FROM split_comp_stock_eval) GROUP BY ab.ARTS_ARTICULO_EMP ), np_pendientes AS ( SELECT ab.ARTS_ARTICULO_EMP, SUM(d.NPDE_CANT_PEDIDA - d.NPDE_CANT_ENTREG) AS [Uni Pte Entr NP] FROM arts_base ab INNER JOIN VENT_NPDE d ON ab.ARTS_ARTICULO = d.NPDE_ARTICULO INNER JOIN VENT_NPCA n ON n.NPCA_NUMERO_NPCA = d.NPDE_NUMERO_NPCA AND n.NPCA_TIPO_NPCA = d.NPDE_TIPO_NPCA AND n.NPCA_DIVISION_NPCA = d.NPDE_DIVISION_NPCA WHERE d.NPDE_MOTIVO_CANC IS NULL AND n.NPCA_TIPO_NPCA IN (SELECT cod_comp FROM split_np_considerar) AND (d.NPDE_CANT_PEDIDA - d.NPDE_CANT_ENTREG) > 0 GROUP BY ab.ARTS_ARTICULO_EMP ), recepcion_proveed AS ( SELECT ab.ARTS_ARTICULO_EMP, MAX(CAST(most.MOST_FECHA_EMI AS date)) AS [Fecha Ult Entr Proveed], SUM(mosd.MOSD_CANT_ING) AS [Cant Ult Entr Proveed] FROM arts_base ab INNER JOIN STOC_MOSD mosd ON ab.ARTS_ARTICULO = mosd.MOSD_ARTICULO INNER JOIN STOC_MOST most ON mosd.MOSD_MOVSTO_MOST = most.MOST_MOVSTO_MOST INNER JOIN STOC_MSMV msmv ON most.MOST_MOVSTO_MOST = msmv.MSMV_MOVSTO_MOST INNER JOIN STOC_TCST tc ON msmv.MSMV_TIPO_MSVA = tc.TCST_TIPO_COM WHERE tc.TCST_TIPO_COM IN (SELECT cod_comp FROM split_recepcion_proveed) GROUP BY ab.ARTS_ARTICULO_EMP ), final_base AS ( SELECT s2.[Cód Art], s2.[Nombre Art], s2.[Stock Uni], np.[Uni Pte Entr NP], CASE WHEN COALESCE(s2.[Stock Uni], 0) - COALESCE(np.[Uni Pte Entr NP], 0) < 0 THEN 0 ELSE COALESCE(s2.[Stock Uni], 0) - COALESCE(np.[Uni Pte Entr NP], 0) END AS [Uni Dispon], s2.[Pre Cdo con IVA L1], fv.[Ultima Vta], CASE WHEN fv.[Ultima Vta] IS NOT NULL THEN DATEDIFF(DAY, fv.[Ultima Vta], @hoy) ELSE 0 END AS [Días sin venta], CASE WHEN rp.[Fecha Ult Entr Proveed] IS NOT NULL THEN DATEDIFF(DAY, rp.[Fecha Ult Entr Proveed], @hoy) ELSE 0 END AS [Días Ult Ent Prov], po.[Pend Ent OC], rp.[Fecha Ult Entr Proveed], rp.[Cant Ult Entr Proveed], s2.[Costo L100 sin IVA item], s2.[AGRUP B MEDIA], s2.[AGRUP D MINI], s2.[AGRUP C MENOR], s2.[AGRUP E MARCA], s2.ARTS_CLASIF_8, s2.[STOCK Y PRODUCCION], s2.[Pre Cdo sin IVA L100], rr.[Cant Rtos], CASE WHEN COALESCE(rr.[Cant Rtos], 0) <> 0 THEN ROUND(1.0 * rr.[Cant Rtos] / NULLIF(@dias_dura, 0), 2) ELSE 0 END AS [Cons x día], CASE WHEN rr.ARTS_ARTICULO_EMP IS NOT NULL THEN @dias_previos ELSE NULL END AS [Días previos], CASE WHEN rr.ARTS_ARTICULO_EMP IS NOT NULL THEN @dias_dura ELSE NULL END AS [Días que dura] FROM stock_2 s2 LEFT JOIN pendientes_en_oc po ON s2.[Cód Art] = po.ARTS_ARTICULO_EMP LEFT JOIN fecha_ultima_vta fv ON s2.[Cód Art] = fv.ARTS_ARTICULO_EMP LEFT JOIN np_pendientes np ON s2.[Cód Art] = np.ARTS_ARTICULO_EMP LEFT JOIN recepcion_proveed rp ON s2.[Cód Art] = rp.ARTS_ARTICULO_EMP LEFT JOIN rotacion_rtos rr ON s2.[Cód Art] = rr.ARTS_ARTICULO_EMP WHERE COALESCE(s2.[Stock Uni], 0) + COALESCE(np.[Uni Pte Entr NP], 0) + COALESCE(po.[Pend Ent OC], 0) > 0 ), final_data AS ( SELECT fb.[Cód Art], fb.[Nombre Art], fb.[Stock Uni], fb.[Uni Pte Entr NP], fb.[Uni Dispon], fb.[Pre Cdo con IVA L1], fb.[Ultima Vta], fb.[Días sin venta], fb.[Días Ult Ent Prov], CASE WHEN fb.[Días sin venta] < fb.[Días Ult Ent Prov] THEN fb.[Días sin venta] ELSE fb.[Días Ult Ent Prov] END AS [Días_UEP Diás_UV], fb.[Pend Ent OC], fb.[Fecha Ult Entr Proveed], fb.[Cant Ult Entr Proveed], fb.[Costo L100 sin IVA item], fb.[AGRUP B MEDIA], fb.[AGRUP D MINI], fb.[AGRUP C MENOR], fb.[AGRUP E MARCA], fb.ARTS_CLASIF_8, fb.[STOCK Y PRODUCCION], fb.[Pre Cdo sin IVA L100], fb.[Cant Rtos], fb.[Cons x día], ROUND( CASE WHEN fb.[Cons x día] > 0 THEN CASE WHEN fb.[Uni Dispon] > 0 THEN 1.0 * fb.[Uni Dispon] / NULLIF(fb.[Cons x día], 0) ELSE 0 END ELSE 0 END, 0 ) AS [Día Stock], fb.[Días previos], fb.[Días que dura] FROM final_base fb ) SELECT fd.[Cód Art], fd.[Nombre Art], fd.[Stock Uni], fd.[Uni Pte Entr NP], fd.[Uni Dispon], fd.[Pre Cdo con IVA L1], fd.[Ultima Vta], fd.[Días sin venta], fd.[Días Ult Ent Prov], fd.[Días_UEP Diás_UV], fd.[Pend Ent OC], fd.[Fecha Ult Entr Proveed], fd.[Cant Ult Entr Proveed], fd.[Costo L100 sin IVA item], fd.[AGRUP B MEDIA], fd.[AGRUP D MINI], fd.[AGRUP C MENOR], fd.[AGRUP E MARCA], fd.ARTS_CLASIF_8, fd.[STOCK Y PRODUCCION], fd.[Pre Cdo sin IVA L100], fd.[Cant Rtos], fd.[Cons x día], fd.[Día Stock], fd.[Días previos], fd.[Días que dura] FROM final_data fd ORDER BY fd.[AGRUP B MEDIA], fd.[AGRUP D MINI], fd.[AGRUP C MENOR], fd.[AGRUP E MARCA], fd.[Nombre Art];"
+            );
+        return getResponse.recordsets;
+    } catch (error) {
+        console.error(error);
+    }
+}
+
+async function obtenerClientesWhatsapp(dias_vencido, saldo_minimo) {
+    let pool = await sql.connect(plataforma);
+    let getResponse = await pool
+        .request()
+        .input('DiasVencido', sql.Int, dias_vencido)
+        .input('SaldoMinimo', sql.Decimal(18, 2), saldo_minimo)
+        .query(
+            "SELECT CliIN.CLIE_CLIENTE AS cliente, CliIN.CLIE_NOMBRE AS nombre, LTRIM(RTRIM(CliIN.CLIE_FAX)) AS celular_original, REPLACE( REPLACE( REPLACE( REPLACE( REPLACE(LTRIM(RTRIM(CliIN.CLIE_FAX)), ' ', ''), '-', ''), '(', ''), ')', ''), '+', '') AS celular_limpio, SUM((CASE WHEN CTECCab.CTEC_SIGNO = 'H' THEN -1 ELSE 1 END) * VCTCCab.VCTC_SAL_ORI) AS total_saldo FROM CCOB_VCTC VCTCCab INNER JOIN CCOB_CTEC CTECCab ON VCTCCab.VCTC_CTACTE_CTEC = CTECCab.CTEC_CTACTE_CTEC INNER JOIN CCOB_CVCC CVCCCab ON CVCCCab.CVCC_CTACTE_CTEC = CTECCab.CTEC_CTACTE_CTEC INNER JOIN CCOB_CLIE CliIN ON CTECCab.CTEC_CLIENTE = CliIN.CLIE_CLIENTE INNER JOIN CCOB_CVCL ON CVCCCab.CVCC_DIVISION_CVCL = CVCL_DIVISION_CVCL AND CVCCCab.CVCC_SUCURSAL_CVCL = CVCL_SUCURSAL_IMP AND CVCCCab.CVCC_TIPO_CVCL = CVCL_TIPO_VAR AND CVCCCab.CVCC_NUMERO_CVCL = CVCL_NUMERO_CVCL INNER JOIN SIST_DIVI ON CTECCab.CTEC_DIVISION = DIVI_DIVISION INNER JOIN SIST_MONE ON CTECCab.CTEC_MONEDA = MONE_MONEDA INNER JOIN CCOB_TCCB ON CVCCCab.CVCC_TIPO_CVCL = TCCB_TIPO_COM INNER JOIN CCOB_TCBV ON TCBV_TIPO_VAR = TCCB_TIPO_COM AND TCBV_ES_DIF_CAMBIO = 0 WHERE DATEADD(DAY, @DiasVencido, CVCL_FECHA_EMI) < CONVERT(DATE, GETDATE()) AND VCTCCab.VCTC_SAL_ORI > 0 AND NULLIF(LTRIM(RTRIM(CliIN.CLIE_FAX)), '') IS NOT NULL AND CliIN.CLIE_CLASIF_5 = '010' AND CliIN.CLIE_CLASIF_6 = 'A' AND CVCCCab.CVCC_DIVISION_CVCL = 1 GROUP BY CliIN.CLIE_CLIENTE, CliIN.CLIE_FAX, CliIN.CLIE_NOMBRE HAVING SUM( (CASE WHEN CTECCab.CTEC_SIGNO = 'H' THEN -1 ELSE 1 END) * VCTCCab.VCTC_SAL_ORI ) > @SaldoMinimo ORDER BY CliIN.CLIE_NOMBRE ASC;"
+        );
+    return getResponse.recordsets;
+}
+
+async function obtenerDetalleDeudaPorCliente(cliente, dias_vencido) {
+    let pool = await sql.connect(plataforma);
+    let getResponse = await pool
+        .request()
+        .input('cliente', sql.Int, cliente)
+        .input('DiasVencido', sql.Int, dias_vencido || 8)
+        .query(
+            "SELECT CVCL_FECHA_EMI AS fecha_comprobante, CONVERT(VARCHAR(10), CVCCCab.CVCC_SUCURSAL_CVCL) + ' - ' + CVCCCab.CVCC_TIPO_CVCL + ' - ' + CONVERT(VARCHAR(20), CVCCCab.CVCC_NUMERO_CVCL) AS comprobante, DATEADD(DAY, @DiasVencido, CVCL_FECHA_EMI) AS fecha_vencimiento, CASE WHEN CTECCab.CTEC_SIGNO = 'H' THEN -1 ELSE 1 END * CTECCab.CTEC_IMP_TOT_LOC AS importe_total, CASE WHEN CTECCab.CTEC_SIGNO = 'H' THEN -1 ELSE 1 END * VCTCCab.VCTC_SAL_ORI AS saldo FROM CCOB_VCTC VCTCCab INNER JOIN CCOB_CTEC CTECCab ON VCTCCab.VCTC_CTACTE_CTEC = CTECCab.CTEC_CTACTE_CTEC INNER JOIN CCOB_CVCC CVCCCab ON CVCCCab.CVCC_CTACTE_CTEC = CTECCab.CTEC_CTACTE_CTEC INNER JOIN CCOB_CLIE CliIN ON CTECCab.CTEC_CLIENTE = CliIN.CLIE_CLIENTE INNER JOIN SIST_DIVI ON CTECCab.CTEC_DIVISION = DIVI_DIVISION INNER JOIN CCOB_CVCL ON CVCCCab.CVCC_DIVISION_CVCL = CVCL_DIVISION_CVCL AND CVCCCab.CVCC_SUCURSAL_CVCL = CVCL_SUCURSAL_IMP AND CVCCCab.CVCC_TIPO_CVCL = CVCL_TIPO_VAR AND CVCCCab.CVCC_NUMERO_CVCL = CVCL_NUMERO_CVCL INNER JOIN SIST_MONE ON CTECCab.CTEC_MONEDA = MONE_MONEDA INNER JOIN CCOB_TCCB ON CVCCCab.CVCC_TIPO_CVCL = TCCB_TIPO_COM INNER JOIN CCOB_TCBV ON TCBV_TIPO_VAR = TCCB_TIPO_COM AND TCBV_ES_DIF_CAMBIO = 0 INNER JOIN CCOB_CPCL ON CTECCab.CTEC_COND_PAGO = CPCL_COND_PAGO WHERE DATEADD(DAY, @DiasVencido, CVCL_FECHA_EMI) < CONVERT(DATE, GETDATE()) AND VCTCCab.VCTC_SAL_ORI > 0 AND CliIN.CLIE_CLASIF_5 = '010' AND CliIN.CLIE_CLASIF_6 = 'A' AND CVCCCab.CVCC_DIVISION_CVCL = 1 AND CliIN.CLIE_CLIENTE = @cliente ORDER BY CVCL_FECHA_EMI ASC, CVCCCab.CVCC_NUMERO_CVCL ASC;"
+        );
+    return getResponse.recordsets;
 }
 
 export default {
@@ -2110,4 +2190,7 @@ export default {
     gdc_ControlCalesCementos: gdc_ControlCalesCementos,
     getRecepcionProveedores: getRecepcionProveedores,
     StockRotNPOC: StockRotNPOC,
+    StockRotNPOCTerminacion: StockRotNPOCTerminacion,
+    obtenerClientesWhatsapp: obtenerClientesWhatsapp,
+    obtenerDetalleDeudaPorCliente: obtenerDetalleDeudaPorCliente,
 };

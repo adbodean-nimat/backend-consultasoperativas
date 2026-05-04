@@ -28,17 +28,22 @@ import { initJobs, startJobs, stopJobs } from './jobs.js';
 import { importarMasivoFinanzas } from './controllers/importController.js';
 import { sincronizarCompleto } from './sync-productos-cateogorias.js';
 import { syncOpenAI } from './sync-openai.js';
-import { error } from 'console';
+import { startCron, stopCron, estadoCron, inicializarCronEnviosDesdeDB, recargarCronDesdeDB } from './src/cron/cron.envios.js';
 
 // Solo una instancia en cluster
 if (process.env.NODE_APP_INSTANCE === '0') {
     initJobs();
 }
 
+inicializarCronEnviosDesdeDB()
+    .then((estado) => console.log('Cron avisos deuda:', estado))
+    .catch((error) => console.error('Error inicializando cron:', error));
+
 /* const accessLogStream = rfs.createStream('api.log', {
   interval: '',
   path: path.join(__dirname, 'logs')
 }) */
+
 const router = express.Router();
 const httpsOptions = {
     key: fs.readFileSync(process.env.SSL_KEY),
@@ -842,6 +847,21 @@ router.route('/gde/stockrotocpreciosartpyr').get(async (request, response) => {
     }
 });
 
+router.route('/gde/stockrotocpreciosartpyrterminacion').get(async (request, response) => {
+    try {
+        const params = {
+            clasif2: request.query.clasif2,
+            diasprevios: request.query.diasprevios,
+            diasdura: request.query.diasdura,
+        };
+        const data = await Db.StockRotNPOCTerminacion(params);
+        response.status(200).json(data);
+    } catch (err) {
+        console.error(err);
+        response.status(500).json({ error: err });
+    }
+});
+
 router.route('/listabreveusointerno').get((request, response) => {
     jConfig.getListadePrecioBUI2().then((data) => {
         response.json(data);
@@ -1505,6 +1525,72 @@ router.route('/recepcion-proveedores').get(async (request, response) => {
             message: 'Ocurrió un error al consultar recepción de proveedores',
         });
     }
+});
+
+router.route('/cron/avisosdeudavencida/config').put(async (req, res) => {
+    try {
+        const { cron_schedule, timezone } = req.body;
+        const usuario = req.user?.nombre || 'admin';
+
+        const config = await Pg.actualizarConfigCron({
+            cronSchedule: cron_schedule,
+            timezone,
+            usuario,
+        });
+
+        const cron = await recargarCronDesdeDB();
+
+        res.status(200).json({
+            ok: true,
+            cron,
+            config,
+        });
+    } catch (error) {
+        res.status(500).json({
+            ok: false,
+            error: error.message,
+        });
+    }
+});
+
+router.route('/cron/avisosdeudavencida/status').get(async (req, res) => {
+    const config = await Pg.obtenerConfigEnvio();
+
+    res.status(200).json({
+        cron: estadoCron(),
+        activo: config.activo,
+        cron_schedule: config.cron_schedule,
+        timezone: config.timezone,
+        actualizado_en: config.actualizado_en,
+        actualizado_por: config.actualizado_por,
+    });
+});
+
+router.route('/cron/avisosdeudavencida/start').post(async (req, res) => {
+    const usuario = req.user?.nombre || 'admin';
+
+    const config = await Pg.actualizarEstadoEnvio(true, usuario);
+
+    const cron = await startCron();
+
+    res.status(200).json({ ok: true, cron, config });
+});
+
+router.route('/cron/avisosdeudavencida/stop').post(async (req, res) => {
+    const usuario = req.user?.nombre || 'admin';
+
+    const config = await Pg.actualizarEstadoEnvio(false, usuario);
+
+    const cron = await stopCron();
+
+    res.status(200).json({ ok: true, cron, config });
+});
+
+router.route('/envios-deudavencida').get(async (req, res) => {
+    const fecha = req.query.fecha;
+
+    const data = await Pg.obtenerRegistrarEnvioWhatsapp(fecha);
+    res.status(200).json(data);
 });
 
 const httpPort = 8099;
