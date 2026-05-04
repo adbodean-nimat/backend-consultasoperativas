@@ -1,3 +1,5 @@
+import dotenv from 'dotenv';
+dotenv.config();
 import cron from 'node-cron';
 import { procesoEnvio } from '../services/procesoEnvio.service.js';
 import Pg from '../../dboperacion_pg.js';
