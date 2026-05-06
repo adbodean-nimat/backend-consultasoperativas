@@ -28,7 +28,7 @@ export default function avisoDeudaTemplate(data) {
 
     return `
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es-AR">
 <head>
   <meta charset="UTF-8" />
   <title>Aviso de deuda vencida</title>
@@ -132,7 +132,7 @@ a:hover {
 
     .footer {
       margin-top: 32px;
-      border-top: 1px solid #ddd;
+      border-top: 1px solid transparent;
       padding-top: 14px;
       font-size: 12px;
       color: #555;
@@ -210,19 +210,12 @@ a:hover {
     
     <div class="header">
       <h1 class="title">Aviso de deuda vencida</h1>
-      <div class="subtitle">Detalle de comprobantes pendientes de pago</div>
+      <div class="subtitle">Los comprobantes detallados a continuación:</div>
     </div>
 
-    <div class="box">
-      <div class="cliente"><strong>Cliente:</strong> ${data.nombre}</div>
-      <div><strong>Nro. cliente:</strong> ${data.cliente}</div>
+    <div>
+      <div><strong>${data.cliente} - ${data.nombre}</strong></div>
     </div>
-
-    <p>
-      Estimado cliente, registramos comprobantes vencidos pendientes de cancelación.
-      A continuación se detalla la deuda vigente:
-    </p>
-
     <table>
       <thead>
         <tr>
@@ -230,7 +223,7 @@ a:hover {
           <th>Comprobante</th>
           <th>Vencimiento</th>
           <th class="right">Importe total</th>
-          <th class="right">Saldo</th>
+          <th class="right">Importe saldo</th>
         </tr>
       </thead>
       <tbody>
@@ -239,43 +232,36 @@ a:hover {
     </table>
 
     <div class="total">
-      Total vencido: ${formatMoney(data.total_saldo)}
+      Total saldo: ${formatMoney(data.total_saldo)}
     </div>
 
     <div class="message">
+      <p>
+      Pueden existir otros comprobantes aún no vencidos.
+      </p>
+      <p>
+      Por consultas comunicate a los WhatsApp 345 414 6430 (Hilda) o al 345 508 3046 (Héctor). 
+      </p>
+      <p>
+      También lo podés hacer por mail a hilda.yelin@nimat.com.ar o hector.texo@nimat.com.ar 
+      </p>
       <p class="warning">
-        Solicitamos regularizar la situación a la brevedad.
-      </p>
-
-      <p>
-        En caso de haber realizado el pago, por favor desestimar este aviso
-        o enviar el comprobante correspondiente al área de Administración.
-      </p>
-
-      <p>
-        Muchas gracias.
+        En caso de haber realizado la cancelación, por favor desestimar este aviso.
       </p>
     </div>
 
     <div class="footer">
-      Este documento fue generado automáticamente.  
-      Ante cualquier consulta, comuníquese con Administración y Finanzas.
+      
     </div>
 
     <div class="page-break"></div>
 
 <div class="info-pagos">
-  <h2>PRADES S.A. - Información de pagos</h2>
+  <h2>Información de pagos</h2>
 
-  <div class="info-box">
-    <strong>Cuentas bancarias de PRADES S.A.</strong>
-    <p>
-      Al realizar una transferencia, recuerde enviar el comprobante a Administración
-      indicando razón social y número de cliente.
-      <br>
-      CUIT: 30-71085578-8
-    </p>
-  </div>
+  <h3>Cuentas bancarias de PRADES S.A.</h3>
+
+  <p>CUIT: 30-71085578-8</p>
 
   <table class="tabla-bancos">
     <thead>
@@ -326,7 +312,7 @@ a:hover {
     </tbody>
   </table>
 
-  <h3>Instructivo - Gestionar Mi cuenta</h3>
+  <h3>Gestionar Mi cuenta</h3>
 
   <p>
     Para consultar comprobantes, verificar deuda vencida o gestionar pagos,
@@ -344,10 +330,6 @@ a:hover {
     Ver instructivo de uso
   </a>
 </p>
-
-  <p>
-    Si no recuerda sus datos de acceso o necesita asistencia, puede comunicarse con el área de Administración vía WhatsApp al +54 9 345 414 6430 (Hilda).
-  </p>
 </div>
   </div>
 </body>

@@ -1591,6 +1591,14 @@ router.route('/envios-deudavencida').get(async (req, res) => {
     res.status(200).json(data);
 });
 
+router.route('/obtenerdetalledeudaxcliente').get(async (req, res) => {
+    const cliente = req.query.cliente;
+    const dias_vencido = req.query.dias_vencido;
+
+    const data = await Db.obtenerDetalleDeudaPorCliente(cliente, dias_vencido);
+    res.status(200).json(data);
+});
+
 const httpPort = 8099;
 const httpsPort = 8090;
 

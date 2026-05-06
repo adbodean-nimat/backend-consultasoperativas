@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { generarPdfsAvisosDeuda } from './src/services/generarAviso.service.js';
+import { generarPdfsAvisosDeuda } from './src/services/generarAvisos.service.js';
 
 try {
     const resultados = await generarPdfsAvisosDeuda();

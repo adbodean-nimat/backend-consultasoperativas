@@ -29,6 +29,11 @@ export async function generarPdfsAvisosDeuda() {
             comprobantes: detalle[0],
         };
 
+        /* if (data.cliente === 9054) {
+            console.log(`Generando PDF para cliente ${data.cliente} - ${data.nombre}`);
+            console.log(`Comprobantes: ${data.comprobantes.map((item) => item.fecha_comprobante)}`);
+        } */
+
         const filename = `aviso-deuda-${data.cliente}.pdf`;
         const html = avisoDeudaTemplate(data);
 
