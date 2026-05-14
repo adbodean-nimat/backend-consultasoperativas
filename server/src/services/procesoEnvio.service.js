@@ -1,5 +1,6 @@
 import { generarPdfsAvisosDeuda } from '../services/generarAvisos.service.js';
 import { enviarTemplateDeudaConPdf } from '../services/whatsapp.service.js';
+import { formatMoney } from '../utils/formatters.js';
 import Pg from '../../dboperacion_pg.js';
 
 export async function procesoEnvio() {
@@ -31,7 +32,10 @@ export async function procesoEnvio() {
 
                 const envio = await enviarTemplateDeudaConPdf({
                     telefono: cliente.celular,
+                    clienteId: cliente.cliente,
                     nombreCliente: cliente.nombre,
+                    totalSaldo: formatMoney(cliente.total_saldo),
+                    cantidadComprobantes: cliente.cantidad_comprobantes,
                     pdfPath: cliente.pdfPath,
                     filename: cliente.filename,
                 });

@@ -213,8 +213,11 @@ a:hover {
       <div class="subtitle">Los comprobantes detallados a continuación:</div>
     </div>
 
-    <div>
-      <div><strong>${data.cliente} - ${data.nombre}</strong></div>
+    <div class="box">
+      <div>
+      <p>Número de cliente: <strong>${data.cliente}</strong></p>
+      <p>Nombre del cliente: <strong>${data.nombre}</strong></p>
+      </div>
     </div>
     <table>
       <thead>
@@ -240,7 +243,7 @@ a:hover {
       Pueden existir otros comprobantes aún no vencidos.
       </p>
       <p>
-      Por consultas comunicate a los WhatsApp 345 414 6430 (Hilda) o al 345 508 3046 (Héctor). 
+      Por consultas comunicate a los WhatsApp <a href="https://wa.me/543454146430" target="_blank">+54 9 345 414 6430 (Hilda)</a> o al <a href="https://wa.me/543455083046" target="_blank">+54 9 345 508 3046 (Héctor)</a>.
       </p>
       <p>
       También lo podés hacer por mail a hilda.yelin@nimat.com.ar o hector.texo@nimat.com.ar 

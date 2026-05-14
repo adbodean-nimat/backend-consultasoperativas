@@ -27,6 +27,7 @@ export async function generarPdfsAvisosDeuda() {
             celular: item.celular_limpio,
             total_saldo: item.total_saldo,
             comprobantes: detalle[0],
+            cantidad_comprobantes: detalle[0].length,
         };
 
         /* if (data.cliente === 9054) {
@@ -43,6 +44,9 @@ export async function generarPdfsAvisosDeuda() {
             cliente: data.cliente,
             nombre: data.nombre,
             celular: data.celular,
+            total_saldo: data.total_saldo,
+            comprobantes: data.comprobantes,
+            cantidad_comprobantes: data.cantidad_comprobantes,
             filename,
             pdfPath,
             ok: true,

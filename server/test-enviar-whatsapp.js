@@ -1,56 +1,87 @@
 import dotenv from 'dotenv';
-import { generarPdfsAvisosDeuda } from './src/services/generarAviso.service.js';
+import { generarPdfsAvisosDeuda } from './src/services/generarAvisos.service.js';
 import { enviarTemplateDeudaConPdf } from './src/services/whatsapp.service.js';
+import { formatMoney } from './src/utils/formatters.js';
 import Pg from './dboperacion_pg.js';
 
 dotenv.config();
+
+// Toto     543454326820
+// Javier   543455085907
+// Daniel   543454144212
+// Sistemas 543455281448
+
 const TELEFONO_TEST = '543455281448';
 
 async function testEnvio() {
     try {
         const resultados = await generarPdfsAvisosDeuda();
 
-        const test = resultados.find((c) => c.cliente === 17996); // o buscá cliente específico
+        for (const cliente of resultados.filter((c) => c.cliente === 92)) {
+            try {
+                if (!cliente.ok) {
+                    await Pg.registrarEnvioWhatsapp({
+                        clienteId: cliente.cliente,
+                        clienteNombre: cliente.nombre,
+                        telefono: TELEFONO_TEST,
+                        estado: 'SIN_PDF',
+                        errorMessage: cliente.motivo,
+                    });
+                    continue;
+                }
 
-        if (!test.ok) {
-            console.log('Cliente sin datos');
-            return;
+                if (!cliente.celular) {
+                    await Pg.registrarEnvioWhatsapp({
+                        clienteId: cliente.cliente,
+                        clienteNombre: cliente.nombre,
+                        estado: 'SIN_TELEFONO',
+                    });
+                    continue;
+                }
+
+                const envio = await enviarTemplateDeudaConPdf({
+                    telefono: TELEFONO_TEST,
+                    clienteId: cliente.cliente,
+                    nombreCliente: cliente.nombre,
+                    totalSaldo: formatMoney(cliente.total_saldo),
+                    cantidadComprobantes: cliente.cantidad_comprobantes,
+                    pdfPath: cliente.pdfPath,
+                    filename: cliente.filename,
+                });
+
+                await Pg.registrarEnvioWhatsapp({
+                    clienteId: cliente.cliente,
+                    clienteNombre: cliente.nombre,
+                    telefono: TELEFONO_TEST,
+                    pdfFilename: cliente.filename,
+                    pdfPath: cliente.pdfPath,
+                    templateName: process.env.WHATSAPP_TEMPLATE_NAME,
+                    mediaId: envio.mediaId,
+                    whatsappMessageId: envio.result?.messages?.[0]?.id || null,
+                    estado: 'ENVIADO',
+                    metaResponse: envio.result,
+                });
+
+                // 👇 pequeño delay para no saturar Meta
+                await new Promise((r) => setTimeout(r, 800));
+            } catch (error) {
+                console.error(`❌ Error cliente ${cliente.cliente}`, error.message);
+
+                await Pg.registrarEnvioWhatsapp({
+                    clienteId: cliente.cliente,
+                    clienteNombre: cliente.nombre,
+                    telefono: TELEFONO_TEST,
+                    pdfFilename: cliente.filename,
+                    pdfPath: cliente.pdfPath,
+                    templateName: process.env.WHATSAPP_TEMPLATE_NAME,
+                    estado: 'ERROR',
+                    errorMessage: error.message,
+                });
+            }
         }
-
-        const result = await enviarTemplateDeudaConPdf({
-            telefono: TELEFONO_TEST,
-            nombreCliente: test.nombre,
-            pdfPath: test.pdfPath,
-            filename: test.filename,
-        });
-
-        console.log('Enviado OK:', result);
-
-        await Pg.registrarEnvioWhatsapp({
-            clienteId: test.cliente,
-            clienteNombre: test.nombre,
-            telefono: TELEFONO_TEST,
-            pdfFilename: test.filename,
-            pdfPath: test.pdfPath,
-            templateName: process.env.WHATSAPP_TEMPLATE_NAME,
-            mediaId: result.mediaId,
-            whatsappMessageId: result.result?.messages?.[0]?.id || null,
-            estado: 'ENVIADO OK',
-            metaResponse: result.result,
-        });
+        console.log('✅ Proceso finalizado');
     } catch (error) {
-        console.error('Error enviando:', error);
-
-        await Pg.registrarEnvioWhatsapp({
-            clienteId: test.cliente,
-            clienteNombre: test.nombre,
-            telefono: TELEFONO_TEST,
-            pdfFilename: test.filename,
-            pdfPath: test.pdfPath,
-            templateName: process.env.WHATSAPP_TEMPLATE_NAME,
-            estado: 'CON ERROR',
-            errorMessage: error.message,
-        });
+        console.error('❌ Error procesoEnvio:', error);
     }
 }
 

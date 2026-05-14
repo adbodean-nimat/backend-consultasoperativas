@@ -74,7 +74,7 @@ async function subirPdfAMeta(pdfPath) {
     return response.data.id;
 }
 
-async function enviarTemplateDeudaConPdf({ telefono, nombreCliente, pdfPath, filename }) {
+async function enviarTemplateDeudaConPdf({ telefono, clienteId, nombreCliente, totalSaldo, cantidadComprobantes, pdfPath, filename }) {
     validarConfigWhatsapp();
 
     const telefonoLimpio = limpiarTelefonoWhatsapp(telefono);
@@ -121,7 +121,19 @@ async function enviarTemplateDeudaConPdf({ telefono, nombreCliente, pdfPath, fil
                     parameters: [
                         {
                             type: 'text',
+                            text: String(clienteId),
+                        },
+                        {
+                            type: 'text',
                             text: nombreCliente,
+                        },
+                        {
+                            type: 'text',
+                            text: totalSaldo,
+                        },
+                        {
+                            type: 'text',
+                            text: String(cantidadComprobantes),
                         },
                     ],
                 },
@@ -139,6 +151,8 @@ async function enviarTemplateDeudaConPdf({ telefono, nombreCliente, pdfPath, fil
     });
 
     const result = await parseMetaResponse(response);
+
+    console.log('Respuesta Meta WhatsApp API:', JSON.stringify(result, null, 2));
 
     return {
         ok: true,
