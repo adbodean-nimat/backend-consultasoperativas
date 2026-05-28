@@ -1845,289 +1845,295 @@ async function getRecepcionProveedores(data) {
 
     const query = `
       WITH TiposCompStock AS (
-        SELECT UPPER(LTRIM(RTRIM(value))) AS TipoMSVA
-        FROM STRING_SPLIT(@pTiposCompStock, ',')
-        WHERE LTRIM(RTRIM(value)) <> ''
-      ),
-      base AS (
-          SELECT
-              m.MOST_MOVSTO_MOST AS movimientoId,
-              d.MOSD_RENGLON_MOSD AS renglonMovimiento,
-              CONCAT(RIGHT('0000' + CAST(ro.RODC_DIVISION AS varchar(4)), 4),
-					'-',
-					ro.RODC_TIPO_OC,
-					'-',
-					RIGHT('0000000000' + CAST(ro.RODC_NUM_OC AS varchar(10)), 10),
-					'/',
-					RIGHT('000' + CAST(ro.RODC_REN_OC AS nvarchar(3)), 3)
-			  ) AS OrdenCompra,
-              co.CODC_FECHA_OC AS fechaOrdenCompra,
-              CASE
-                WHEN a.AUDI_FECHA IS NOT NULL
-                AND co.CODC_FECHA_OC IS NOT NULL
-                THEN DATEDIFF(
-                        DAY,
-                        CONVERT(date, co.CODC_FECHA_OC),
-                        CONVERT(date, a.AUDI_FECHA)
-                    )
-                ELSE NULL
-              END AS diasOrdenCompra_Auditoria,
-
-              p.PROV_NOMBRE AS proveedorNombre,
-              CONVERT(date, a.AUDI_FECHA) AS fechaAuditoria,
-              CONVERT(date, m.MOST_FECHA_EMI) AS fechaComprobante,
-
-              mv.MSMV_DIVISION_MSVA AS division,
-              mv.MSMV_SUCURSAL_MSVA AS sucursal,
-              mv.MSMV_TIPO_MSVA AS tipoComprobante,
-              mv.MSMV_NUMERO_MSVA AS numeroComprobante,
-
-              CONCAT(
-                  RIGHT('0000' + CAST(mv.MSMV_DIVISION_MSVA AS varchar(4)), 4),
-                  '-',
-                  mv.MSMV_TIPO_MSVA,
-                  '-',
-                  RIGHT('0000000000' + CAST(mv.MSMV_NUMERO_MSVA AS varchar(10)), 10)
-              ) AS comprobante,
-
-              m.MOST_REFERENCIA AS referenciaComprobante,
-              d.MOSD_DESCRIPCION AS descripcionMovimiento,
-              d.MOSD_ARTICULO AS articuloId,
-              ar.ARTS_ARTICULO_EMP AS codigoArticulo,
-              ar.ARTS_NOMBRE AS nombreArticulo,
-
-              d.MOSD_CANT_ING AS cantidadOriginal,
-              d.MOSD_SIGNO AS signoMovimiento,
-              mp.MOSP_CANT_ING AS cantidadPartida,
-
-              mp.MOSP_CANT_ING * CASE
-                  WHEN d.MOSD_SIGNO = 'S' THEN -1
-                  ELSE 1
-              END AS cantidad,
-
-              CASE
-                  WHEN d.MOSD_SIGNO = 'S' THEN 'Devolución'
-                  ELSE 'Recepción'
-              END AS tipoMovimiento,
-
-              CONVERT(date, pt.PART_FECHA_VTO) AS fechaVencimientoPartida,
-
-              CASE
-                  WHEN pt.PART_FECHA_VTO IS NOT NULL
-                   AND m.MOST_FECHA_EMI IS NOT NULL
-                  THEN DATEDIFF(
-                          DAY,
-                          CONVERT(date, m.MOST_FECHA_EMI),
-                          CONVERT(date, pt.PART_FECHA_VTO)
-                       )
-                  ELSE NULL
-              END AS diasVencimientoPartida,
-
-              aucs.AUCS_PROVEEDOR AS proveedorId,
-
-              c2.CA02_CLASIF_2 AS clasif2,
-              c2.CA02_NOMBRE AS clasif2Nombre,
-              c6.CA06_CLASIF_6 AS clasif6,
-              c6.CA06_NOMBRE AS clasif6Nombre,
-
-              ar.ARTS_FACTOR_HOMSTO AS factorHomogeneizacion,
-              ar.ARTS_PESO_EMB_UMS AS pesoTeoricoXUni,
-              d.MOSD_NUMERO_1 AS peso,
-              msva.MSVA_ES_FACTURABLE AS esFacturable,
-
-              arco.ARCO_RUBRO_COMPRA AS rubroCompra,
-              LEFT(rubc.RUBC_NOMBRE, 3) AS compradorCodigo,
-              rubc.RUBC_NOMBRE AS compradorNombre,
-              CONCAT(arco.ARCO_RUBRO_COMPRA, ' - ', rubc.RUBC_NOMBRE) AS rubroCompraNombre,
-
-              ardp.ARDP_CODIGO_ART AS codigoArticuloProveedor
-          	  FROM STOC_MSMV mv WITH (NOLOCK)    
-				INNER JOIN TiposCompStock tcs
-					ON mv.MSMV_TIPO_MSVA = tcs.TipoMSVA
-				INNER JOIN STOC_MOSD d WITH (NOLOCK)
-					ON mv.MSMV_MOVSTO_MOST = d.MOSD_MOVSTO_MOST
-				INNER JOIN STOC_ARTS ar WITH (NOLOCK)
-					ON d.MOSD_ARTICULO = ar.ARTS_ARTICULO
-				INNER JOIN COMP_OCCE occe WITH (NOLOCK) 
-					ON d.MOSD_MOVSTO_MOST = occe.OCCE_MOVSTO_MOST
-					AND d.MOSD_RENGLON_MOSD = occe.OCCE_RENGLON_MOSD
-				INNER JOIN STOC_MOSP mp WITH (NOLOCK)
-					ON d.MOSD_MOVSTO_MOST = mp.MOSP_MOVSTO_MOST
-				AND d.MOSD_RENGLON_MOSD = mp.MOSP_RENGLON_MOSD
-				AND occe.OCCE_MOVSTO_MOST = mp.MOSP_MOVSTO_MOST
-				AND occe.OCCE_RENGLON_MOSD = mp.MOSP_RENGLON_MOSD
-				INNER JOIN STOC_PART pt WITH (NOLOCK)
-					ON mp.MOSP_PARTIDA = pt.PART_PARTIDA
-				INNER JOIN STOC_AUCS aucs WITH (NOLOCK)
-					ON mv.MSMV_NUMERO_MSVA = aucs.AUCS_NUMERO_COMP
-				AND mv.MSMV_TIPO_MSVA = aucs.AUCS_TIPO_COMP
-				INNER JOIN SEGU_AUDI a WITH (NOLOCK)
-					ON aucs.AUCS_AUDITOR = a.AUDI_AUDITOR
-				INNER JOIN CPAG_PROV p WITH (NOLOCK)
-					ON aucs.AUCS_PROVEEDOR = p.PROV_PROVEEDOR
-				INNER JOIN STOC_MOST m WITH (NOLOCK)
-					ON mv.MSMV_MOVSTO_MOST = m.MOST_MOVSTO_MOST
-				INNER JOIN STOC_MSVA msva WITH (NOLOCK)
-					ON mv.MSMV_NUMERO_MSVA = msva.MSVA_NUMERO_MSVA
-				AND mv.MSMV_SUCURSAL_MSVA = msva.MSVA_SUCURSAL_MSVA
-				AND mv.MSMV_TIPO_MSVA = msva.MSVA_TIPO_MSVA
-				AND mv.MSMV_DIVISION_MSVA = msva.MSVA_DIVISION_MSVA
-				INNER JOIN STOC_CA02 c2 WITH (NOLOCK)
-					ON ar.ARTS_CLASIF_2 = c2.CA02_CLASIF_2
-				INNER JOIN STOC_CA06 c6 WITH (NOLOCK)
-					ON ar.ARTS_CLASIF_6 = c6.CA06_CLASIF_6
-				LEFT JOIN STOC_ARCO arco WITH (NOLOCK)
-					ON d.MOSD_ARTICULO = arco.ARCO_ARTICULO
-				LEFT JOIN CPAG_RUBC rubc WITH (NOLOCK)
-					ON arco.ARCO_RUBRO_COMPRA = rubc.RUBC_RUBRO_COMPRA
-				LEFT JOIN COMP_ARDP ardp WITH (NOLOCK)
-					ON ardp.ARDP_ARTICULO = d.MOSD_ARTICULO
-				AND ardp.ARDP_PROVEEDOR = aucs.AUCS_PROVEEDOR
-				LEFT JOIN COMP_RODC ro WITH (NOLOCK)
-					ON occe.OCCE_DIVISION_CODC = ro.RODC_DIVISION
-					AND occe.OCCE_TIPO_CODC = ro.RODC_TIPO_OC
-					AND occe.OCCE_NUMERO_CODC = ro.RODC_NUM_OC
-					AND occe.OCCE_RENGLON_RODC = ro.RODC_REN_OC
-				LEFT JOIN COMP_CODC co WITH (NOLOCK)
-					ON ro.RODC_DIVISION = co.CODC_DIVISION
-					AND ro.RODC_TIPO_OC = co.CODC_TIPO_OC
-					AND ro.RODC_NUM_OC = co.CODC_NUM_OC
-          WHERE a.AUDI_PROGRAMA = 'COM1200'
-            AND CONVERT(date, a.AUDI_FECHA) >= @fechaAuditoriaDesde
-            AND CONVERT(date, a.AUDI_FECHA) <= @fechaAuditoriaHasta
-            AND (@fechaComprobanteDesde IS NULL OR CONVERT(date, m.MOST_FECHA_EMI) >= @fechaComprobanteDesde)
-            AND (@fechaComprobanteHasta IS NULL OR CONVERT(date, m.MOST_FECHA_EMI) <= @fechaComprobanteHasta)
-            AND (@comprador IS NULL OR LEFT(rubc.RUBC_NOMBRE, 3) = @comprador)
-            AND (@proveedorId IS NULL OR aucs.AUCS_PROVEEDOR = @proveedorId)
-            AND (@codigoArticulo IS NULL OR ar.ARTS_ARTICULO_EMP = @codigoArticulo)
-            AND (@tipoComprobante IS NULL OR mv.MSMV_TIPO_MSVA = @tipoComprobante)
-            AND (@clasif2 IS NULL OR c2.CA02_CLASIF_2 = @clasif2)
-            AND (@clasif6 IS NULL OR c6.CA06_CLASIF_6 = @clasif6)
-            AND (@soloIRO = 0 OR mv.MSMV_TIPO_MSVA = 'IRO')
-      ),
-      iros AS (
-          SELECT
-              ENAP_PK,
-              TRY_CONVERT(int, LEFT(ENAP_PK, 4)) AS divisionIRO,
-              TRY_CONVERT(int, SUBSTRING(ENAP_PK, 6, 4)) AS sucursalIRO,
-              SUBSTRING(ENAP_PK, 11, 3) AS tipoIRO,
-              TRY_CONVERT(int, RIGHT(ENAP_PK, 10)) AS numeroIRO
-          FROM SIST_ENAP
-      ),
-      final_data AS (
-          SELECT
-              b.*,
-              i.ENAP_PK AS enapPk,
-
-              CASE
-                  WHEN b.diasVencimientoPartida IS NOT NULL
-                   AND b.diasVencimientoPartida < @diasParaVencPart
-                  THEN CAST(1 AS bit)
-                  ELSE CAST(0 AS bit)
-              END AS destacarVencimiento,
-
-              CASE
-                  WHEN b.tipoComprobante = 'IRO' THEN CAST(1 AS bit)
-                  ELSE CAST(0 AS bit)
-              END AS esIRO,
-
-              CASE
-                  WHEN i.ENAP_PK IS NOT NULL AND i.ENAP_PK <> '' THEN CAST(0 AS bit)
-                  WHEN b.tipoComprobante = 'IRO' THEN CAST(1 AS bit)
-                  ELSE CAST(0 AS bit)
-              END AS iroAVerificar
-          FROM base b
-          LEFT JOIN iros i
-              ON b.numeroComprobante = i.numeroIRO
-             AND b.tipoComprobante = i.tipoIRO
-             AND b.sucursal = i.sucursalIRO
-             AND b.division = i.divisionIRO
-      )
-      SELECT
-          fechaOrdenCompra,
-          OrdenCompra,
-          diasOrdenCompra_Auditoria,
-          rubroCompra,
-          compradorCodigo,
-          compradorNombre,
-          rubroCompraNombre,
-          proveedorId,
-          proveedorNombre,
-          fechaAuditoria,
-          fechaComprobante,
-          division,
-          sucursal,
-          tipoComprobante,
-          numeroComprobante,
-          comprobante,
-          referenciaComprobante,
-          descripcionMovimiento,
-          articuloId,
-          codigoArticulo,
-          nombreArticulo,
-          codigoArticuloProveedor,
-          cantidadOriginal,
-          signoMovimiento,
-          cantidad,
-          tipoMovimiento,
-          fechaVencimientoPartida,
-          diasVencimientoPartida,
-          @diasParaVencPart AS diasParametroVencimiento,
-          destacarVencimiento,
-          esIRO,
-          iroAVerificar,
-          clasif2,
-          clasif2Nombre,
-          clasif6,
-          clasif6Nombre,
-
-          CASE
-              WHEN clasif2 = '0004'
-              THEN (1.0 / NULLIF(factorHomogeneizacion, 0)) * cantidad
-              ELSE NULL
-          END AS m2Recibidos,
-
-          ROUND(
-              CASE
-                  WHEN clasif2 = '0027' THEN peso
-                  ELSE NULL
-              END,
-              2
-          ) AS kgRecibidos,
-
-          CAST(
-              ROUND(
-                  CASE
-                      WHEN clasif2 = '0027' THEN peso / NULLIF(cantidad, 0)
-                      ELSE NULL
-                  END,
-                  2
-              ) AS decimal(10,2)
-          ) AS pesoRealXUni,
-
-          CASE
-              WHEN clasif2 = '0027' THEN pesoTeoricoXUni
-              ELSE NULL
-          END AS pesoTeoricoXUni,
-
-          CASE
-              WHEN clasif2 = '0027'
-               AND NULLIF(cantidad, 0) IS NOT NULL
-               AND NULLIF(peso / NULLIF(cantidad, 0), 0) IS NOT NULL
-              THEN (pesoTeoricoXUni / NULLIF(peso / NULLIF(cantidad, 0), 0)) - 1
-              ELSE NULL
-          END AS kgTeoricoVsPesoReal,
-
-          CASE
-              WHEN esFacturable = 1 THEN 'Es total'
-              ELSE 'Sin facturar'
-          END AS estadoFacturacion
-      FROM final_data
-      ORDER BY
-          fechaAuditoria DESC,
-          rubroCompra,
-          comprobante,
-          nombreArticulo;
+    SELECT UPPER(LTRIM(RTRIM(value))) AS TipoMSVA
+    FROM STRING_SPLIT(@pTiposCompStock, ',')
+    WHERE LTRIM(RTRIM(value)) <> ''
+),
+base AS (
+    SELECT
+        p.PROV_NOMBRE AS proveedorNombre,
+        CONVERT(date, a.AUDI_FECHA) AS fechaAuditoria,
+        CONVERT(date, m.MOST_FECHA_EMI) AS fechaComprobante,
+        m.MOST_MOVSTO_MOST AS movimientoId,
+        d.MOSD_RENGLON_MOSD AS renglonMovimiento,
+        CONCAT(
+            RIGHT('0000' + CAST(ro.RODC_DIVISION AS varchar(4)), 4),
+            '-',
+            ro.RODC_TIPO_OC,
+            '-',
+            RIGHT('0000000000' + CAST(ro.RODC_NUM_OC AS varchar(10)), 10),
+            '/',
+            RIGHT('000' + CAST(ro.RODC_REN_OC AS nvarchar(3)), 3)
+        ) AS OrdenCompra,
+        co.CODC_FECHA_OC AS fechaOrdenCompra,
+        CASE
+            WHEN a.AUDI_FECHA IS NOT NULL
+             AND co.CODC_FECHA_OC IS NOT NULL
+            THEN DATEDIFF(
+                    DAY,
+                    CONVERT(date, co.CODC_FECHA_OC),
+                    CONVERT(date, a.AUDI_FECHA)
+                 )
+            ELSE NULL
+        END AS diasOrdenCompra_Auditoria,
+        mv.MSMV_DIVISION_MSVA AS division,
+        mv.MSMV_SUCURSAL_MSVA AS sucursal,
+        mv.MSMV_TIPO_MSVA AS tipoComprobante,
+        mv.MSMV_NUMERO_MSVA AS numeroComprobante,
+        CONCAT(
+            RIGHT('0000' + CAST(mv.MSMV_DIVISION_MSVA AS varchar(4)), 4),
+            '-',
+            mv.MSMV_TIPO_MSVA,
+            '-',
+            RIGHT('0000000000' + CAST(mv.MSMV_NUMERO_MSVA AS varchar(10)), 10)
+        ) AS comprobante,
+        m.MOST_REFERENCIA AS referenciaComprobante,
+        d.MOSD_DESCRIPCION AS descripcionMovimiento,
+        d.MOSD_ARTICULO AS articuloId,
+        ar.ARTS_ARTICULO_EMP AS codigoArticulo,
+        ar.ARTS_NOMBRE AS nombreArticulo,
+        d.MOSD_CANT_ING AS cantidadOriginal,
+        d.MOSD_SIGNO AS signoMovimiento,
+        mp.MOSP_CANT_ING AS cantidadPartida,
+        mp.MOSP_CANT_ING * CASE
+            WHEN d.MOSD_SIGNO = 'S' THEN -1
+            ELSE 1
+        END AS cantidad,
+        CASE
+            WHEN d.MOSD_SIGNO = 'S' THEN 'Devolución'
+            ELSE 'Recepción'
+        END AS tipoMovimiento,
+        CONVERT(date, pt.PART_FECHA_VTO) AS fechaVencimientoPartida,
+        CASE
+            WHEN pt.PART_FECHA_VTO IS NOT NULL
+             AND m.MOST_FECHA_EMI IS NOT NULL
+            THEN DATEDIFF(
+                    DAY,
+                    CONVERT(date, m.MOST_FECHA_EMI),
+                    CONVERT(date, pt.PART_FECHA_VTO)
+                 )
+            ELSE NULL
+        END AS diasVencimientoPartida,
+        aucs.AUCS_PROVEEDOR AS proveedorId,
+        c2.CA02_CLASIF_2 AS clasif2,
+        c2.CA02_NOMBRE AS clasif2Nombre,
+        c6.CA06_CLASIF_6 AS clasif6,
+        c6.CA06_NOMBRE AS clasif6Nombre,
+        ar.ARTS_FACTOR_HOMSTO AS factorHomogeneizacion,
+        ar.ARTS_PESO_EMB_UMS AS pesoTeoricoXUni,
+        d.MOSD_NUMERO_1 AS peso,
+        msva.MSVA_ES_FACTURABLE AS esFacturable,
+        arco.ARCO_RUBRO_COMPRA AS rubroCompra,
+        LEFT(rubc.RUBC_NOMBRE, 3) AS compradorCodigo,
+        rubc.RUBC_NOMBRE AS compradorNombre,
+        CONCAT(arco.ARCO_RUBRO_COMPRA, ' - ', rubc.RUBC_NOMBRE) AS rubroCompraNombre,
+        ardp.ARDP_CODIGO_ART AS codigoArticuloProveedor
+    FROM STOC_MSMV mv WITH (NOLOCK)
+    INNER JOIN TiposCompStock tcs
+        ON mv.MSMV_TIPO_MSVA = tcs.TipoMSVA
+    INNER JOIN STOC_MOSD d WITH (NOLOCK)
+        ON mv.MSMV_MOVSTO_MOST = d.MOSD_MOVSTO_MOST
+    INNER JOIN STOC_ARTS ar WITH (NOLOCK)
+        ON d.MOSD_ARTICULO = ar.ARTS_ARTICULO
+    INNER JOIN COMP_OCCE occe WITH (NOLOCK)
+        ON d.MOSD_MOVSTO_MOST = occe.OCCE_MOVSTO_MOST
+       AND d.MOSD_RENGLON_MOSD = occe.OCCE_RENGLON_MOSD
+    INNER JOIN STOC_MOSP mp WITH (NOLOCK)
+        ON d.MOSD_MOVSTO_MOST = mp.MOSP_MOVSTO_MOST
+       AND d.MOSD_RENGLON_MOSD = mp.MOSP_RENGLON_MOSD
+       AND occe.OCCE_MOVSTO_MOST = mp.MOSP_MOVSTO_MOST
+       AND occe.OCCE_RENGLON_MOSD = mp.MOSP_RENGLON_MOSD
+    INNER JOIN STOC_PART pt WITH (NOLOCK)
+        ON mp.MOSP_PARTIDA = pt.PART_PARTIDA
+    INNER JOIN STOC_AUCS aucs WITH (NOLOCK)
+        ON mv.MSMV_NUMERO_MSVA = aucs.AUCS_NUMERO_COMP
+       AND mv.MSMV_TIPO_MSVA = aucs.AUCS_TIPO_COMP
+    INNER JOIN SEGU_AUDI a WITH (NOLOCK)
+        ON aucs.AUCS_AUDITOR = a.AUDI_AUDITOR
+    INNER JOIN CPAG_PROV p WITH (NOLOCK)
+        ON aucs.AUCS_PROVEEDOR = p.PROV_PROVEEDOR
+    INNER JOIN STOC_MOST m WITH (NOLOCK)
+        ON mv.MSMV_MOVSTO_MOST = m.MOST_MOVSTO_MOST
+    INNER JOIN STOC_MSVA msva WITH (NOLOCK)
+        ON mv.MSMV_NUMERO_MSVA = msva.MSVA_NUMERO_MSVA
+       AND mv.MSMV_SUCURSAL_MSVA = msva.MSVA_SUCURSAL_MSVA
+       AND mv.MSMV_TIPO_MSVA = msva.MSVA_TIPO_MSVA
+       AND mv.MSMV_DIVISION_MSVA = msva.MSVA_DIVISION_MSVA
+    INNER JOIN STOC_CA02 c2 WITH (NOLOCK)
+        ON ar.ARTS_CLASIF_2 = c2.CA02_CLASIF_2
+    INNER JOIN STOC_CA06 c6 WITH (NOLOCK)
+        ON ar.ARTS_CLASIF_6 = c6.CA06_CLASIF_6
+    LEFT JOIN STOC_ARCO arco WITH (NOLOCK)
+        ON d.MOSD_ARTICULO = arco.ARCO_ARTICULO
+    LEFT JOIN CPAG_RUBC rubc WITH (NOLOCK)
+        ON arco.ARCO_RUBRO_COMPRA = rubc.RUBC_RUBRO_COMPRA
+    LEFT JOIN COMP_ARDP ardp WITH (NOLOCK)
+        ON ardp.ARDP_ARTICULO = d.MOSD_ARTICULO
+       AND ardp.ARDP_PROVEEDOR = aucs.AUCS_PROVEEDOR
+    LEFT JOIN COMP_RODC ro WITH (NOLOCK)
+        ON occe.OCCE_DIVISION_CODC = ro.RODC_DIVISION
+       AND occe.OCCE_TIPO_CODC = ro.RODC_TIPO_OC
+       AND occe.OCCE_NUMERO_CODC = ro.RODC_NUM_OC
+       AND occe.OCCE_RENGLON_RODC = ro.RODC_REN_OC
+    LEFT JOIN COMP_CODC co WITH (NOLOCK)
+        ON ro.RODC_DIVISION = co.CODC_DIVISION
+       AND ro.RODC_TIPO_OC = co.CODC_TIPO_OC
+       AND ro.RODC_NUM_OC = co.CODC_NUM_OC
+    WHERE a.AUDI_PROGRAMA = 'COM1200'
+      AND CONVERT(date, a.AUDI_FECHA) >= @fechaAuditoriaDesde
+      AND CONVERT(date, a.AUDI_FECHA) <= @fechaAuditoriaHasta
+      AND (@fechaComprobanteDesde IS NULL OR CONVERT(date, m.MOST_FECHA_EMI) >= @fechaComprobanteDesde)
+      AND (@fechaComprobanteHasta IS NULL OR CONVERT(date, m.MOST_FECHA_EMI) <= @fechaComprobanteHasta)
+      AND (@comprador IS NULL OR LEFT(rubc.RUBC_NOMBRE, 3) = @comprador)
+      AND (@proveedor IS NULL OR aucs.AUCS_PROVEEDOR = @proveedor)
+      AND (@codigoArticulo IS NULL OR ar.ARTS_ARTICULO_EMP = @codigoArticulo)
+      AND (@tipoComprobante IS NULL OR mv.MSMV_TIPO_MSVA = @tipoComprobante)
+      AND (@clasif2 IS NULL OR c2.CA02_CLASIF_2 = @clasif2)
+      AND (@clasif6 IS NULL OR c6.CA06_CLASIF_6 = @clasif6)
+      AND (@soloIRO = 0 OR mv.MSMV_TIPO_MSVA = 'IRO')
+),
+base_calc AS (
+    SELECT
+        b.*,
+        SUM(b.cantidad) OVER (
+            PARTITION BY
+                b.proveedorId,
+                b.division,
+                b.sucursal,
+                b.tipoComprobante,
+                b.numeroComprobante,
+                b.articuloId
+        ) AS cantidadTotalArticuloComprobante,
+        CASE
+            WHEN b.clasif2 = '0027'
+            THEN
+                CAST(b.peso AS decimal(18, 4))
+                /
+                NULLIF(
+                    SUM(b.cantidad) OVER (
+                        PARTITION BY
+                            b.proveedorId,
+                            b.division,
+                            b.sucursal,
+                            b.tipoComprobante,
+                            b.numeroComprobante,
+                            b.articuloId
+                    ),
+                    0
+                )
+            ELSE NULL
+        END AS pesoRealXUniCalc
+    FROM base b
+),
+iros AS (
+    SELECT
+        ENAP_PK,
+        TRY_CONVERT(int, LEFT(ENAP_PK, 4)) AS divisionIRO,
+        TRY_CONVERT(int, SUBSTRING(ENAP_PK, 6, 4)) AS sucursalIRO,
+        SUBSTRING(ENAP_PK, 11, 3) AS tipoIRO,
+        TRY_CONVERT(int, RIGHT(ENAP_PK, 10)) AS numeroIRO
+    FROM SIST_ENAP WITH (NOLOCK)
+),
+final_data AS (
+    SELECT
+        b.*,
+        i.ENAP_PK AS enapPk,
+        CASE
+            WHEN b.diasVencimientoPartida IS NOT NULL
+             AND b.diasVencimientoPartida < @diasParaVencPart
+            THEN CAST(1 AS bit)
+            ELSE CAST(0 AS bit)
+        END AS destacarVencimiento,
+        CASE
+            WHEN b.tipoComprobante = 'IRO' THEN CAST(1 AS bit)
+            ELSE CAST(0 AS bit)
+        END AS esIRO,
+        CASE
+            WHEN i.ENAP_PK IS NOT NULL AND i.ENAP_PK <> '' THEN CAST(0 AS bit)
+            WHEN b.tipoComprobante = 'IRO' THEN CAST(1 AS bit)
+            ELSE CAST(0 AS bit)
+        END AS iroAVerificar
+    FROM base_calc b
+    LEFT JOIN iros i
+        ON b.numeroComprobante = i.numeroIRO
+       AND b.tipoComprobante = i.tipoIRO
+       AND b.sucursal = i.sucursalIRO
+       AND b.division = i.divisionIRO
+)
+SELECT
+    fechaOrdenCompra,
+    OrdenCompra,
+    diasOrdenCompra_Auditoria,
+    movimientoId,
+    renglonMovimiento,
+    rubroCompra,
+    compradorCodigo,
+    compradorNombre,
+    rubroCompraNombre,
+    proveedorId,
+    proveedorNombre,
+    fechaAuditoria,
+    fechaComprobante,
+    division,
+    sucursal,
+    tipoComprobante,
+    numeroComprobante,
+    comprobante,
+    referenciaComprobante,
+    descripcionMovimiento,
+    articuloId,
+    codigoArticulo,
+    nombreArticulo,
+    codigoArticuloProveedor,
+    cantidadOriginal,
+    signoMovimiento,
+    cantidad,
+    tipoMovimiento,
+    fechaVencimientoPartida,
+    diasVencimientoPartida,
+    @diasParaVencPart AS diasParametroVencimiento,
+    destacarVencimiento,
+    esIRO,
+    iroAVerificar,
+    clasif2,
+    clasif2Nombre,
+    clasif6,
+    clasif6Nombre,
+    CASE
+        WHEN clasif2 = '0004'
+        THEN (1.0 / NULLIF(factorHomogeneizacion, 0)) * cantidad
+        ELSE NULL
+    END AS m2Recibidos,
+    ROUND(
+        CASE
+            WHEN clasif2 = '0027' THEN peso
+            ELSE NULL
+        END,
+        2
+    ) AS kgRecibidos,
+    CAST(
+        ROUND(pesoRealXUniCalc, 2) AS decimal(10, 2)
+    ) AS pesoRealXUni,
+    CASE
+        WHEN clasif2 = '0027' THEN pesoTeoricoXUni
+        ELSE NULL
+    END AS pesoTeoricoXUni,
+    CASE
+        WHEN clasif2 = '0027'
+         AND NULLIF(pesoRealXUniCalc, 0) IS NOT NULL
+        THEN (pesoTeoricoXUni / NULLIF(pesoRealXUniCalc, 0)) - 1
+        ELSE NULL
+    END AS kgTeoricoVsPesoReal,
+    CASE
+        WHEN esFacturable = 1 THEN 'Es total'
+        ELSE 'Sin facturar'
+    END AS estadoFacturacion
+FROM final_data
+ORDER BY
+    fechaAuditoria DESC,
+    rubroCompra,
+    comprobante,
+    nombreArticulo;
     `;
     let pool = await sql.connect(plataforma);
     let getResponse = await pool
