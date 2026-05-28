@@ -1025,9 +1025,11 @@ router.route("/jsontosheet").get(async (req, res) => {
 
     console.log("▶ Iniciando sincronización los productos, categorías y urls");
     await sincronizarCompleto();
+    await sincronizarCompletoV2();
 
     console.log("▶ Iniciando sincronización OpenAI");
     await syncOpenAI();
+    await syncOpenAIv2();
 
     return res.status(200).send("Generado correctamente");
   } catch (err) {
