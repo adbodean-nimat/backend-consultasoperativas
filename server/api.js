@@ -27,7 +27,7 @@ import { logEnviadoOk, logErrorEnvio } from "./whatsapp_logger.js";
 import { initJobs, startJobs, stopJobs } from "./jobs.js";
 import { importarMasivoFinanzas } from "./controllers/importController.js";
 import { sincronizarCompleto } from "./sync-productos-cateogorias.js";
-import { sincronizarCompletoV2 } from "./sync-productos-cateogorias.v2.js";
+import { sincronizarCompletoV2 } from "./sync-productos-categorias.v2.js";
 import { syncOpenAI } from "./sync-openai.js";
 import { syncOpenAIv2 } from "./sync-openai.v2.js";
 import {
