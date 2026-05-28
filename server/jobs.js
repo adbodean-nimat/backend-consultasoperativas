@@ -1,15 +1,19 @@
-import dotenv from 'dotenv';
+import dotenv from "dotenv";
 dotenv.config();
-import jsonToExcel from './jsontoexcel.js';
-import { sincronizarCompleto } from './sync-productos-cateogorias.js';
-import { syncOpenAI } from './sync-openai.js';
-import { CronJob } from 'cron';
+import jsonToExcel from "./jsontoexcel.js";
+import { sincronizarCompleto } from "./sync-productos-cateogorias.js";
+import { sincronizarCompletoV2 } from "./sync-productos-cateogorias.v2.js";
+import { syncOpenAI } from "./sync-openai.js";
+import { syncOpenAIv2 } from "./sync-openai.v2.js";
+import { CronJob } from "cron";
 
 let job_lunvie = null;
 let job_sab = null;
 
 function stopIfRunning(job) {
-  try { if (job) job.stop(); } catch (_) {}
+  try {
+    if (job) job.stop();
+  } catch (_) {}
 }
 
 export async function initJobs() {
@@ -20,7 +24,7 @@ export async function initJobs() {
     // const data = Array.isArray(raw) ? raw[0] : raw;
     const data = raw;
 
-    console.log('Configuración de actualización obtenida', data);
+    console.log("Configuración de actualización obtenida", data);
 
     // Siempre limpiar jobs previos antes de recrear
     stopIfRunning(job_lunvie);
@@ -35,15 +39,17 @@ export async function initJobs() {
           await jsonToExcel.actualizadoWeb();
           console.log("▶ Iniciando sincronización");
           await sincronizarCompleto();
+          await sincronizarCompletoV2();
           console.log("▶ Iniciando SyncOpenAI");
           await syncOpenAI();
+          await syncOpenAIv2();
         } catch (error) {
-          console.error('Error job_lunvie:', error);
-        } 
+          console.error("Error job_lunvie:", error);
+        }
       },
       null,
       false,
-      'America/Argentina/Buenos_Aires'
+      "America/Argentina/Buenos_Aires",
     );
 
     job_sab = new CronJob(
@@ -55,30 +61,32 @@ export async function initJobs() {
           await jsonToExcel.actualizadoWeb();
           console.log("▶ Iniciando sincronización");
           await sincronizarCompleto();
+          await sincronizarCompletoV2();
           console.log("▶ Iniciando SyncOpenAI");
           await syncOpenAI();
+          await syncOpenAIv2();
         } catch (error) {
-          console.error('Error job_sab:', error);
-        } 
+          console.error("Error job_sab:", error);
+        }
       },
       null,
       false,
-      'America/Argentina/Buenos_Aires'
+      "America/Argentina/Buenos_Aires",
     );
 
     if (data.actualizacion_automatica === true) {
       job_lunvie.start();
       job_sab.start();
-      console.log('Actualización automática: Iniciado');
+      console.log("Actualización automática: Iniciado");
     } else {
       job_lunvie.stop();
       job_sab.stop();
-      console.log('Actualización automática: Detenido');
+      console.log("Actualización automática: Detenido");
     }
   } catch (error) {
     console.error(error);
   } finally {
-    console.log('Todas las tareas están hechas');
+    console.log("Todas las tareas están hechas");
   }
 }
 
