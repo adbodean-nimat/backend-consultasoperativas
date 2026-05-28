@@ -2034,16 +2034,128 @@ iros AS (
         TRY_CONVERT(int, RIGHT(ENAP_PK, 10)) AS numeroIRO
     FROM SIST_ENAP WITH (NOLOCK)
 ),
-final_data AS (
+agrupado AS (
     SELECT
-        b.*,
-        i.ENAP_PK AS enapPk,
+        b.proveedorId,
+        b.proveedorNombre,
+        b.fechaAuditoria,
+        b.fechaComprobante,
+        b.division,
+        b.sucursal,
+        b.tipoComprobante,
+        b.numeroComprobante,
+        b.comprobante,
+        b.referenciaComprobante,
+        b.articuloId,
+        b.codigoArticulo,
+        b.nombreArticulo,
+        b.codigoArticuloProveedor,
+        b.clasif2,
+        b.clasif2Nombre,
+        b.clasif6,
+        b.clasif6Nombre,
+        b.factorHomogeneizacion,
+        b.pesoTeoricoXUni,
+        b.esFacturable,
+        b.rubroCompra,
+        b.compradorCodigo,
+        b.compradorNombre,
+        b.rubroCompraNombre,
+        b.fechaOrdenCompra,
+        b.OrdenCompra,
+        b.diasOrdenCompra_Auditoria,
+
+        CASE
+            WHEN b.diasVencimientoPartida IS NOT NULL
+             AND b.diasVencimientoPartida < @diasParaVencPart
+            THEN b.fechaVencimientoPartida
+            ELSE NULL
+        END AS fechaVencimientoPartida,
+
+        CASE
+            WHEN b.diasVencimientoPartida IS NOT NULL
+             AND b.diasVencimientoPartida < @diasParaVencPart
+            THEN b.diasVencimientoPartida
+            ELSE NULL
+        END AS diasVencimientoPartida,
+
         CASE
             WHEN b.diasVencimientoPartida IS NOT NULL
              AND b.diasVencimientoPartida < @diasParaVencPart
             THEN CAST(1 AS bit)
             ELSE CAST(0 AS bit)
         END AS destacarVencimiento,
+
+        SUM(b.cantidad) AS cantidad,
+
+        MAX(b.cantidadOriginal) AS cantidadOriginal,
+        MAX(b.signoMovimiento) AS signoMovimiento,
+        MAX(b.tipoMovimiento) AS tipoMovimiento,
+        MAX(b.descripcionMovimiento) AS descripcionMovimiento,
+
+        MAX(b.peso) AS peso,
+        MAX(b.pesoRealXUniCalc) AS pesoRealXUniCalc,
+        MAX(b.cantidadTotalArticuloComprobante) AS cantidadTotalArticuloComprobante,
+
+        MIN(b.movimientoId) AS movimientoId,
+        MIN(b.renglonMovimiento) AS renglonMovimiento
+
+    FROM base_calc b
+    GROUP BY
+        b.proveedorId,
+        b.proveedorNombre,
+        b.fechaAuditoria,
+        b.fechaComprobante,
+        b.division,
+        b.sucursal,
+        b.tipoComprobante,
+        b.numeroComprobante,
+        b.comprobante,
+        b.referenciaComprobante,
+        b.articuloId,
+        b.codigoArticulo,
+        b.nombreArticulo,
+        b.codigoArticuloProveedor,
+        b.clasif2,
+        b.clasif2Nombre,
+        b.clasif6,
+        b.clasif6Nombre,
+        b.factorHomogeneizacion,
+        b.pesoTeoricoXUni,
+        b.esFacturable,
+        b.rubroCompra,
+        b.compradorCodigo,
+        b.compradorNombre,
+        b.rubroCompraNombre,
+        b.fechaOrdenCompra,
+        b.OrdenCompra,
+        b.diasOrdenCompra_Auditoria,
+
+        CASE
+            WHEN b.diasVencimientoPartida IS NOT NULL
+             AND b.diasVencimientoPartida < @diasParaVencPart
+            THEN b.fechaVencimientoPartida
+            ELSE NULL
+        END,
+
+        CASE
+            WHEN b.diasVencimientoPartida IS NOT NULL
+             AND b.diasVencimientoPartida < @diasParaVencPart
+            THEN b.diasVencimientoPartida
+            ELSE NULL
+        END,
+
+        CASE
+            WHEN b.diasVencimientoPartida IS NOT NULL
+             AND b.diasVencimientoPartida < @diasParaVencPart
+            THEN CAST(1 AS bit)
+            ELSE CAST(0 AS bit)
+        END
+),
+final_data AS (
+    SELECT
+        b.*,
+        i.ENAP_PK AS enapPk,
         CASE
             WHEN b.tipoComprobante = 'IRO' THEN CAST(1 AS bit)
             ELSE CAST(0 AS bit)
@@ -2053,7 +2165,7 @@ final_data AS (
             WHEN b.tipoComprobante = 'IRO' THEN CAST(1 AS bit)
             ELSE CAST(0 AS bit)
         END AS iroAVerificar
-    FROM base_calc b
+    FROM agrupado b
     LEFT JOIN iros i
         ON b.numeroComprobante = i.numeroIRO
        AND b.tipoComprobante = i.tipoIRO
