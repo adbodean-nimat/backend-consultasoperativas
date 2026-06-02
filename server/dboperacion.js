@@ -2406,6 +2406,89 @@ async function obtenerClientesWhatsapp(dias_vencido, saldo_minimo) {
   return getResponse.recordsets;
 }
 
+async function obtenerClientesRevendedorWhatsapp(dias_vencido, saldo_minimo) {
+  let pool = await sql.connect(plataforma);
+  let getResponse = await pool
+    .request()
+    .input("DiasVencido", sql.Int, dias_vencido)
+    .input("SaldoMinimo", sql.Decimal(18, 2), saldo_minimo)
+    .query(
+      `SELECT
+    CliIN.CLIE_CLIENTE AS cliente,
+    CliIN.CLIE_NOMBRE AS nombre,
+    LTRIM(RTRIM(CliIN.CLIE_FAX)) AS celular_original,
+
+    REPLACE(
+        REPLACE(
+            REPLACE(
+                REPLACE(
+                    REPLACE(LTRIM(RTRIM(CliIN.CLIE_FAX)), ' ', ''),
+                '-', ''),
+            '(', ''),
+        ')', ''),
+    '+', '') AS celular_limpio,
+
+    SUM(
+        (CASE WHEN CTECCab.CTEC_SIGNO = 'H' THEN -1 ELSE 1 END)
+        * VCTCCab.VCTC_SAL_ORI
+    ) AS total_saldo,
+
+    COUNT(*) AS cantidad_comprobantes,
+
+    'REVENDEDOR' AS tipo_envio
+
+FROM CCOB_VCTC VCTCCab
+
+INNER JOIN CCOB_CTEC CTECCab
+    ON VCTCCab.VCTC_CTACTE_CTEC = CTECCab.CTEC_CTACTE_CTEC
+
+INNER JOIN CCOB_CVCC CVCCCab
+    ON CVCCCab.CVCC_CTACTE_CTEC = CTECCab.CTEC_CTACTE_CTEC
+
+INNER JOIN CCOB_CLIE CliIN
+    ON CTECCab.CTEC_CLIENTE = CliIN.CLIE_CLIENTE
+
+INNER JOIN CCOB_CVCL
+    ON CVCCCab.CVCC_DIVISION_CVCL = CVCL_DIVISION_CVCL
+    AND CVCCCab.CVCC_SUCURSAL_CVCL = CVCL_SUCURSAL_IMP
+    AND CVCCCab.CVCC_TIPO_CVCL = CVCL_TIPO_VAR
+    AND CVCCCab.CVCC_NUMERO_CVCL = CVCL_NUMERO_CVCL
+
+INNER JOIN SIST_DIVI
+    ON CTECCab.CTEC_DIVISION = DIVI_DIVISION
+
+INNER JOIN SIST_MONE
+    ON CTECCab.CTEC_MONEDA = MONE_MONEDA
+
+INNER JOIN CCOB_TCCB
+    ON CVCCCab.CVCC_TIPO_CVCL = TCCB_TIPO_COM
+
+INNER JOIN CCOB_TCBV
+    ON TCBV_TIPO_VAR = TCCB_TIPO_COM
+    AND TCBV_ES_DIF_CAMBIO = 0
+
+WHERE DATEADD(DAY, @DiasVencido, CVCL_FECHA_EMI) < CONVERT(DATE, GETDATE())
+    AND VCTCCab.VCTC_SAL_ORI > 0
+    AND NULLIF(LTRIM(RTRIM(CliIN.CLIE_FAX)), '') IS NOT NULL
+    AND CliIN.CLIE_CLASIF_5 = '010'
+    AND CliIN.CLIE_CLASIF_1 IN ('REA', 'RAC', 'REB', 'RBC', 'REC', 'RCC')
+    AND CVCCCab.CVCC_DIVISION_CVCL = 1
+
+GROUP BY
+    CliIN.CLIE_CLIENTE,
+    CliIN.CLIE_NOMBRE,
+    CliIN.CLIE_FAX
+
+HAVING SUM(
+    (CASE WHEN CTECCab.CTEC_SIGNO = 'H' THEN -1 ELSE 1 END)
+    * VCTCCab.VCTC_SAL_ORI
+) > @SaldoMinimo
+
+ORDER BY CliIN.CLIE_NOMBRE ASC;`,
+    );
+  return getResponse.recordsets;
+}
+
 async function obtenerDetalleDeudaPorCliente(cliente, dias_vencido) {
   let pool = await sql.connect(plataforma);
   let getResponse = await pool
@@ -2414,6 +2497,79 @@ async function obtenerDetalleDeudaPorCliente(cliente, dias_vencido) {
     .input("DiasVencido", sql.Int, dias_vencido || 8)
     .query(
       "SELECT CAST(CVCL_FECHA_EMI AS DATE) AS fecha_comprobante, CONVERT(VARCHAR(10), CVCCCab.CVCC_SUCURSAL_CVCL) + ' - ' + CVCCCab.CVCC_TIPO_CVCL + ' - ' + CONVERT(VARCHAR(20), CVCCCab.CVCC_NUMERO_CVCL) AS comprobante, CAST(DATEADD(DAY, @DiasVencido, CVCL_FECHA_EMI) AS DATE) AS fecha_vencimiento, CASE WHEN CTECCab.CTEC_SIGNO = 'H' THEN -1 ELSE 1 END * CTECCab.CTEC_IMP_TOT_LOC AS importe_total, CASE WHEN CTECCab.CTEC_SIGNO = 'H' THEN -1 ELSE 1 END * VCTCCab.VCTC_SAL_ORI AS saldo FROM CCOB_VCTC VCTCCab INNER JOIN CCOB_CTEC CTECCab ON VCTCCab.VCTC_CTACTE_CTEC = CTECCab.CTEC_CTACTE_CTEC INNER JOIN CCOB_CVCC CVCCCab ON CVCCCab.CVCC_CTACTE_CTEC = CTECCab.CTEC_CTACTE_CTEC INNER JOIN CCOB_CLIE CliIN ON CTECCab.CTEC_CLIENTE = CliIN.CLIE_CLIENTE INNER JOIN SIST_DIVI ON CTECCab.CTEC_DIVISION = DIVI_DIVISION INNER JOIN CCOB_CVCL ON CVCCCab.CVCC_DIVISION_CVCL = CVCL_DIVISION_CVCL AND CVCCCab.CVCC_SUCURSAL_CVCL = CVCL_SUCURSAL_IMP AND CVCCCab.CVCC_TIPO_CVCL = CVCL_TIPO_VAR AND CVCCCab.CVCC_NUMERO_CVCL = CVCL_NUMERO_CVCL INNER JOIN SIST_MONE ON CTECCab.CTEC_MONEDA = MONE_MONEDA INNER JOIN CCOB_TCCB ON CVCCCab.CVCC_TIPO_CVCL = TCCB_TIPO_COM INNER JOIN CCOB_TCBV ON TCBV_TIPO_VAR = TCCB_TIPO_COM AND TCBV_ES_DIF_CAMBIO = 0 INNER JOIN CCOB_CPCL ON CTECCab.CTEC_COND_PAGO = CPCL_COND_PAGO WHERE DATEADD(DAY, @DiasVencido, CVCL_FECHA_EMI) < CONVERT(DATE, GETDATE()) AND VCTCCab.VCTC_SAL_ORI > 0 AND CliIN.CLIE_CLASIF_5 = '010' AND CliIN.CLIE_CLASIF_6 = 'A' AND CVCCCab.CVCC_DIVISION_CVCL = 1 AND CliIN.CLIE_CLIENTE = @cliente ORDER BY CVCL_FECHA_EMI ASC, CVCCCab.CVCC_NUMERO_CVCL ASC;",
+    );
+  return getResponse.recordsets;
+}
+
+async function obtenerDetalleRevendedorDeudaPorCliente(cliente, dias_vencido) {
+  let pool = await sql.connect(plataforma);
+  let getResponse = await pool
+    .request()
+    .input("cliente", sql.Int, cliente)
+    .input("DiasVencido", sql.Int, dias_vencido || 8)
+    .query(
+      `SELECT
+    CONVERT(VARCHAR(10), CVCL_FECHA_EMI, 23) AS fecha_comprobante,
+
+    CONVERT(VARCHAR(10), CVCCCab.CVCC_SUCURSAL_CVCL)
+        + ' - ' + CVCCCab.CVCC_TIPO_CVCL
+        + ' - ' + CONVERT(VARCHAR(20), CVCCCab.CVCC_NUMERO_CVCL) AS comprobante,
+
+    CONVERT(VARCHAR(10), DATEADD(DAY, @DiasVencido, CVCL_FECHA_EMI), 23) AS fecha_vencimiento,
+
+    CASE
+        WHEN CTECCab.CTEC_SIGNO = 'H' THEN -1
+        ELSE 1
+    END * CTECCab.CTEC_IMP_TOT_LOC AS importe_total,
+
+    CASE
+        WHEN CTECCab.CTEC_SIGNO = 'H' THEN -1
+        ELSE 1
+    END * VCTCCab.VCTC_SAL_ORI AS saldo
+
+FROM CCOB_VCTC VCTCCab
+
+INNER JOIN CCOB_CTEC CTECCab
+    ON VCTCCab.VCTC_CTACTE_CTEC = CTECCab.CTEC_CTACTE_CTEC
+
+INNER JOIN CCOB_CVCC CVCCCab
+    ON CVCCCab.CVCC_CTACTE_CTEC = CTECCab.CTEC_CTACTE_CTEC
+
+INNER JOIN CCOB_CLIE CliIN
+    ON CTECCab.CTEC_CLIENTE = CliIN.CLIE_CLIENTE
+
+INNER JOIN SIST_DIVI
+    ON CTECCab.CTEC_DIVISION = DIVI_DIVISION
+
+INNER JOIN CCOB_CVCL
+    ON CVCCCab.CVCC_DIVISION_CVCL = CVCL_DIVISION_CVCL
+    AND CVCCCab.CVCC_SUCURSAL_CVCL = CVCL_SUCURSAL_IMP
+    AND CVCCCab.CVCC_TIPO_CVCL = CVCL_TIPO_VAR
+    AND CVCCCab.CVCC_NUMERO_CVCL = CVCL_NUMERO_CVCL
+
+INNER JOIN SIST_MONE
+    ON CTECCab.CTEC_MONEDA = MONE_MONEDA
+
+INNER JOIN CCOB_TCCB
+    ON CVCCCab.CVCC_TIPO_CVCL = TCCB_TIPO_COM
+
+INNER JOIN CCOB_TCBV
+    ON TCBV_TIPO_VAR = TCCB_TIPO_COM
+    AND TCBV_ES_DIF_CAMBIO = 0
+
+INNER JOIN CCOB_CPCL
+    ON CTECCab.CTEC_COND_PAGO = CPCL_COND_PAGO
+
+WHERE DATEADD(DAY, @DiasVencido, CVCL_FECHA_EMI) < CONVERT(DATE, GETDATE())
+    AND VCTCCab.VCTC_SAL_ORI > 0
+    AND CliIN.CLIE_CLASIF_5 = '010'
+    AND CliIN.CLIE_CLASIF_1 IN ('REA', 'RAC', 'REB', 'RBC', 'REC', 'RCC')
+    AND CVCCCab.CVCC_DIVISION_CVCL = 1
+    AND CliIN.CLIE_CLIENTE = @cliente
+
+ORDER BY
+    CVCL_FECHA_EMI ASC,
+    CVCCCab.CVCC_NUMERO_CVCL ASC;`,
     );
   return getResponse.recordsets;
 }
@@ -2494,4 +2650,7 @@ export default {
   StockRotNPOCTerminacion: StockRotNPOCTerminacion,
   obtenerClientesWhatsapp: obtenerClientesWhatsapp,
   obtenerDetalleDeudaPorCliente: obtenerDetalleDeudaPorCliente,
+  obtenerClientesRevendedorWhatsapp: obtenerClientesRevendedorWhatsapp,
+  obtenerDetalleRevendedorDeudaPorCliente:
+    obtenerDetalleRevendedorDeudaPorCliente,
 };

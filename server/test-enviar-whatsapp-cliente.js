@@ -26,6 +26,7 @@ async function testEnvio() {
             telefono: cliente.celular,
             estado: "SIN_PDF",
             errorMessage: cliente.motivo,
+            tipoEnvio: "CLIENTE",
           });
           continue;
         }
@@ -35,6 +36,7 @@ async function testEnvio() {
             clienteId: cliente.cliente,
             clienteNombre: cliente.nombre,
             estado: "SIN_TELEFONO",
+            tipoEnvio: "CLIENTE",
           });
           continue;
         }
@@ -60,6 +62,7 @@ async function testEnvio() {
           whatsappMessageId: envio.result?.messages?.[0]?.id || null,
           estado: "ENVIADO",
           metaResponse: envio.result,
+          tipoEnvio: "CLIENTE",
         });
 
         // 👇 pequeño delay para no saturar Meta
@@ -76,6 +79,7 @@ async function testEnvio() {
           templateName: process.env.WHATSAPP_TEMPLATE_NAME,
           estado: "ERROR",
           errorMessage: error.message,
+          tipoEnvio: "CLIENTE",
         });
       }
     }
