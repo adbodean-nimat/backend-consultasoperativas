@@ -3525,6 +3525,7 @@ async function obtenerRegistrarEnvioWhatsapp(fecha) {
       cliente_nombre,
       telefono,
       pdf_filename,
+      pdf_path,
       template_name,
       whatsapp_message_id,
       estado,
