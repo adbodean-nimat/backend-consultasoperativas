@@ -6,6 +6,7 @@
 *.log
 *.csv
 /secrets
+/test
 .prettierignore
 .prettierrc
 setting.json

@@ -36,7 +36,7 @@ export async function generarPdfsAvisosDeudaRevendedores() {
       tipoEnvio: item.tipo_envio,
     };
 
-    const filename = `aviso-deuda-${data.cliente}.pdf`;
+    const filename = `AVISO DE DEUDA VENCIDA - ${data.cliente}-${data.nombre}.pdf`;
     const html = avisoDeudaTemplate(data);
 
     const pdfPath = await generarPdfDesdeHtml(html, filename);
@@ -86,7 +86,7 @@ export async function generarPdfsAvisosDeuda() {
       tipoEnvio: "CLIENTE",
     };
 
-    const filename = `aviso-deuda-${data.cliente}.pdf`;
+    const filename = `AVISO DE DEUDA VENCIDA - ${data.cliente} - ${data.nombre}.pdf`;
     const html = avisoDeudaTemplate(data);
 
     const pdfPath = await generarPdfDesdeHtml(html, filename);

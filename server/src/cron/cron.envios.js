@@ -1,10 +1,7 @@
 import dotenv from "dotenv";
 dotenv.config();
 import cron from "node-cron";
-import {
-  procesoEnvio,
-  procesoEnvioRevendedores,
-} from "../services/procesoEnvio.service.js";
+import { procesoEnvioRevendedores } from "../services/procesoEnvio.service.js";
 import Pg from "../../dboperacion_pg.js";
 
 let task = null;
@@ -21,7 +18,7 @@ export async function recargarCronDesdeDB() {
   task = cron.schedule(
     config.cron_schedule,
     async () => {
-      await procesoEnvio();
+      //await procesoEnvio();
       await procesoEnvioRevendedores();
     },
     {
