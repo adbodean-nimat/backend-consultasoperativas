@@ -19,7 +19,7 @@ export async function generarPdfDesdeHtml(
   const outputPath = path.join(outputDir, nombreArchivo);
 
   const browser = await puppeteer.launch({
-    headless: true,
+    headless: "new",
     args: ["--no-sandbox", "--disable-setuid-sandbox"],
   });
 

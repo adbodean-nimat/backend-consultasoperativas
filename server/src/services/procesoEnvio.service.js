@@ -160,6 +160,6 @@ export async function procesoEnvioRevendedores() {
 
     console.log("✅ Proceso finalizado");
   } catch (error) {
-    console.error("❌ Error procesoEnvio:", error);
+    console.error("❌ Error procesoEnvioRevendedores:", error);
   }
 }
