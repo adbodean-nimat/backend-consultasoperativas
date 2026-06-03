@@ -1,20 +1,20 @@
-import { formatMoney, formatDate } from '../utils/formatters.js';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import { formatMoney, formatDate } from "../utils/formatters.js";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const imagePath = path.join(__dirname, '../assets/membretada-2025.png');
-const imageBase64 = fs.readFileSync(imagePath).toString('base64');
+const imagePath = path.join(__dirname, "../assets/membretada-2025.png");
+const imageBase64 = fs.readFileSync(imagePath).toString("base64");
 
 const imgSrc = `data:image/png;base64,${imageBase64}`;
 
 export default function avisoDeudaTemplate(data) {
-    const comprobantesRows = data.comprobantes
-        .map((item) => {
-            return `
+  const comprobantesRows = data.comprobantes
+    .map((item) => {
+      return `
         <tr>
           <td>${formatDate(item.fecha_comprobante)}</td>
           <td>${item.comprobante}</td>
@@ -23,10 +23,10 @@ export default function avisoDeudaTemplate(data) {
           <td class="right">${formatMoney(item.saldo)}</td>
         </tr>
       `;
-        })
-        .join('');
+    })
+    .join("");
 
-    return `
+  return `
 <!DOCTYPE html>
 <html lang="es-AR">
 <head>
@@ -36,7 +36,7 @@ export default function avisoDeudaTemplate(data) {
   <style>
   a {
   color: #007c3b;
-  text-decoration: none;
+  text-decoration: underline;
   font-weight: bold;
 }
 
@@ -44,7 +44,7 @@ a:hover {
   text-decoration: underline;
 }
     body {
-      font-family: Arial, Helvetica, sans-serif;
+      font-family: "Liberation Sans", "DejaVu Sans", Arial, sans-serif;
       color: #222;
       margin: 0;
       padding: 32px;
@@ -323,15 +323,17 @@ a:hover {
   </p>
 
   <p class="mi-cuenta-link">
-        🔗 <a href="https://miscuentas.nimat.com.ar/CAD/login.aspx" target="_blank">
+        <strong>Acceso:</strong>
+        <a href="https://miscuentas.nimat.com.ar/CAD/login.aspx" target="_blank">
           Ingresar a Mi cuenta
         </a>
   </p>
 
 <p class="mi-cuenta-link">
-  📄 <a href="https://www.nimat.com.ar/Content/Images/uploaded/pdf/Instructivo_Mi_Cuenta.pdf" target="_blank">
-    Ver instructivo de uso
-  </a>
+        <strong>Instructivo:</strong>
+        <a href="https://www.nimat.com.ar/Content/Images/uploaded/pdf/Instructivo_Mi_Cuenta.pdf" target="_blank">
+          Click aquí para ver el instructivo de Mi cuenta
+        </a>
 </p>
 </div>
   </div>
