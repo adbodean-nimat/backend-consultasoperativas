@@ -3,11 +3,33 @@ import { generarPdfDesdeHtml } from "../services/pdf.service.js";
 import Db from "../../dboperacion.js";
 
 export async function generarPdfsAvisosDeudaRevendedores() {
+  const clientes = await Db.obtenerClientesWhatsapp(8, 1000);
   const revendedores = await Db.obtenerClientesRevendedorWhatsapp(8, 1000);
+
+  const clientesDuplicados = clientes[0].filter((item) => {
+    return revendedores[0].find((revendedor) => {
+      return revendedor.cliente === item.cliente;
+    });
+  });
+
+  const revendedorFiltrados = revendedores[0].filter((item) => {
+    return !clientesDuplicados.find((cliente) => {
+      return cliente.cliente === item.cliente;
+    });
+  });
+
+  /*   console.log("revendedores", revendedores[0].length);
+  console.log("clientes", clientes[0].length);
+  console.log("clientesDuplicados", clientesDuplicados.length);
+  console.log("revendedorFiltrados", revendedorFiltrados.length);
+  console.log(
+    "total",
+    revendedores[0].length + clientes[0].length - clientesDuplicados.length,
+  ); */
 
   const resultados = [];
 
-  for (const item of revendedores[0]) {
+  for (const item of revendedorFiltrados) {
     const detalle = await Db.obtenerDetalleRevendedorDeudaPorCliente(
       item.cliente,
       8,
@@ -24,7 +46,7 @@ export async function generarPdfsAvisosDeudaRevendedores() {
       continue;
     }
 
-    console.log(item);
+    //console.log(item);
 
     const data = {
       cliente: item.cliente,
@@ -86,7 +108,7 @@ export async function generarPdfsAvisosDeuda() {
       tipoEnvio: "CLIENTE",
     };
 
-    const filename = `AVISO DE DEUDA VENCIDA - ${data.cliente} - ${data.nombre}.pdf`;
+    const filename = `AVISO DE DEUDA VENCIDA - ${data.cliente}-${data.nombre}.pdf`;
     const html = avisoDeudaTemplate(data);
 
     const pdfPath = await generarPdfDesdeHtml(html, filename);
