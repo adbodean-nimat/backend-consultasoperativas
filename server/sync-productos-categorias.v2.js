@@ -510,10 +510,12 @@ export async function sincronizarCompletoV2() {
     const urlsMap = {};
     urlsRaw.forEach((row) => {
       const sku = (row.Sku || row.SKU || "").trim();
-      const FullDescriptionLarga = row.FullDescription.replace(
-        "<p>El precio corresponde a pago en efectivo, tarjeta de débito o medios electrónicos. Consúltanos por pagos en cuotas con tarjetas de crédito.</p>",
-        "",
-      );
+      const textoPrecio =
+        "El precio corresponde a pago en efectivo, tarjeta de débito o medios electrónicos. Consúltanos por pagos en cuotas con tarjetas de crédito.";
+
+      const FullDescriptionLarga = (row.FullDescription || "")
+        .replace(`<p>${textoPrecio}</p>`, "")
+        .replace(textoPrecio, "");
       //console.log(FullDescriptionLarga)
       if (sku) {
         urlsMap[sku] = {
@@ -913,4 +915,4 @@ Imagen: ${p.metadata.imageUrl}
 }
 
 // Ejecutar
-// sincronizarCompleto();
+sincronizarCompletoV2();
