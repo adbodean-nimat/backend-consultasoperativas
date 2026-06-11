@@ -915,4 +915,4 @@ Imagen: ${p.metadata.imageUrl}
 }
 
 // Ejecutar
-sincronizarCompletoV2();
+//sincronizarCompletoV2();
