@@ -511,7 +511,7 @@ export async function sincronizarCompletoV2() {
     urlsRaw.forEach((row) => {
       const sku = (row.Sku || row.SKU || "").trim();
       const FullDescriptionLarga = row.FullDescription.replace(
-        "<p>El precio corresponde a pago en efectivo, tarjeta de débito o medios electrónicos. Consúltanos por pagos en cuotas con tarjetas créditos.</p>",
+        "<p>El precio corresponde a pago en efectivo, tarjeta de débito o medios electrónicos. Consúltanos por pagos en cuotas con tarjetas de crédito.</p>",
         "",
       );
       //console.log(FullDescriptionLarga)
