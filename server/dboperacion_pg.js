@@ -3478,24 +3478,28 @@ async function registrarEnvioWhatsapp({
   errorMessage = null,
   metaResponse = null,
   tipoEnvio = null,
+  totalSaldo = null,
+  cantidadComprobantes = null,
 }) {
   const query = `
     INSERT INTO whatsapp_envios_deuda (
-      cliente_id,
-      cliente_nombre,
-      telefono,
-      pdf_filename,
-      pdf_path,
-      template_name,
-      media_id,
-      whatsapp_message_id,
-      estado,
-      error_message,
-      meta_response,
-      tipo_envio
-    )
-    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
-    RETURNING id
+            cliente_id,
+            cliente_nombre,
+            telefono,
+            pdf_filename,
+            pdf_path,
+            template_name,
+            media_id,
+            whatsapp_message_id,
+            estado,
+            error_message,
+            meta_response,
+            total_saldo,
+            cantidad_comprobantes,
+            tipo_envio
+        )
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+        RETURNING id
   `;
 
   const values = [
@@ -3510,6 +3514,8 @@ async function registrarEnvioWhatsapp({
     estado,
     errorMessage,
     metaResponse,
+    totalSaldo,
+    cantidadComprobantes,
     tipoEnvio,
   ];
 
@@ -3517,41 +3523,69 @@ async function registrarEnvioWhatsapp({
   return result.rows[0];
 }
 
-async function obtenerRegistrarEnvioWhatsapp(fecha) {
-  let query = `
-    SELECT
-      id,
-      cliente_id,
-      cliente_nombre,
-      telefono,
-      pdf_filename,
-      pdf_path,
-      template_name,
-      whatsapp_message_id,
-      estado,
-      error_message,
-      enviado_en,
-      tipo_envio
-    FROM whatsapp_envios_deuda
-  `;
-
+async function obtenerRegistrarEnvioWhatsapp(fecha, tipo_envio) {
+  const where = [];
   const values = [];
 
   if (fecha) {
     values.push(fecha);
-    query += `
-      WHERE enviado_en::date = $1::date
-    `;
+    where.push(`enviado_en::date = $${values.length}::date`);
   }
 
-  query += `
-    ORDER BY enviado_en DESC
-    LIMIT 300
-  `;
+  if (tipo_envio) {
+    values.push(tipo_envio);
+    where.push(`tipo_envio = $${values.length}`);
+  }
 
-  const result = await pool.query(query, values);
+  const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
 
-  return result.rows;
+  const logsQuery = `
+        SELECT
+            id,
+            cliente_id,
+            cliente_nombre,
+            telefono,
+            pdf_filename,
+            pdf_path,
+            template_name,
+            whatsapp_message_id,
+            estado,
+            error_message,
+            total_saldo,
+            cantidad_comprobantes,
+            tipo_envio,
+            enviado_en
+        FROM whatsapp_envios_deuda
+        ${whereSql}
+        ORDER BY enviado_en DESC
+        LIMIT 300
+    `;
+
+  const resumenQuery = `
+        SELECT
+            COALESCE(SUM(total_saldo) FILTER (WHERE estado = 'ENVIADO'), 0) AS total_notificado,
+            COUNT(*) FILTER (WHERE estado = 'ENVIADO') AS cantidad_envios,
+            COUNT(*) FILTER (WHERE estado = 'ERROR') AS cantidad_errores
+        FROM whatsapp_envios_deuda
+        ${whereSql}
+    `;
+
+  const [logsResult, resumenResult] = await Promise.all([
+    pool.query(logsQuery, values),
+    pool.query(resumenQuery, values),
+  ]);
+
+  /* res.json({
+        rows: logsResult.rows,
+        resumen: resumenResult.rows[0]
+    }); */
+
+  const result = {
+    rows: logsResult.rows,
+    resumen: resumenResult.rows[0],
+  };
+
+  return result;
 }
 
 async function obtenerConfigEnvio() {
@@ -3598,6 +3632,21 @@ async function actualizarConfigCron({
   );
 
   return result.rows[0];
+}
+
+async function obtenerRegistrarEnvioWhatsappPDF(id) {
+  const result = await pool.query(
+    `SELECT
+      id,
+      cliente_id,
+      cliente_nombre,
+      pdf_filename,
+      pdf_path
+      FROM whatsapp_envios_deuda
+    WHERE id = $1`,
+    [id],
+  );
+  return result.rows;
 }
 
 export default {
@@ -3819,4 +3868,5 @@ export default {
   actualizarEstadoEnvio,
   obtenerRegistrarEnvioWhatsapp,
   actualizarConfigCron,
+  obtenerRegistrarEnvioWhatsappPDF,
 };

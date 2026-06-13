@@ -56,6 +56,8 @@ export async function procesoEnvio() {
           whatsappMessageId: envio.result?.messages?.[0]?.id || null,
           estado: "ENVIADO",
           metaResponse: envio.result,
+          totalSaldo: cliente.total_saldo,
+          cantidadComprobantes: cliente.cantidad_comprobantes,
           tipoEnvio: cliente.tipoEnvio,
         });
 
@@ -73,6 +75,8 @@ export async function procesoEnvio() {
           templateName: process.env.WHATSAPP_TEMPLATE_NAME,
           estado: "ERROR",
           errorMessage: error.message,
+          totalSaldo: cliente.total_saldo,
+          cantidadComprobantes: cliente.cantidad_comprobantes,
           tipoEnvio: cliente.tipoEnvio,
         });
       }
@@ -136,6 +140,8 @@ export async function procesoEnvioRevendedores() {
           whatsappMessageId: envio.result?.messages?.[0]?.id || null,
           estado: "ENVIADO",
           metaResponse: envio.result,
+          totalSaldo: cliente.total_saldo,
+          cantidadComprobantes: cliente.cantidad_comprobantes,
           tipoEnvio: cliente.tipoEnvio,
         });
 
@@ -153,6 +159,8 @@ export async function procesoEnvioRevendedores() {
           templateName: process.env.WHATSAPP_TEMPLATE_NAME,
           estado: "ERROR",
           errorMessage: error.message,
+          totalSaldo: cliente.total_saldo,
+          cantidadComprobantes: cliente.cantidad_comprobantes,
           tipoEnvio: cliente.tipoEnvio,
         });
       }

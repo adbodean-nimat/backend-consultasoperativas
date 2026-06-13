@@ -8,9 +8,17 @@ export async function generarPdfDesdeHtml(
   html,
   nombreArchivo = "AVISO DE DEUDA VENCIDA.pdf",
 ) {
+  const date = new Date();
+  const fileRoute =
+    "/pdf/" +
+    date.getFullYear() +
+    "/" +
+    (date.getMonth() + 1) +
+    "/" +
+    date.getDate();
   const route = `${process.env.PDF_STORAGE_PATH}`;
   const routePath = path.normalize(route);
-  const outputDir = path.join(routePath, "/pdf");
+  const outputDir = path.join(routePath, fileRoute);
 
   if (!fs.existsSync(outputDir)) {
     fs.mkdirSync(outputDir, { recursive: true });

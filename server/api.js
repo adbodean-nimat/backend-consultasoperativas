@@ -1806,10 +1806,59 @@ router.route("/cron/avisosdeudavencida/stop").post(async (req, res) => {
 });
 
 router.route("/envios-deudavencida").get(async (req, res) => {
-  const fecha = req.query.fecha;
+  const { fecha, tipo_envio } = req.query;
 
-  const data = await Pg.obtenerRegistrarEnvioWhatsapp(fecha);
+  const data = await Pg.obtenerRegistrarEnvioWhatsapp(fecha, tipo_envio);
   res.status(200).json(data);
+});
+
+router.route("/envios-deudavencida-pdf/:id").get(async (req, res) => {
+  try {
+    const { id } = req.params;
+  
+    const result = await Pg.obtenerRegistrarEnvioWhatsappPDF(id);
+
+    if (result[0].length === 0) {
+      return res.status(404).json({
+        ok: false,
+        message: "No se encontró el registro de envío",
+      });
+    }
+
+    const envio = result[0];
+
+    if (!envio.pdf_path) {
+      return res.status(404).json({
+        ok: false,
+        message: "Este envío no tiene PDF asociado",
+      });
+    }
+
+    const pdfPath = path.resolve(envio.pdf_path);
+
+    if (!fs.existsSync(pdfPath)) {
+      return res.status(404).json({
+        ok: false,
+        message: "El archivo PDF no existe en el servidor",
+      });
+    }
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      `inline; filename="${envio.pdf_filename || `aviso-deuda-${envio.cliente_id}.pdf`}"`,
+    );
+
+    return res.sendFile(pdfPath);
+  } catch (error) {
+    console.error("Error al abrir PDF:", error);
+
+    return res.status(500).json({
+      ok: false,
+      message: "Error al abrir PDF",
+      error: error.message,
+    });
+  }
 });
 
 router.route("/obtenerdetalledeudaxcliente").get(async (req, res) => {

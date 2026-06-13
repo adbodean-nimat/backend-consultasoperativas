@@ -173,7 +173,7 @@ async function enviarTemplateDeudaConPdf({
 
   const result = await parseMetaResponse(response);
 
-  console.log("Respuesta Meta WhatsApp API:", JSON.stringify(result, null, 2));
+  //console.log("Respuesta Meta WhatsApp API:", JSON.stringify(result, null, 2));
 
   return {
     ok: true,

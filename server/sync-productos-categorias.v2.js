@@ -12,6 +12,7 @@ const EXCEL_URLS = process.env.EXCEL_URLS_PATH;
 const OUTPUT_JSON = process.env.OUTPUT_JSON_V2;
 const OUTPUT_TOON = process.env.OUTPUT_TOON_V2;
 const OUTPUT_TXT = process.env.OUTPUT_TXT_V2;
+const NIMAT_BASE_URL = "https://www.nimat.com.ar";
 
 async function getAccessToken() {
   const body = new URLSearchParams({
@@ -199,6 +200,104 @@ function toLowerNoAccents(s = "") {
 
 function normSpaces(s = "") {
   return String(s).replace(/\s+/g, " ").trim();
+}
+
+function decodeHtmlEntities(texto = "") {
+  const namedEntities = {
+    amp: "&",
+    apos: "'",
+    quot: '"',
+    nbsp: " ",
+    lt: "<",
+    gt: ">",
+    aacute: "á",
+    eacute: "é",
+    iacute: "í",
+    oacute: "ó",
+    uacute: "ú",
+    ntilde: "ñ",
+    Aacute: "Á",
+    Eacute: "É",
+    Iacute: "Í",
+    Oacute: "Ó",
+    Uacute: "Ú",
+    Ntilde: "Ñ",
+  };
+
+  return String(texto)
+    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(Number(code)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, code) =>
+      String.fromCharCode(parseInt(code, 16)),
+    )
+    .replace(/&([a-zA-Z]+);/g, (entity, name) => namedEntities[name] ?? entity);
+}
+
+function stripHtml(texto = "") {
+  return normSpaces(decodeHtmlEntities(String(texto).replace(/<[^>]+>/g, " ")));
+}
+
+function textoLinkEsFichaTecnica(texto = "") {
+  const normalizado = toLowerNoAccents(stripHtml(texto));
+  return /\bficha\s+tecnica\b/.test(normalizado);
+}
+
+function textoLinkEsManual(texto = "") {
+  const normalizado = toLowerNoAccents(stripHtml(texto));
+  return /\bmanual\b/.test(normalizado);
+}
+
+function absolutizarUrlNimat(href = "") {
+  const limpio = decodeHtmlEntities(href).trim();
+  if (!limpio || /^(javascript|mailto|tel):/i.test(limpio)) return null;
+  if (/^https?:\/\//i.test(limpio)) return limpio;
+
+  try {
+    return new URL(limpio, `${NIMAT_BASE_URL}/`).href;
+  } catch {
+    return null;
+  }
+}
+
+function extraerFichaTecnicaUrl(descripcion = "") {
+  const html = String(descripcion || "");
+  if (!html) return null;
+
+  const anchorRegex =
+    /<a\b[^>]*\bhref\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))[^>]*>([\s\S]*?)<\/a>/gi;
+  let match;
+
+  while ((match = anchorRegex.exec(html)) !== null) {
+    const href = match[1] || match[2] || match[3] || "";
+    const texto = match[4] || "";
+
+    if (!textoLinkEsFichaTecnica(texto)) continue;
+
+    const url = absolutizarUrlNimat(href);
+    if (url) return url;
+  }
+
+  return null;
+}
+
+function extraerManualUrl(descripcion = "") {
+  const html = String(descripcion || "");
+  if (!html) return null;
+
+  const anchorRegex =
+    /<a\b[^>]*\bhref\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))[^>]*>([\s\S]*?)<\/a>/gi;
+  let match;
+
+  while ((match = anchorRegex.exec(html)) !== null) {
+    const href = match[1] || match[2] || match[3] || "";
+    const texto = match[4] || "";
+
+    if (!textoLinkEsManual(texto)) continue;
+
+    const url = absolutizarUrlNimat(href);
+    if (url) return url;
+  }
+
+  return null;
 }
 
 function normalizeX(s = "") {
@@ -773,7 +872,10 @@ export async function sincronizarCompletoV2() {
           : false;
 
         const outletLine = isOutlet ? "Outlet: sí\n" : "Outlet: no\n";
-        // content limpio para embeddings (sin URL/imagen)
+        const fichaTecnicaUrl = extraerFichaTecnicaUrl(p.descripcion_larga);
+        const manualUrl = extraerManualUrl(p.descripcion_larga);
+
+        // content para embeddings
         const content = [
           `Nombre: ${p.nombre.trim()}`,
           p.marca ? `Marca: ${p.marca}` : "",
@@ -787,6 +889,8 @@ export async function sincronizarCompletoV2() {
             ? `Tags: ${keywordsFinalArr.slice(0, 40).join(", ")}`
             : "",
           outletLine.trimEnd(),
+          fichaTecnicaUrl ? `Ficha técnica: ${fichaTecnicaUrl}` : "",
+          manualUrl ? `Manual: ${manualUrl}` : "",
         ]
           .filter(Boolean)
           .join("\n");
@@ -802,6 +906,8 @@ export async function sincronizarCompletoV2() {
             sku: skuStr,
             nombre: p.nombre.trim().replaceAll("*", ""),
             descripcion: p.descripcion_larga,
+            ficha_tecnica_url: fichaTecnicaUrl,
+            manual_url: manualUrl,
             marca: p.marca,
             outlet: tags.includes("outlet"),
             categoria: mejorCategoria,
@@ -915,4 +1021,4 @@ Imagen: ${p.metadata.imageUrl}
 }
 
 // Ejecutar
-//sincronizarCompletoV2();
+// sincronizarCompletoV2();
