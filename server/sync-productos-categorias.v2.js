@@ -2,6 +2,7 @@ import dotenv from "dotenv";
 import { Dropbox } from "dropbox";
 import xlsx from "xlsx";
 import fs from "fs";
+import path from "path";
 import { encode } from "@toon-format/toon";
 
 dotenv.config();
@@ -12,7 +13,33 @@ const EXCEL_URLS = process.env.EXCEL_URLS_PATH;
 const OUTPUT_JSON = process.env.OUTPUT_JSON_V2;
 const OUTPUT_TOON = process.env.OUTPUT_TOON_V2;
 const OUTPUT_TXT = process.env.OUTPUT_TXT_V2;
+const OUTPUT_JSONL = process.env.OUTPUT_JSONL_V2
+  ? process.env.OUTPUT_JSONL_V2
+  : OUTPUT_JSON
+    ? OUTPUT_JSON.replace(/\.json$/i, "") + ".jsonl"
+    : "./productos_vectorstore.jsonl";
+const SYNC_STATE_PATH =
+  process.env.SYNC_PRODUCTOS_CATEGORIAS_STATE_PATH ||
+  path.join("storage", "sync-productos-categorias.v2.state.json");
 const NIMAT_BASE_URL = "https://www.nimat.com.ar";
+
+const DROPBOX_SOURCES = [
+  {
+    key: "categorias",
+    label: "categorías",
+    dropboxPath: EXCEL_CATEGORIAS,
+  },
+  {
+    key: "productos",
+    label: "productos",
+    dropboxPath: EXCEL_PRODUCTOS,
+  },
+  {
+    key: "urls",
+    label: "URLs de productos",
+    dropboxPath: EXCEL_URLS,
+  },
+];
 
 async function getAccessToken() {
   const body = new URLSearchParams({
@@ -49,6 +76,85 @@ async function ensureAccessToken() {
     expiresAt: now + ((t.expires_in ?? 3600) - 60) * 1000,
   };
   return _cachedAccess.token;
+}
+
+function readSyncState() {
+  try {
+    if (!fs.existsSync(SYNC_STATE_PATH)) {
+      return { files: {} };
+    }
+
+    return JSON.parse(fs.readFileSync(SYNC_STATE_PATH, "utf8"));
+  } catch (error) {
+    console.warn(
+      `⚠️ No se pudo leer el estado de sincronización (${SYNC_STATE_PATH}): ${error.message}`,
+    );
+    return { files: {} };
+  }
+}
+
+function normalizeDropboxMetadata(metadata) {
+  return {
+    id: metadata.id || "",
+    path: metadata.path_lower || metadata.path_display || metadata.name || "",
+    path_display: metadata.path_display || "",
+    rev: metadata.rev || "",
+    server_modified: metadata.server_modified || "",
+    client_modified: metadata.client_modified || "",
+    content_hash: metadata.content_hash || "",
+    size: metadata.size || 0,
+  };
+}
+
+function hasDropboxFileChanged(previous, current) {
+  if (!previous) return true;
+
+  if (previous.rev || current.rev) {
+    return previous.rev !== current.rev;
+  }
+
+  if (previous.content_hash || current.content_hash) {
+    return previous.content_hash !== current.content_hash;
+  }
+
+  if (previous.server_modified || current.server_modified) {
+    return previous.server_modified !== current.server_modified;
+  }
+
+  return previous.size !== current.size;
+}
+
+async function getDropboxFilesMetadata(dbx) {
+  return Promise.all(
+    DROPBOX_SOURCES.map(async (source) => {
+      const response = await dbx.filesGetMetadata({
+        path: source.dropboxPath,
+      });
+
+      return {
+        ...source,
+        metadata: normalizeDropboxMetadata(response.result),
+      };
+    }),
+  );
+}
+
+function writeSyncState(dropboxFiles) {
+  const nextState = {
+    updated_at: new Date().toISOString(),
+    files: dropboxFiles.reduce((acc, file) => {
+      acc[file.key] = file.metadata;
+      return acc;
+    }, {}),
+  };
+
+  const stateDir = path.dirname(SYNC_STATE_PATH);
+  if (stateDir && stateDir !== ".") {
+    fs.mkdirSync(stateDir, { recursive: true });
+  }
+
+  fs.writeFileSync(SYNC_STATE_PATH, JSON.stringify(nextState, null, 2), "utf8");
+  return nextState;
 }
 
 // Función para construir árbol de categorías
@@ -567,6 +673,24 @@ export async function sincronizarCompletoV2() {
     const token = await ensureAccessToken();
     const dbx = new Dropbox({ accessToken: token });
 
+    console.log("🔎 Verificando cambios en Dropbox...");
+    const dropboxFiles = await getDropboxFilesMetadata(dbx);
+    const previousSyncState = readSyncState();
+    const changedFiles = dropboxFiles.filter((file) =>
+      hasDropboxFileChanged(previousSyncState.files?.[file.key], file.metadata),
+    );
+
+    if (changedFiles.length === 0) {
+      console.log(
+        "✅ Sin cambios en Dropbox. No se descargan archivos ni se regeneran salidas.",
+      );
+      return { updated: false, changedFiles: [] };
+    }
+
+    console.log(
+      `   • Cambios detectados: ${changedFiles.map((file) => file.label).join(", ")}`,
+    );
+
     // 1. Cargar Excel de Categorías
     console.log("📥 Descargando categorías...");
     const resCat = await dbx.filesDownload({ path: EXCEL_CATEGORIAS });
@@ -927,23 +1051,14 @@ export async function sincronizarCompletoV2() {
 
     // Guardar productosLimpios en productos.json
     // Salida JSONL
-    const OUTPUT_JSONL = process.env.OUTPUT_JSONL_V2
-      ? process.env.OUTPUT_JSONL_V2
-      : OUTPUT_JSON
-        ? OUTPUT_JSON.replace(/\.json$/i, "") + ".jsonl"
-        : "./productos_vectorstore.jsonl";
-
-    const out = fs.createWriteStream(OUTPUT_JSONL, { encoding: "utf8" });
-
-    for (const doc of productosLimpios) {
-      out.write(JSON.stringify(doc) + "\n");
-    }
-
-    out.end(() => {
-      console.log(
-        `✅ JSONL generado: ${OUTPUT_JSONL} (${productosLimpios.length} docs)`,
-      );
-    });
+    fs.writeFileSync(
+      OUTPUT_JSONL,
+      productosLimpios.map((doc) => JSON.stringify(doc)).join("\n") + "\n",
+      "utf8",
+    );
+    console.log(
+      `✅ JSONL generado: ${OUTPUT_JSONL} (${productosLimpios.length} docs)`,
+    );
 
     fs.writeFileSync(OUTPUT_TOON, catalogoCompletoToTOON);
     fs.writeFileSync(
@@ -1006,6 +1121,8 @@ Imagen: ${p.metadata.imageUrl}
     console.log(
       `💾 Archivo generado: ${OUTPUT_TOON} (${(fs.statSync(OUTPUT_TOON).size / 1024).toFixed(2)} KB)\n`,
     );
+    writeSyncState(dropboxFiles);
+    console.log(`📝 Estado Dropbox actualizado: ${SYNC_STATE_PATH}`);
     //console.log(`📦 Tamaño JSON: ${(fs.statSync(OUTPUT_JSON).size / 1024).toFixed(2)} KB`);
     //console.log(`📦 Tamaño TOON: ${(fs.statSync(OUTPUT_TOON).size / 1024).toFixed(2)} KB\n`);
 
