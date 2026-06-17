@@ -1,9 +1,9 @@
 import dotenv from "dotenv";
 dotenv.config();
 import jsonToExcel from "./jsontoexcel.js";
-import { sincronizarCompleto } from "./sync-productos-cateogorias.js";
+// import { sincronizarCompleto } from "./sync-productos-cateogorias.js";
 import { sincronizarCompletoV2 } from "./sync-productos-categorias.v2.js";
-import { syncOpenAI } from "./sync-openai.js";
+// import { syncOpenAI } from "./sync-openai.js";
 import { syncOpenAIv2 } from "./sync-openai.v2.js";
 import { CronJob } from "cron";
 
@@ -38,10 +38,10 @@ export async function initJobs() {
           await jsonToExcel.jsontosheet();
           await jsonToExcel.actualizadoWeb();
           console.log("▶ Iniciando sincronización");
-          await sincronizarCompleto();
+          // await sincronizarCompleto();
           await sincronizarCompletoV2();
           console.log("▶ Iniciando SyncOpenAI");
-          await syncOpenAI();
+          // await syncOpenAI();
           await syncOpenAIv2();
         } catch (error) {
           console.error("Error job_lunvie:", error);
@@ -60,10 +60,10 @@ export async function initJobs() {
           await jsonToExcel.jsontosheet();
           await jsonToExcel.actualizadoWeb();
           console.log("▶ Iniciando sincronización");
-          await sincronizarCompleto();
+          // await sincronizarCompleto();
           await sincronizarCompletoV2();
           console.log("▶ Iniciando SyncOpenAI");
-          await syncOpenAI();
+          // await syncOpenAI();
           await syncOpenAIv2();
         } catch (error) {
           console.error("Error job_sab:", error);

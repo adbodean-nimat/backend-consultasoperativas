@@ -1,5 +1,4 @@
 import dotenv from "dotenv";
-import { Dropbox } from "dropbox";
 import xlsx from "xlsx";
 import fs from "fs";
 import path from "path";
@@ -49,19 +48,45 @@ async function getAccessToken() {
   const auth = Buffer.from(
     `${process.env.DROPBOX_APP_KEY}:${process.env.DROPBOX_APP_SECRET}`,
   ).toString("base64");
-  const res = await fetch("https://api.dropboxapi.com/oauth2/token", {
-    method: "POST",
-    headers: {
-      Authorization: `Basic ${auth}`,
-      "Content-Type": "application/x-www-form-urlencoded",
+
+  return withDropboxRetry(
+    async () => {
+      let res;
+
+      try {
+        res = await fetchWithTimeout(
+          "https://api.dropboxapi.com/oauth2/token",
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Basic ${auth}`,
+              "Content-Type": "application/x-www-form-urlencoded",
+            },
+            body,
+          },
+          20_000,
+        );
+      } catch (error) {
+        const wrapped = new Error(
+          `Dropbox OAuth token network error: ${formatFetchError(error)}`,
+        );
+        wrapped.code = getErrorCode(error);
+        wrapped.cause = error;
+        throw wrapped;
+      }
+
+      if (!res.ok) {
+        const errText = await readDropboxErrorResponse(res);
+        const error = new Error(`OAuth token error ${res.status}: ${errText}`);
+        error.status = res.status;
+        error.retryAfter = res.headers.get("retry-after");
+        throw error;
+      }
+
+      return res.json();
     },
-    body,
-  });
-  if (!res.ok) {
-    const errText = await res.text().catch(() => "");
-    throw new Error(`OAuth token error ${res.status}: ${errText}`);
-  }
-  return res.json();
+    { label: "Dropbox OAuth token" },
+  );
 }
 
 let _cachedAccess = null;
@@ -76,6 +101,215 @@ async function ensureAccessToken() {
     expiresAt: now + ((t.expires_in ?? 3600) - 60) * 1000,
   };
   return _cachedAccess.token;
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function getErrorCode(error) {
+  return error?.code || error?.cause?.code || error?.errno || "";
+}
+
+function formatFetchError(error) {
+  const parts = [
+    error?.message,
+    error?.name,
+    getErrorCode(error),
+    error?.cause?.message,
+  ].filter(Boolean);
+
+  return parts.join(" | ") || "sin detalle";
+}
+
+function isRetryableDropboxError(error) {
+  const status = error?.status || error?.response?.status;
+  const code = getErrorCode(error);
+
+  if (status === 429) return true;
+  if (status && status >= 500) return true;
+
+  return [
+    "ETIMEDOUT",
+    "ECONNRESET",
+    "ECONNREFUSED",
+    "EAI_AGAIN",
+    "ENOTFOUND",
+    "UND_ERR_CONNECT_TIMEOUT",
+    "UND_ERR_HEADERS_TIMEOUT",
+    "UND_ERR_BODY_TIMEOUT",
+  ].includes(code);
+}
+
+async function withDropboxRetry(
+  fn,
+  { retries = 3, baseDelayMs = 700, label = "Dropbox" } = {},
+) {
+  let lastError;
+
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error;
+
+      if (!isRetryableDropboxError(error) || attempt === retries) {
+        break;
+      }
+
+      const retryAfter = Number(error?.retryAfter || 0);
+      const backoff = baseDelayMs * Math.pow(2, attempt);
+      const jitter = Math.floor(Math.random() * 250);
+      const waitMs = (retryAfter > 0 ? retryAfter * 1000 : backoff) + jitter;
+
+      console.warn(
+        `⚠️ ${label}: retry ${attempt + 1}/${retries} en ${waitMs}ms - ${formatFetchError(error)}`,
+      );
+      await sleep(waitMs);
+    }
+  }
+
+  throw lastError;
+}
+
+function normalizeDropboxPath(filePath) {
+  if (!filePath || typeof filePath !== "string") return null;
+  const cleanPath = filePath.trim();
+  if (!cleanPath) return null;
+  return cleanPath.startsWith("/") ? cleanPath : `/${cleanPath}`;
+}
+
+async function fetchWithTimeout(url, options, timeoutMs) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    return await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    });
+  } catch (error) {
+    if (error?.name === "AbortError") {
+      const timeoutError = new Error(`timeout ${timeoutMs}ms`);
+      timeoutError.code = "ETIMEDOUT";
+      timeoutError.cause = error;
+      throw timeoutError;
+    }
+
+    throw error;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function readDropboxErrorResponse(response) {
+  const text = await response.text().catch(() => "");
+  return text || response.statusText || "sin detalle";
+}
+
+async function dropboxPostJson(accessToken, endpoint, body) {
+  return withDropboxRetry(
+    async () => {
+      let response;
+
+      try {
+        response = await fetchWithTimeout(
+          `https://api.dropboxapi.com/2/${endpoint}`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(body),
+          },
+          20_000,
+        );
+      } catch (error) {
+        const wrapped = new Error(
+          `Dropbox ${endpoint} network error: ${formatFetchError(error)}`,
+        );
+        wrapped.code = getErrorCode(error);
+        wrapped.cause = error;
+        throw wrapped;
+      }
+
+      if (!response.ok) {
+        const details = await readDropboxErrorResponse(response);
+        const error = new Error(
+          `Dropbox ${endpoint} error ${response.status}: ${details}`,
+        );
+        error.status = response.status;
+        error.retryAfter = response.headers.get("retry-after");
+        throw error;
+      }
+
+      return response.json();
+    },
+    { label: `Dropbox ${endpoint}` },
+  );
+}
+
+async function dropboxGetMetadata(accessToken, filePath) {
+  const normalizedPath = normalizeDropboxPath(filePath);
+  if (!normalizedPath) {
+    throw new Error(`Path Dropbox inválido: ${filePath}`);
+  }
+
+  return dropboxPostJson(accessToken, "files/get_metadata", {
+    path: normalizedPath,
+    include_media_info: false,
+    include_deleted: false,
+    include_has_explicit_shared_members: false,
+  });
+}
+
+async function dropboxDownloadBuffer(accessToken, filePath) {
+  const normalizedPath = normalizeDropboxPath(filePath);
+  if (!normalizedPath) {
+    throw new Error(`Path Dropbox inválido: ${filePath}`);
+  }
+
+  return withDropboxRetry(
+    async () => {
+      let response;
+
+      try {
+        response = await fetchWithTimeout(
+          "https://content.dropboxapi.com/2/files/download",
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              "Dropbox-API-Arg": JSON.stringify({ path: normalizedPath }),
+            },
+          },
+          60_000,
+        );
+      } catch (error) {
+        const wrapped = new Error(
+          `Dropbox files/download network error: ${formatFetchError(error)}`,
+        );
+        wrapped.code = getErrorCode(error);
+        wrapped.cause = error;
+        throw wrapped;
+      }
+
+      if (!response.ok) {
+        const details = await readDropboxErrorResponse(response);
+        const error = new Error(
+          `Dropbox files/download error ${response.status}: ${details}`,
+        );
+        error.status = response.status;
+        error.retryAfter = response.headers.get("retry-after");
+        throw error;
+      }
+
+      const arrayBuffer = await response.arrayBuffer();
+      return Buffer.from(arrayBuffer);
+    },
+    { baseDelayMs: 1_000, label: `Dropbox files/download ${normalizedPath}` },
+  );
 }
 
 function readSyncState() {
@@ -124,16 +358,14 @@ function hasDropboxFileChanged(previous, current) {
   return previous.size !== current.size;
 }
 
-async function getDropboxFilesMetadata(dbx) {
+async function getDropboxFilesMetadata(accessToken) {
   return Promise.all(
     DROPBOX_SOURCES.map(async (source) => {
-      const response = await dbx.filesGetMetadata({
-        path: source.dropboxPath,
-      });
+      const metadata = await dropboxGetMetadata(accessToken, source.dropboxPath);
 
       return {
         ...source,
-        metadata: normalizeDropboxMetadata(response.result),
+        metadata: normalizeDropboxMetadata(metadata),
       };
     }),
   );
@@ -671,10 +903,9 @@ export async function sincronizarCompletoV2() {
   try {
     console.log("🚀 Iniciando sincronización completa...\n");
     const token = await ensureAccessToken();
-    const dbx = new Dropbox({ accessToken: token });
 
     console.log("🔎 Verificando cambios en Dropbox...");
-    const dropboxFiles = await getDropboxFilesMetadata(dbx);
+    const dropboxFiles = await getDropboxFilesMetadata(token);
     const previousSyncState = readSyncState();
     const changedFiles = dropboxFiles.filter((file) =>
       hasDropboxFileChanged(previousSyncState.files?.[file.key], file.metadata),
@@ -693,8 +924,8 @@ export async function sincronizarCompletoV2() {
 
     // 1. Cargar Excel de Categorías
     console.log("📥 Descargando categorías...");
-    const resCat = await dbx.filesDownload({ path: EXCEL_CATEGORIAS });
-    const wbCat = xlsx.read(resCat.result.fileBinary, { type: "buffer" });
+    const catBuffer = await dropboxDownloadBuffer(token, EXCEL_CATEGORIAS);
+    const wbCat = xlsx.read(catBuffer, { type: "buffer" });
     const categorias = xlsx.utils.sheet_to_json(
       wbCat.Sheets[wbCat.SheetNames[0]],
     );
@@ -711,8 +942,8 @@ export async function sincronizarCompletoV2() {
 
     // 3. Cargar Excel de Productos
     console.log("\n📥 Descargando productos...");
-    const resProd = await dbx.filesDownload({ path: EXCEL_PRODUCTOS });
-    const wbProd = xlsx.read(resProd.result.fileBinary, { type: "buffer" });
+    const prodBuffer = await dropboxDownloadBuffer(token, EXCEL_PRODUCTOS);
+    const wbProd = xlsx.read(prodBuffer, { type: "buffer" });
     const productosRaw = xlsx.utils.sheet_to_json(
       wbProd.Sheets[wbProd.SheetNames[0]],
     );
@@ -721,8 +952,8 @@ export async function sincronizarCompletoV2() {
 
     // 3.5. Cargar Excel de URLs
     console.log("\n📥 Descargando URLs de productos...");
-    const resUrls = await dbx.filesDownload({ path: EXCEL_URLS });
-    const wbUrls = xlsx.read(resUrls.result.fileBinary, { type: "buffer" });
+    const urlsBuffer = await dropboxDownloadBuffer(token, EXCEL_URLS);
+    const wbUrls = xlsx.read(urlsBuffer, { type: "buffer" });
     const urlsRaw = xlsx.utils.sheet_to_json(
       wbUrls.Sheets[wbUrls.SheetNames[0]],
     );

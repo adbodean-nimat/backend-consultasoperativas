@@ -26,9 +26,9 @@ import enviarListaPreciosPorPerfil from "./whatsapp.js";
 import { logEnviadoOk, logErrorEnvio } from "./whatsapp_logger.js";
 import { initJobs, startJobs, stopJobs } from "./jobs.js";
 import { importarMasivoFinanzas } from "./controllers/importController.js";
-import { sincronizarCompleto } from "./sync-productos-cateogorias.js";
+// import { sincronizarCompleto } from "./sync-productos-cateogorias.js";
 import { sincronizarCompletoV2 } from "./sync-productos-categorias.v2.js";
-import { syncOpenAI } from "./sync-openai.js";
+// import { syncOpenAI } from "./sync-openai.js";
 import { syncOpenAIv2 } from "./sync-openai.v2.js";
 import {
   startCron,
@@ -1024,11 +1024,11 @@ router.route("/jsontosheet").get(async (req, res) => {
     await jsonToExcel.jsontosheet();
 
     console.log("▶ Iniciando sincronización los productos, categorías y urls");
-    await sincronizarCompleto();
+    // await sincronizarCompleto();
     await sincronizarCompletoV2();
 
     console.log("▶ Iniciando sincronización OpenAI");
-    await syncOpenAI();
+    // await syncOpenAI();
     await syncOpenAIv2();
 
     return res.status(200).send("Generado correctamente");
@@ -1815,7 +1815,7 @@ router.route("/envios-deudavencida").get(async (req, res) => {
 router.route("/envios-deudavencida-pdf/:id").get(async (req, res) => {
   try {
     const { id } = req.params;
-  
+
     const result = await Pg.obtenerRegistrarEnvioWhatsappPDF(id);
 
     if (result[0].length === 0) {
