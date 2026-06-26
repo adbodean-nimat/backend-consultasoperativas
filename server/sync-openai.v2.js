@@ -50,7 +50,20 @@ async function findExistingFileByFilename(vectorStoreId, targetFileName) {
     if (!fileId) continue;
 
     // 2) Preguntar a Files API por los metadatos
-    const fileInfo = await client.files.retrieve(fileId);
+    let fileInfo;
+    try {
+      fileInfo = await client.files.retrieve(fileId);
+    } catch (error) {
+      if (isOpenAINotFoundError(error)) {
+        console.warn(
+          `⚠️ Vector Store tiene un vínculo stale: ${fileId}. El File ya no existe en OpenAI Files API.`,
+        );
+        await deleteStaleVectorStoreFile(vectorStoreId, fileId);
+        continue;
+      }
+
+      throw error;
+    }
 
     // En el SDK nuevo suele ser fileInfo.filename
     if (fileInfo.filename === targetFileName) {
@@ -63,6 +76,58 @@ async function findExistingFileByFilename(vectorStoreId, targetFileName) {
   }
 
   return null;
+}
+
+function isOpenAINotFoundError(error) {
+  return error?.status === 404 || error?.error?.type === "not_found_error";
+}
+
+async function deleteStaleVectorStoreFile(vectorStoreId, fileId) {
+  try {
+    await client.vectorStores.files.delete(fileId, {
+      vector_store_id: vectorStoreId,
+    });
+    console.warn(`   • Vínculo stale eliminado del Vector Store: ${fileId}`);
+  } catch (error) {
+    if (isOpenAINotFoundError(error)) {
+      console.warn(`   • El vínculo stale ya no existía: ${fileId}`);
+      return;
+    }
+
+    console.warn(
+      `   • No se pudo eliminar el vínculo stale ${fileId}: ${error.message}`,
+    );
+  }
+}
+
+async function deleteVectorStoreFileIfExists(vectorStoreId, fileId, label) {
+  try {
+    await client.vectorStores.files.delete(fileId, {
+      vector_store_id: vectorStoreId,
+    });
+    console.log(`   • Vínculo viejo eliminado: ${fileId}`);
+  } catch (error) {
+    if (isOpenAINotFoundError(error)) {
+      console.warn(`   • Vínculo viejo ya no existía para ${label}: ${fileId}`);
+      return;
+    }
+
+    throw error;
+  }
+}
+
+async function deleteOpenAIFileIfExists(fileId, label) {
+  try {
+    await client.files.delete(fileId);
+    console.log(`   • Archivo viejo eliminado: ${fileId}`);
+  } catch (error) {
+    if (isOpenAINotFoundError(error)) {
+      console.warn(`   • Archivo viejo ya no existía para ${label}: ${fileId}`);
+      return;
+    }
+
+    throw error;
+  }
 }
 
 function readSyncState() {
@@ -259,18 +324,16 @@ export async function syncOpenAIv2() {
     // 4) Eliminar el vínculo viejo del vector store y el archivo viejo en Files API
     if (existing?.vectorStoreFileId) {
       console.log(`🧹 Eliminando vínculo viejo de ${file.label}...`);
-      await client.vectorStores.files.delete(existing.vectorStoreFileId, {
-        vector_store_id: VECTOR_STORE_ID,
-      });
-      console.log(
-        `   • Vínculo viejo eliminado: ${existing.vectorStoreFileId}`,
+      await deleteVectorStoreFileIfExists(
+        VECTOR_STORE_ID,
+        existing.vectorStoreFileId,
+        file.label,
       );
     }
 
     if (existing?.fileId) {
       console.log(`🧹 Eliminando archivo viejo de ${file.label}...`);
-      await client.files.delete(existing.fileId);
-      console.log(`   • Archivo viejo eliminado: ${existing.fileId}`);
+      await deleteOpenAIFileIfExists(existing.fileId, file.label);
     }
 
     uploadedFiles.push({
