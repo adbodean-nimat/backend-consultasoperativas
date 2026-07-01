@@ -64,7 +64,7 @@ export async function procesoEnvio() {
         // 👇 pequeño delay para no saturar Meta
         await new Promise((r) => setTimeout(r, 800));
       } catch (error) {
-        console.error(`❌ Error cliente ${cliente.cliente}`, error.message);
+        console.error(`❌ Error cliente ${cliente.cliente}`, error);
 
         await Pg.registrarEnvioWhatsapp({
           clienteId: cliente.cliente,
@@ -74,7 +74,7 @@ export async function procesoEnvio() {
           pdfPath: cliente.pdfPath,
           templateName: process.env.WHATSAPP_TEMPLATE_NAME,
           estado: "ERROR",
-          errorMessage: error.message,
+          errorMessage: error.message || error,
           totalSaldo: cliente.total_saldo,
           cantidadComprobantes: cliente.cantidad_comprobantes,
           tipoEnvio: cliente.tipoEnvio,
@@ -148,7 +148,7 @@ export async function procesoEnvioRevendedores() {
         // 👇 pequeño delay para no saturar Meta
         await new Promise((r) => setTimeout(r, 800));
       } catch (error) {
-        console.error(`❌ Error cliente ${cliente.cliente}`, error.message);
+        console.error(`❌ Error cliente ${cliente.cliente}`, error);
 
         await Pg.registrarEnvioWhatsapp({
           clienteId: cliente.cliente,
@@ -158,7 +158,7 @@ export async function procesoEnvioRevendedores() {
           pdfPath: cliente.pdfPath,
           templateName: process.env.WHATSAPP_TEMPLATE_NAME,
           estado: "ERROR",
-          errorMessage: error.message,
+          errorMessage: error.message || error,
           totalSaldo: cliente.total_saldo,
           cantidadComprobantes: cliente.cantidad_comprobantes,
           tipoEnvio: cliente.tipoEnvio,

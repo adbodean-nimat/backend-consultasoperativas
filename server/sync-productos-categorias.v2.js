@@ -361,7 +361,10 @@ function hasDropboxFileChanged(previous, current) {
 async function getDropboxFilesMetadata(accessToken) {
   return Promise.all(
     DROPBOX_SOURCES.map(async (source) => {
-      const metadata = await dropboxGetMetadata(accessToken, source.dropboxPath);
+      const metadata = await dropboxGetMetadata(
+        accessToken,
+        source.dropboxPath,
+      );
 
       return {
         ...source,

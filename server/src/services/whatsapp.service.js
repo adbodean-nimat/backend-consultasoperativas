@@ -15,7 +15,7 @@ function validarConfigWhatsapp() {
   const faltantes = [];
 
   if (!WHATSAPP_TOKEN) faltantes.push("WHATSAPP_TOKEN");
-  if (!WABA_PHONE_NUMBER_ID) faltantes.push("WHATSAPP_PHONE_NUMBER_ID");
+  if (!WABA_PHONE_NUMBER_ID) faltantes.push("WABA_PHONE_NUMBER_ID");
   if (!WHATSAPP_TEMPLATE_NAME) faltantes.push("WHATSAPP_TEMPLATE_NAME");
   if (!WABA_VERSION) faltantes.push("WABA_VERSION");
 
@@ -28,29 +28,42 @@ function limpiarTelefonoWhatsapp(telefono) {
   return String(telefono || "").replace(/\D/g, "");
 }
 
-async function parseMetaResponse(response) {
-  const result = await response.json().catch(() => null);
-
-  if (!response.ok) {
-    const message =
-      result?.error?.message ||
-      result?.error?.error_user_msg ||
-      "Error desconocido de Meta WhatsApp API";
-
-    throw new Error(
-      JSON.stringify(
-        {
-          status: response.status,
-          message,
-          meta: result,
-        },
-        null,
-        2,
-      ),
-    );
+function normalizarErrorMeta(error) {
+  if (!axios.isAxiosError(error)) {
+    return error;
   }
 
-  return result;
+  const status = error.response?.status || null;
+  const meta = error.response?.data || null;
+  const message =
+    meta?.error?.message ||
+    meta?.error?.error_user_msg ||
+    error.message ||
+    "Error desconocido de Meta WhatsApp API";
+
+  const normalized = new Error(
+    JSON.stringify(
+      {
+        status,
+        message,
+        meta,
+      },
+      null,
+      2,
+    ),
+  );
+
+  normalized.status = status;
+  normalized.meta = meta;
+  return normalized;
+}
+
+async function postMetaWhatsapp(url, data, config) {
+  try {
+    return await axios.post(url, data, config);
+  } catch (error) {
+    throw normalizarErrorMeta(error);
+  }
 }
 
 async function subirPdfAMeta(pdfPath) {
@@ -71,14 +84,19 @@ async function subirPdfAMeta(pdfPath) {
     contentType: "application/pdf",
   });
 
-  const response = await axios.post(url, form, {
+  const response = await postMetaWhatsapp(url, form, {
     headers: {
       Authorization: `Bearer ${WHATSAPP_TOKEN}`,
       ...form.getHeaders(),
     },
     maxBodyLength: Infinity,
     maxContentLength: Infinity,
+    timeout: 60000,
   });
+
+  if (!response.data?.id) {
+    throw new Error("Meta no devolvió el id del PDF subido");
+  }
 
   return response.data.id;
 }
@@ -102,6 +120,10 @@ async function enviarTemplateDeudaConPdf({
 
   if (!nombreCliente) {
     throw new Error("Falta nombreCliente para la variable {{1}}");
+  }
+
+  if (!pdfPath) {
+    throw new Error("Falta pdfPath para enviar el documento por WhatsApp");
   }
 
   const nombreArchivo = filename || path.basename(pdfPath);
@@ -150,7 +172,7 @@ async function enviarTemplateDeudaConPdf({
             },
             {
               type: "text",
-              text: totalSaldo,
+              text: String(totalSaldo),
             },
             {
               type: "text",
@@ -162,16 +184,15 @@ async function enviarTemplateDeudaConPdf({
     },
   };
 
-  const response = await fetch(url, {
-    method: "POST",
+  const response = await postMetaWhatsapp(url, body, {
     headers: {
       Authorization: `Bearer ${WHATSAPP_TOKEN}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify(body),
+    timeout: 60000,
   });
 
-  const result = await parseMetaResponse(response);
+  const result = response.data;
 
   //console.log("Respuesta Meta WhatsApp API:", JSON.stringify(result, null, 2));
 

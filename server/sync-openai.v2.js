@@ -321,7 +321,7 @@ export async function syncOpenAIv2() {
 
     console.log(`✅ ${file.label} asociado correctamente.`);
 
-    // 4) Eliminar el vínculo viejo del vector store y el archivo viejo en Files API
+    // 4) Eliminar primero el vínculo viejo del vector store y luego el File.
     if (existing?.vectorStoreFileId) {
       console.log(`🧹 Eliminando vínculo viejo de ${file.label}...`);
       await deleteVectorStoreFileIfExists(
