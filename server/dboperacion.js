@@ -2275,19 +2275,19 @@ async function StockRotNPOC(params) {
     const urlApi = process.env.URL_API;
 
     const [rawNp, rawDep, rawCom, rawRec] = await Promise.all([
-      axios(`${urlApi}/gde/npaconsiderar`, {
+      axios(`${urlApi}gde/npaconsiderar`, {
         httpsAgent,
         headers: { Authorization: `Bearer ${token}` },
       }).then((r) => r.data),
-      axios(`${urlApi}/gde/deposanoconsiderar`, {
+      axios(`${urlApi}gde/deposanoconsiderar`, {
         httpsAgent,
         headers: { Authorization: `Bearer ${token}` },
       }).then((r) => r.data),
-      axios(`${urlApi}/gde/comprobantestock`, {
+      axios(`${urlApi}gde/comprobantestock`, {
         httpsAgent,
         headers: { Authorization: `Bearer ${token}` },
       }).then((r) => r.data),
-      axios(`${urlApi}/gde/recepcionproveedoraconsiderar`, {
+      axios(`${urlApi}gde/recepcionproveedoraconsiderar`, {
         httpsAgent,
         headers: { Authorization: `Bearer ${token}` },
       }).then((r) => r.data),
@@ -2337,19 +2337,19 @@ async function StockRotNPOCTerminacion(params) {
     const urlApi = process.env.URL_API;
 
     const [rawNp, rawDep, rawCom, rawRec] = await Promise.all([
-      axios(`${urlApi}/gde/npaconsiderar`, {
+      axios(`${urlApi}gde/npaconsiderar`, {
         httpsAgent,
         headers: { Authorization: `Bearer ${token}` },
       }).then((r) => r.data),
-      axios(`${urlApi}/gde/deposanoconsiderar`, {
+      axios(`${urlApi}gde/deposanoconsiderar`, {
         httpsAgent,
         headers: { Authorization: `Bearer ${token}` },
       }).then((r) => r.data),
-      axios(`${urlApi}/gde/comprobantestock`, {
+      axios(`${urlApi}gde/comprobantestock`, {
         httpsAgent,
         headers: { Authorization: `Bearer ${token}` },
       }).then((r) => r.data),
-      axios(`${urlApi}/gde/recepcionproveedoraconsiderar`, {
+      axios(`${urlApi}gde/recepcionproveedoraconsiderar`, {
         httpsAgent,
         headers: { Authorization: `Bearer ${token}` },
       }).then((r) => r.data),
