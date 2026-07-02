@@ -1832,7 +1832,7 @@ async function getRecepcionProveedores(data) {
     const urlApi = process.env.URL_API;
 
     const [rawTiposCompStock] = await Promise.all([
-      axios(`${urlApi}/gdc/tiposcompstock`, {
+      axios(`${urlApi}gdc/tiposcompstock`, {
         httpsAgent,
         headers: { Authorization: `Bearer ${token}` },
       }).then((r) => r.data),
