@@ -1724,19 +1724,19 @@ async function gdc_ControlCalesCementos(semanasAtras) {
     const urlApi = process.env.URL_API;
 
     const [rawNp, rawDep, rawArt, rawMsva] = await Promise.all([
-      axios(`${urlApi}/gdc/npaconsiderar`, {
+      axios(`${urlApi}gdc/npaconsiderar`, {
         httpsAgent,
         headers: { Authorization: `Bearer ${token}` },
       }).then((r) => r.data),
-      axios(`${urlApi}/gdc/deposanoconsiderarpstockfisico`, {
+      axios(`${urlApi}gdc/deposanoconsiderarpstockfisico`, {
         httpsAgent,
         headers: { Authorization: `Bearer ${token}` },
       }).then((r) => r.data),
-      axios(`${urlApi}/gdc/articuloscontrol`, {
+      axios(`${urlApi}gdc/articuloscontrol`, {
         httpsAgent,
         headers: { Authorization: `Bearer ${token}` },
       }).then((r) => r.data),
-      axios(`${urlApi}/gdc/tiposremitosvtas`, {
+      axios(`${urlApi}gdc/tiposremitosvtas`, {
         httpsAgent,
         headers: { Authorization: `Bearer ${token}` },
       }).then((r) => r.data),
