@@ -1869,6 +1869,27 @@ router.route("/obtenerdetalledeudaxcliente").get(async (req, res) => {
   res.status(200).json(data);
 });
 
+router.route("/buscarclienteportelefono").get(async (req, res) => {
+  const telefono = req.query.telefono || null;
+  const nombre = req.query.nombre || null;
+  try {
+    const data = await Db.getBuscarClientePorTelefono(telefono, nombre);
+    res.status(200).json({
+      ok: true,
+      total: data.length,
+      rows: data,
+    });
+  } catch (error) {
+    console.error("Error en /api/buscarclienteportelefono:", error);
+
+    return res.status(500).json({
+      ok: false,
+      message: "Ocurrió un error al buscar cliente por telefono",
+      error: error.message,
+    });
+  }
+});
+
 const httpPort = 8099;
 const httpsPort = 8090;
 

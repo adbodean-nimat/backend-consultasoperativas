@@ -2574,6 +2574,39 @@ ORDER BY
   return getResponse.recordsets;
 }
 
+async function getBuscarClientePorTelefono(telefono, nombre) {
+  let pool = await sql.connect(plataforma);
+  let getResponse = await pool
+    .request()
+    .input("telefono", sql.VarChar, telefono)
+    .input("nombre", sql.VarChar, nombre).query(`
+      SELECT
+    C.CLIE_CLIENTE,
+    C.CLIE_NOMBRE,
+    C.CLIE_DOMICILIO,
+    C.CLIE_LOCALIDAD,
+    C.CLIE_TELEFONO,
+    C.CLIE_FAX
+FROM CCOB_CLIE C
+WHERE
+    (
+        @telefono IS NOT NULL
+        AND LTRIM(RTRIM(@telefono)) <> ''
+        AND REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(C.CLIE_TELEFONO, ' ', ''), '-', ''), '(', ''), ')', ''), '.', '')
+            LIKE '%' + REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(LTRIM(RTRIM(@telefono)), ' ', ''), '-', ''), '(', ''), ')', ''), '.', '') + '%'
+    )
+    OR
+    (
+        @nombre IS NOT NULL
+        AND LTRIM(RTRIM(@nombre)) <> ''
+        AND C.CLIE_NOMBRE LIKE '%' + LTRIM(RTRIM(@nombre)) + '%'
+    )
+ORDER BY
+    C.CLIE_NOMBRE;
+      `);
+  return getResponse.recordsets;
+}
+
 export default {
   getControl: getControl,
   getOrder: getOrder,
@@ -2653,4 +2686,5 @@ export default {
   obtenerClientesRevendedorWhatsapp: obtenerClientesRevendedorWhatsapp,
   obtenerDetalleRevendedorDeudaPorCliente:
     obtenerDetalleRevendedorDeudaPorCliente,
+  getBuscarClientePorTelefono: getBuscarClientePorTelefono,
 };
