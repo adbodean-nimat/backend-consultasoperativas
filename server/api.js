@@ -1870,10 +1870,11 @@ router.route("/obtenerdetalledeudaxcliente").get(async (req, res) => {
 });
 
 router.route("/buscarclienteportelefono").get(async (req, res) => {
-  const telefono = req.query.telefono || null;
-  const nombre = req.query.nombre || null;
+  const buscar = req.query.buscar;
   try {
-    const data = await Db.getBuscarClientePorTelefono(telefono, nombre);
+    if (!buscar)
+      return res.status(400).json({ ok: false, message: "Buscar vacio" });
+    const data = await Db.getBuscarClientePorTelefono(buscar);
     res.status(200).json({
       ok: true,
       total: data.length,

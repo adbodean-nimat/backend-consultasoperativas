@@ -2574,36 +2574,26 @@ ORDER BY
   return getResponse.recordsets;
 }
 
-async function getBuscarClientePorTelefono(telefono, nombre) {
+async function getBuscarClientePorTelefono(buscar) {
   let pool = await sql.connect(plataforma);
-  let getResponse = await pool
-    .request()
-    .input("telefono", sql.VarChar, telefono)
-    .input("nombre", sql.VarChar, nombre).query(`
+  let getResponse = await pool.request().input("buscar", sql.VarChar, buscar)
+    .query(`
       SELECT
     C.CLIE_CLIENTE,
     C.CLIE_NOMBRE,
     C.CLIE_DOMICILIO,
     C.CLIE_LOCALIDAD,
     C.CLIE_TELEFONO,
-    C.CLIE_FAX
+    C.CLIE_FAX,
+    C.CLIE_EMAIL
 FROM CCOB_CLIE C
 WHERE
-    (
-        @telefono IS NOT NULL
-        AND LTRIM(RTRIM(@telefono)) <> ''
-        AND REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(C.CLIE_TELEFONO, ' ', ''), '-', ''), '(', ''), ')', ''), '.', '')
-            LIKE '%' + REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(LTRIM(RTRIM(@telefono)), ' ', ''), '-', ''), '(', ''), ')', ''), '.', '') + '%'
-    )
-    OR
-    (
-        @nombre IS NOT NULL
-        AND LTRIM(RTRIM(@nombre)) <> ''
-        AND C.CLIE_NOMBRE LIKE '%' + LTRIM(RTRIM(@nombre)) + '%'
-    )
-ORDER BY
-    C.CLIE_NOMBRE;
-      `);
+    C.CLIE_NOMBRE LIKE '%' + @buscar + '%'
+    OR C.CLIE_TELEFONO LIKE '%' + @buscar + '%'
+    OR REPLACE(REPLACE(REPLACE(REPLACE(ISNULL(C.CLIE_TELEFONO, ''), '-', ''), ' ', ''), '/', ''), '.', '')
+        LIKE '%' + REPLACE(REPLACE(REPLACE(REPLACE(@buscar, '-', ''), ' ', ''), '/', ''), '.', '') + '%'
+    OR CAST(C.CLIE_FAX AS VARCHAR(50)) LIKE '%' + @buscar + '%'
+    ORDER BY C.CLIE_NOMBRE;`);
   return getResponse.recordsets;
 }
 
