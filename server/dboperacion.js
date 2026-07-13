@@ -2578,7 +2578,70 @@ async function getBuscarClientePorTelefono(buscar) {
   let pool = await sql.connect(plataforma);
   let getResponse = await pool.request().input("buscar", sql.VarChar, buscar)
     .query(`
-      SELECT
+      DECLARE @buscar_limpio VARCHAR(200);
+
+SET @buscar_limpio = LTRIM(RTRIM(ISNULL(@buscar, '')));
+
+;WITH Clientes AS (
+    SELECT
+        C.CLIE_CLIENTE,
+        C.CLIE_NOMBRE,
+        C.CLIE_DOMICILIO,
+        C.CLIE_LOCALIDAD,
+        C.CLIE_TELEFONO,
+        C.CLIE_FAX,
+        C.CLIE_EMAIL,
+        nombre_busqueda =
+            UPPER(LTRIM(RTRIM(ISNULL(C.CLIE_NOMBRE, '')))),
+
+        domicilio_busqueda =
+            UPPER(LTRIM(RTRIM(ISNULL(C.CLIE_DOMICILIO, '')))),
+
+        telefono_busqueda =
+            REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(
+                UPPER(ISNULL(C.CLIE_TELEFONO, '')),
+                ' ', ''),
+                '-', ''),
+                '/', ''),
+                '.', ''),
+                '(', ''),
+                ')', ''),
+                CHAR(9), ''),
+                CHAR(10), ''),
+                CHAR(13), ''),
+
+        fax_busqueda =
+            REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(
+                UPPER(ISNULL(CAST(C.CLIE_FAX AS VARCHAR(100)), '')),
+                ' ', ''),
+                '-', ''),
+                '/', ''),
+                '.', ''),
+                '(', ''),
+                ')', ''),
+                CHAR(9), ''),
+                CHAR(10), ''),
+                CHAR(13), '')
+    FROM CCOB_CLIE C WITH (NOLOCK)
+),
+Busqueda AS (
+    SELECT
+        buscar_original = UPPER(@buscar_limpio),
+
+        buscar_telefono =
+            REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(
+                UPPER(@buscar_limpio),
+                ' ', ''),
+                '-', ''),
+                '/', ''),
+                '.', ''),
+                '(', ''),
+                ')', ''),
+                CHAR(9), ''),
+                CHAR(10), ''),
+                CHAR(13), '')
+)
+SELECT
     C.CLIE_CLIENTE,
     C.CLIE_NOMBRE,
     C.CLIE_DOMICILIO,
@@ -2586,14 +2649,30 @@ async function getBuscarClientePorTelefono(buscar) {
     C.CLIE_TELEFONO,
     C.CLIE_FAX,
     C.CLIE_EMAIL
-FROM CCOB_CLIE C
+FROM Clientes C
+CROSS JOIN Busqueda B
 WHERE
-    C.CLIE_NOMBRE LIKE '%' + @buscar + '%'
-    OR C.CLIE_TELEFONO LIKE '%' + @buscar + '%'
-    OR REPLACE(REPLACE(REPLACE(REPLACE(ISNULL(C.CLIE_TELEFONO, ''), '-', ''), ' ', ''), '/', ''), '.', '')
-        LIKE '%' + REPLACE(REPLACE(REPLACE(REPLACE(@buscar, '-', ''), ' ', ''), '/', ''), '.', '') + '%'
-    OR CAST(C.CLIE_FAX AS VARCHAR(50)) LIKE '%' + @buscar + '%'
-    ORDER BY C.CLIE_NOMBRE;`);
+    @buscar_limpio <> ''
+    AND
+    (
+        C.telefono_busqueda LIKE '%' + B.buscar_telefono + '%'
+
+        OR C.fax_busqueda LIKE '%' + B.buscar_telefono + '%'
+        OR NOT EXISTS (
+            SELECT 1
+            FROM string_split(B.buscar_original, ' ') P
+            WHERE
+                LTRIM(RTRIM(P.value)) <> ''
+                AND C.nombre_busqueda NOT LIKE '%' + LTRIM(RTRIM(P.value)) + '%'
+        )
+        OR NOT EXISTS (
+            SELECT 1
+            FROM string_split(B.buscar_original, ' ') P
+            WHERE
+                LTRIM(RTRIM(P.value)) <> ''
+                AND C.domicilio_busqueda NOT LIKE '%' + LTRIM(RTRIM(P.value)) + '%'
+        )
+    );`);
   return getResponse.recordsets;
 }
 
