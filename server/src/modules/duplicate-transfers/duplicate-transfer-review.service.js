@@ -52,7 +52,8 @@ export class DuplicateTransferReviewService {
     if (rows.length > config.max_results) throw new DuplicateTransferError("La consulta superó el máximo de resultados permitido", { status: 422, code: "MAX_RESULTS_EXCEEDED" });
 
     const normalizedClient = clientCode ? String(clientCode).trim().toUpperCase() : null;
-    const movements = normalizeMovements(rows).filter((movement) => (!normalizedAccount || movement.accountCode === normalizedAccount) && (!normalizedClient || movement.clientCode === normalizedClient));
+    const movements = normalizeMovements(rows)
+      .filter((movement) => (!normalizedAccount || movement.accountCode === normalizedAccount) && (!normalizedClient || movement.clientCode === normalizedClient));
     const totalItems = movements.length;
     const offset = (page - 1) * pageSize;
     const items = movements.slice(offset, offset + pageSize).map((movement) => ({

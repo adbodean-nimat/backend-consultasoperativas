@@ -4,7 +4,7 @@ Módulo administrativo para detectar posibles transferencias repetidas mediante 
 
 ## Arquitectura
 
-- `duplicate-transfer-scheduler.js`: recarga cada minuto `enabled`, cron, zona horaria y versión; usa `node-cron`, control local y advisory lock distribuido.
+- `duplicate-transfer-scheduler.js`: en PM2 ejecuta el cron únicamente en `NODE_APP_INSTANCE=0`, recarga cada minuto `enabled`, cron, zona horaria y versión, y mantiene el advisory lock distribuido para proteger ejecuciones manuales y despliegues con más de un servidor.
 - `duplicate-transfer-monitor.service.js`: flujo compartido por cron y HTTP.
 - `duplicate-transfer.repository.js`: configuración, auditoría, movimientos, alertas y transacciones cortas en PostgreSQL.
 - `sql-server-duplicate-transfer.repository.js`: única llamada permitida al stored procedure, con timeout configurable.

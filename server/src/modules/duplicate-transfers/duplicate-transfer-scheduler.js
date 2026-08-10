@@ -4,11 +4,17 @@ import { getConfig } from "./duplicate-transfer-config.service.js";
 import { CONFIG_REFRESH_MS } from "./duplicate-transfer.constants.js";
 import { logMonitor } from "./duplicate-transfer.logger.js";
 
+export function isDuplicateTransferSchedulerProcess(env = process.env) {
+  const instance = env.NODE_APP_INSTANCE;
+  return instance === undefined || instance === null || instance === "" || String(instance) === "0";
+}
+
 export class DuplicateTransferScheduler {
-  constructor({ monitor = monitorService, configLoader = getConfig, refreshMs = CONFIG_REFRESH_MS } = {}) {
+  constructor({ monitor = monitorService, configLoader = getConfig, refreshMs = CONFIG_REFRESH_MS, enabledForProcess = isDuplicateTransferSchedulerProcess() } = {}) {
     this.monitor = monitor;
     this.configLoader = configLoader;
     this.refreshMs = refreshMs;
+    this.enabledForProcess = enabledForProcess;
     this.task = null;
     this.timer = null;
     this.signature = null;
@@ -27,6 +33,7 @@ export class DuplicateTransferScheduler {
   }
 
   async refresh() {
+    if (!this.enabledForProcess) return this.status();
     try {
       const config = await this.configLoader();
       const signature = `${config.enabled}|${config.cron_expression}|${config.timezone}|${config.version}`;
@@ -47,6 +54,10 @@ export class DuplicateTransferScheduler {
   }
 
   async start() {
+    if (!this.enabledForProcess) {
+      logMonitor("info", "scheduler_passive_instance", { nodeAppInstance: process.env.NODE_APP_INSTANCE });
+      return this.status();
+    }
     await this.refresh();
     if (!this.timer) {
       this.timer = setInterval(() => this.refresh(), this.refreshMs);
@@ -62,7 +73,7 @@ export class DuplicateTransferScheduler {
   }
 
   status() {
-    return { running: Boolean(this.task), nextRun: this.task?.getNextRun?.() || null, localExecutionRunning: this.localRunning };
+    return { running: Boolean(this.task), nextRun: this.task?.getNextRun?.() || null, localExecutionRunning: this.localRunning, enabledForProcess: this.enabledForProcess };
   }
 }
 

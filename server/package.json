@@ -41,7 +41,7 @@
     "passport": "^0.7.0",
     "passport-ldapauth": "^3.0.1",
     "pg": "^8.22.0",
-    "puppeteer": "^25.2.1",
+    "puppeteer": "^25.5.0",
     "rotating-file-stream": "^3.2.9",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   },

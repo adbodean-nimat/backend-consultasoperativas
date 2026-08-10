@@ -81,7 +81,10 @@ test("el signo forma parte de groupKey y solo se admite D", () => {
 });
 
 test("review pagina y conserva precisión decimal sin Number", async () => {
-  const f = fixture([row({ asiento: 1, importe: "9999999999999.99" }), row({ asiento: 2, importe: "0.01" })]);
+  const f = fixture([
+    row({ asiento: 1, importe: "9999999999999.99", fecha: "2026-07-02" }),
+    row({ asiento: 2, importe: "0.01", fecha: "2026-07-01" }),
+  ]);
   const result = await f.service.review(query({ page: 2, pageSize: 1 }));
   assert.deepEqual(result.pagination, { page: 2, pageSize: 1, totalItems: 2, totalPages: 2 });
   assert.equal(result.summary.totalAmount, "10000000000000.00");

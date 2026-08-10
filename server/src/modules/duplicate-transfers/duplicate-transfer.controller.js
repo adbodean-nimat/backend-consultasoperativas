@@ -1,6 +1,6 @@
 import monitorService from "./duplicate-transfer-monitor.service.js";
 import scheduler from "./duplicate-transfer-scheduler.js";
-import { getConfig, mapConfig, updateConfig } from "./duplicate-transfer-config.service.js";
+import { getConfig, mapConfig, nextRun, updateConfig } from "./duplicate-transfer-config.service.js";
 import { getRun, getStatusData, listDetections, listRuns } from "./duplicate-transfer.repository.js";
 import { DuplicateTransferError } from "./duplicate-transfer.errors.js";
 import { maskPhone } from "./duplicate-transfer.normalizer.js";
@@ -34,9 +34,11 @@ export async function getStatusController(_req, res, next) {
   try {
     const config = await getConfig();
     const history = await getStatusData();
+    const schedulerStatus = scheduler.status();
     const lastError = history.lastRun?.error_message ? { code: history.lastRun.error_code, message: history.lastRun.error_message } : null;
     return res.json({ ok: true, data: {
-      enabled: config.enabled, dryRun: config.dry_run, nextRun: scheduler.status().nextRun,
+      enabled: config.enabled, dryRun: config.dry_run,
+      nextRun: config.enabled ? (schedulerStatus.nextRun || nextRun(config.cron_expression, config.timezone)) : null,
       lastRun: safeRun(history.lastRun), lastSuccess: safeRun(history.lastSuccess), lastError,
       windowDays: config.lookback_days,
       template: { provider: config.whatsapp_provider, name: config.whatsapp_template_name, language: config.whatsapp_template_language, recipientMasked: maskPhone(config.whatsapp_recipient), environmentConfigured: Boolean(process.env.WHATSAPP_ACCESS_TOKEN && process.env.WHATSAPP_PHONE_NUMBER_ID && process.env.WHATSAPP_GRAPH_API_VERSION) },

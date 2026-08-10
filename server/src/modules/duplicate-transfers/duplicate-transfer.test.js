@@ -6,7 +6,7 @@ import { DuplicateTransferError, sanitizeError } from "./duplicate-transfer.erro
 import { maskPhone, normalizeDecimal, normalizeMovements } from "./duplicate-transfer.normalizer.js";
 import { parseIsoInstant, validateConfig, validateRunBody, validateWindow } from "./duplicate-transfer.validator.js";
 import { SqlServerDuplicateTransferRepository } from "./sql-server-duplicate-transfer.repository.js";
-import { DuplicateTransferScheduler } from "./duplicate-transfer-scheduler.js";
+import { DuplicateTransferScheduler, isDuplicateTransferSchedulerProcess } from "./duplicate-transfer-scheduler.js";
 
 const validConfig = (overrides = {}) => ({
   id: 1, enabled: true, cron_expression: "0 */4 * * *", timezone: "America/Argentina/Buenos_Aires",
@@ -217,4 +217,23 @@ test("scheduler recarga cron y se detiene al desactivar", async () => {
   const scheduler = new DuplicateTransferScheduler({ configLoader: async () => config, monitor: { async run() {} } });
   await scheduler.refresh(); assert.equal(scheduler.status().running, true); assert.ok(scheduler.status().nextRun instanceof Date);
   config = validConfig({ enabled: false, version: 2 }); await scheduler.refresh(); assert.equal(scheduler.status().running, false); scheduler.stop();
+});
+
+test("solo NODE_APP_INSTANCE 0 ejecuta el scheduler en PM2", async () => {
+  assert.equal(isDuplicateTransferSchedulerProcess({}), true);
+  assert.equal(isDuplicateTransferSchedulerProcess({ NODE_APP_INSTANCE: "0" }), true);
+  assert.equal(isDuplicateTransferSchedulerProcess({ NODE_APP_INSTANCE: "1" }), false);
+  assert.equal(isDuplicateTransferSchedulerProcess({ NODE_APP_INSTANCE: "3" }), false);
+
+  let configReads = 0;
+  const passive = new DuplicateTransferScheduler({
+    enabledForProcess: false,
+    configLoader: async () => { configReads += 1; return validConfig(); },
+    monitor: { async run() { throw new Error("No debe ejecutarse"); } },
+  });
+  await passive.start();
+  await passive.refresh();
+  assert.equal(configReads, 0);
+  assert.equal(passive.status().running, false);
+  assert.equal(passive.status().enabledForProcess, false);
 });
