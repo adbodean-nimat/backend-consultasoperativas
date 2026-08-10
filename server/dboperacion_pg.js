@@ -2,7 +2,7 @@
 import pg from "pg";
 import configpg from "./dbconfig_pg.js";
 const { Pool } = pg;
-const pool = new Pool(configpg);
+export const pool = new Pool(configpg);
 
 //Tabla
 const getTablas = (request, response) => {

@@ -4,9 +4,23 @@ import path from "node:path";
 import fs from "node:fs";
 dotenv.config();
 
+const PUPPETEER_LAUNCH_OPTIONS = {
+  headless: "new",
+  args: [
+    "--no-sandbox",
+    "--disable-setuid-sandbox",
+    "--disable-dev-shm-usage",
+  ],
+};
+
+export function crearNavegadorPdf() {
+  return puppeteer.launch(PUPPETEER_LAUNCH_OPTIONS);
+}
+
 export async function generarPdfDesdeHtml(
   html,
   nombreArchivo = "AVISO DE DEUDA VENCIDA.pdf",
+  browserExistente = null,
 ) {
   const date = new Date();
   const fileRoute =
@@ -26,25 +40,26 @@ export async function generarPdfDesdeHtml(
 
   const outputPath = path.join(outputDir, nombreArchivo);
 
-  const browser = await puppeteer.launch({
-    headless: "new",
-    args: [
-      "--no-sandbox",
-      "--disable-setuid-sandbox",
-      "--disable-dev-shm-usage",
-    ],
-  });
+  const browser = browserExistente || (await crearNavegadorPdf());
+  const cerrarBrowser = !browserExistente;
+  let page;
 
   try {
-    const page = await browser.newPage();
+    page = await browser.newPage();
 
-    await page.setContent(html, {
-      waitUntil: "networkidle0",
+    page.on("requestfailed", (request) => {
+      const url = request.url();
+      console.warn("⚠️ Recurso fallido al generar PDF:", {
+        archivo: nombreArchivo,
+        error: request.failure()?.errorText,
+        url: url.length > 200 ? `${url.slice(0, 200)}...` : url,
+      });
     });
 
-    await page.title("AVISO DE DEUDA VENCIDA");
-
-    //await page.setDefaultTimeout(1000);
+    await page.setContent(html, {
+      waitUntil: "load",
+      timeout: 30000,
+    });
 
     await page.pdf({
       path: outputPath,
@@ -59,7 +74,19 @@ export async function generarPdfDesdeHtml(
     });
 
     return outputPath;
+  } catch (error) {
+    console.error("❌ Error generando PDF:", {
+      archivo: nombreArchivo,
+      htmlBytes: Buffer.byteLength(html, "utf8"),
+      error: error?.message || error,
+    });
+    throw error;
   } finally {
-    await browser.close();
+    if (page && !page.isClosed()) {
+      await page.close().catch(() => {});
+    }
+    if (cerrarBrowser) {
+      await browser.close().catch(() => {});
+    }
   }
 }

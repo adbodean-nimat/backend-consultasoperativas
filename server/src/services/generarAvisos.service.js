@@ -1,6 +1,20 @@
 import avisoDeudaTemplate from "../templates/avisoDeuda.template.js";
-import { generarPdfDesdeHtml } from "../services/pdf.service.js";
+import {
+  crearNavegadorPdf,
+  generarPdfDesdeHtml,
+} from "../services/pdf.service.js";
 import Db from "../../dboperacion.js";
+
+function resultadoError(item, tipoEnvio, error) {
+  return {
+    cliente: item.cliente,
+    nombre: item.nombre,
+    celular: item.celular_limpio || null,
+    tipoEnvio,
+    ok: false,
+    motivo: error?.message || String(error),
+  };
+}
 
 export async function generarPdfsAvisosDeudaRevendedores() {
   const clientes = await Db.obtenerClientesWhatsapp(8, 1000);
@@ -29,52 +43,59 @@ export async function generarPdfsAvisosDeudaRevendedores() {
 
   const resultados = [];
 
-  for (const item of revendedorFiltrados) {
-    const detalle = await Db.obtenerDetalleRevendedorDeudaPorCliente(
-      item.cliente,
-      8,
-    );
+  if (revendedorFiltrados.length === 0) return resultados;
 
-    if (!detalle[0]) {
-      resultados.push({
-        cliente: item.cliente,
-        nombre: item.nombre,
-        ok: false,
-        motivo: "Sin detalle de deuda",
-      });
+  const browser = await crearNavegadorPdf();
 
-      continue;
+  try {
+    for (const item of revendedorFiltrados) {
+      try {
+        const detalle = await Db.obtenerDetalleRevendedorDeudaPorCliente(
+          item.cliente,
+          8,
+        );
+
+        if (!detalle[0]?.length) {
+          resultados.push(
+            resultadoError(item, item.tipo_envio, "Sin detalle de deuda"),
+          );
+          continue;
+        }
+
+        const data = {
+          cliente: item.cliente,
+          nombre: item.nombre,
+          celular: item.celular_limpio,
+          total_saldo: item.total_saldo,
+          comprobantes: detalle[0],
+          cantidad_comprobantes: item.cantidad_comprobantes,
+          tipoEnvio: item.tipo_envio,
+        };
+
+        const filename = `AVISO DE DEUDA VENCIDA - ${data.cliente}-${data.nombre}.pdf`;
+        const html = avisoDeudaTemplate(data);
+
+        const pdfPath = await generarPdfDesdeHtml(html, filename, browser);
+
+        resultados.push({
+          cliente: data.cliente,
+          nombre: data.nombre,
+          celular: data.celular,
+          total_saldo: data.total_saldo,
+          comprobantes: data.comprobantes,
+          cantidad_comprobantes: data.cantidad_comprobantes,
+          tipoEnvio: data.tipoEnvio,
+          filename,
+          pdfPath,
+          ok: true,
+        });
+      } catch (error) {
+        console.error(`❌ Error generando PDF para cliente ${item.cliente}:`, error);
+        resultados.push(resultadoError(item, item.tipo_envio, error));
+      }
     }
-
-    //console.log(item);
-
-    const data = {
-      cliente: item.cliente,
-      nombre: item.nombre,
-      celular: item.celular_limpio,
-      total_saldo: item.total_saldo,
-      comprobantes: detalle[0],
-      cantidad_comprobantes: item.cantidad_comprobantes,
-      tipoEnvio: item.tipo_envio,
-    };
-
-    const filename = `AVISO DE DEUDA VENCIDA - ${data.cliente}-${data.nombre}.pdf`;
-    const html = avisoDeudaTemplate(data);
-
-    const pdfPath = await generarPdfDesdeHtml(html, filename);
-
-    resultados.push({
-      cliente: data.cliente,
-      nombre: data.nombre,
-      celular: data.celular,
-      total_saldo: data.total_saldo,
-      comprobantes: data.comprobantes,
-      cantidad_comprobantes: data.cantidad_comprobantes,
-      tipoEnvio: data.tipoEnvio,
-      filename,
-      pdfPath,
-      ok: true,
-    });
+  } finally {
+    await browser.close().catch(() => {});
   }
   return resultados;
 }
@@ -84,47 +105,54 @@ export async function generarPdfsAvisosDeuda() {
 
   const resultados = [];
 
-  for (const item of clientes[0]) {
-    const detalle = await Db.obtenerDetalleDeudaPorCliente(item.cliente, 8);
+  if (clientes[0].length === 0) return resultados;
 
-    if (!detalle[0]) {
-      resultados.push({
-        cliente: item.cliente,
-        nombre: item.nombre,
-        ok: false,
-        motivo: "Sin detalle de deuda",
-      });
+  const browser = await crearNavegadorPdf();
 
-      continue;
+  try {
+    for (const item of clientes[0]) {
+      try {
+        const detalle = await Db.obtenerDetalleDeudaPorCliente(item.cliente, 8);
+
+        if (!detalle[0]?.length) {
+          resultados.push(resultadoError(item, "CLIENTE", "Sin detalle de deuda"));
+          continue;
+        }
+
+        const data = {
+          cliente: item.cliente,
+          nombre: item.nombre,
+          celular: item.celular_limpio,
+          total_saldo: item.total_saldo,
+          comprobantes: detalle[0],
+          cantidad_comprobantes: detalle[0].length,
+          tipoEnvio: "CLIENTE",
+        };
+
+        const filename = `AVISO DE DEUDA VENCIDA - ${data.cliente}-${data.nombre}.pdf`;
+        const html = avisoDeudaTemplate(data);
+
+        const pdfPath = await generarPdfDesdeHtml(html, filename, browser);
+
+        resultados.push({
+          cliente: data.cliente,
+          nombre: data.nombre,
+          celular: data.celular,
+          total_saldo: data.total_saldo,
+          comprobantes: data.comprobantes,
+          cantidad_comprobantes: data.cantidad_comprobantes,
+          tipoEnvio: data.tipoEnvio,
+          filename,
+          pdfPath,
+          ok: true,
+        });
+      } catch (error) {
+        console.error(`❌ Error generando PDF para cliente ${item.cliente}:`, error);
+        resultados.push(resultadoError(item, "CLIENTE", error));
+      }
     }
-
-    const data = {
-      cliente: item.cliente,
-      nombre: item.nombre,
-      celular: item.celular_limpio,
-      total_saldo: item.total_saldo,
-      comprobantes: detalle[0],
-      cantidad_comprobantes: detalle[0].length,
-      tipoEnvio: "CLIENTE",
-    };
-
-    const filename = `AVISO DE DEUDA VENCIDA - ${data.cliente}-${data.nombre}.pdf`;
-    const html = avisoDeudaTemplate(data);
-
-    const pdfPath = await generarPdfDesdeHtml(html, filename);
-
-    resultados.push({
-      cliente: data.cliente,
-      nombre: data.nombre,
-      celular: data.celular,
-      total_saldo: data.total_saldo,
-      comprobantes: data.comprobantes,
-      cantidad_comprobantes: data.cantidad_comprobantes,
-      tipoEnvio: data.tipoEnvio,
-      filename,
-      pdfPath,
-      ok: true,
-    });
+  } finally {
+    await browser.close().catch(() => {});
   }
 
   return resultados;

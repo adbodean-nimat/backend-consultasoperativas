@@ -26,6 +26,9 @@ import enviarListaPreciosPorPerfil from "./whatsapp.js";
 import { logEnviadoOk, logErrorEnvio } from "./whatsapp_logger.js";
 import { initJobs, startJobs, stopJobs } from "./jobs.js";
 import { importarMasivoFinanzas } from "./controllers/importController.js";
+import gestionRouter from "./src/modules/gestion/gestion.routes.js";
+import duplicateTransferRouter from "./src/modules/duplicate-transfers/duplicate-transfer.routes.js";
+import duplicateTransferScheduler from "./src/modules/duplicate-transfers/duplicate-transfer-scheduler.js";
 // import { sincronizarCompleto } from "./sync-productos-cateogorias.js";
 import { sincronizarCompletoV2 } from "./sync-productos-categorias.v2.js";
 // import { syncOpenAI } from "./sync-openai.js";
@@ -45,6 +48,9 @@ if (process.env.NODE_APP_INSTANCE === "0") {
     .then((estado) => console.log("Cron avisos deuda:", estado))
     .catch((error) => console.error("Error inicializando cron:", error));
 }
+duplicateTransferScheduler.start().catch((error) =>
+  console.error("Error inicializando monitor de transferencias duplicadas:", error?.message),
+);
 /* const accessLogStream = rfs.createStream('api.log', {
   interval: '',
   path: path.join(__dirname, 'logs')
@@ -223,6 +229,9 @@ router.use((request, response, next) => {
   );
   next();
 });
+
+router.use("/gestion", gestionRouter);
+router.use("/admin/duplicate-transfers", duplicateTransferRouter);
 
 router.route("/healthprinter").get((_, res) => {
   res.json({ ok: true, printer: PRINTER_IP, port: PRINTER_PORT });

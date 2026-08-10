@@ -5,9 +5,42 @@ import {
   procesoEnvio,
   procesoEnvioRevendedores,
 } from "../services/procesoEnvio.service.js";
-import Pg from "../../dboperacion_pg.js";
+import Pg, { pool } from "../../dboperacion_pg.js";
 
 let task = null;
+const ENVIO_ADVISORY_LOCK_KEY = 1_948_271_605;
+
+async function ejecutarEnviosConLock() {
+  const client = await pool.connect();
+  let lockAdquirido = false;
+
+  try {
+    const result = await client.query(
+      "SELECT pg_try_advisory_lock($1) AS adquirido",
+      [ENVIO_ADVISORY_LOCK_KEY],
+    );
+    lockAdquirido = result.rows[0].adquirido;
+
+    if (!lockAdquirido) {
+      console.warn(
+        "⚠️ Envío de avisos omitido: otra instancia ya está ejecutando el proceso",
+      );
+      return;
+    }
+
+    await procesoEnvio();
+    await procesoEnvioRevendedores();
+  } finally {
+    if (lockAdquirido) {
+      await client
+        .query("SELECT pg_advisory_unlock($1)", [ENVIO_ADVISORY_LOCK_KEY])
+        .catch((error) =>
+          console.error("Error liberando lock de avisos de deuda:", error),
+        );
+    }
+    client.release();
+  }
+}
 
 export async function recargarCronDesdeDB() {
   const config = await Pg.obtenerConfigEnvio();
@@ -21,12 +54,16 @@ export async function recargarCronDesdeDB() {
   task = cron.schedule(
     config.cron_schedule,
     async () => {
-      await procesoEnvio();
-      await procesoEnvioRevendedores();
+      try {
+        await ejecutarEnviosConLock();
+      } catch (error) {
+        console.error("❌ Error ejecutando cron de avisos de deuda:", error);
+      }
     },
     {
       scheduled: false,
       timezone: config.timezone || "America/Argentina/Buenos_Aires",
+      noOverlap: true,
     },
   );
 

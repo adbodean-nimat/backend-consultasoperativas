@@ -2577,29 +2577,73 @@ ORDER BY
 async function getBuscarClientePorTelefono(buscar) {
   let pool = await sql.connect(plataforma);
   let getResponse = await pool.request().input("buscar", sql.VarChar, buscar)
-    .query(`
-      DECLARE @buscar_limpio VARCHAR(200);
+    .query(`DECLARE @buscar_limpio VARCHAR(200);
+DECLARE @buscar_mayus VARCHAR(200);
+DECLARE @buscar_numero VARCHAR(200);
 
 SET @buscar_limpio = LTRIM(RTRIM(ISNULL(@buscar, '')));
+SET @buscar_mayus = UPPER(@buscar_limpio);
 
-;WITH Clientes AS (
+SET @buscar_numero =
+    REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(
+        @buscar_mayus,
+        ' ', ''),
+        '-', ''),
+        '/', ''),
+        '.', ''),
+        '(', ''),
+        ')', ''),
+        CHAR(9), ''),
+        CHAR(10), ''),
+        CHAR(13), '');
+
+;WITH Datos AS (
+
+    /* Dirección principal desde CCOB_CLIE */
     SELECT
         C.CLIE_CLIENTE,
         C.CLIE_NOMBRE,
-        C.CLIE_DOMICILIO,
-        C.CLIE_LOCALIDAD,
-        C.CLIE_TELEFONO,
-        C.CLIE_FAX,
-        C.CLIE_EMAIL,
-        nombre_busqueda =
-            UPPER(LTRIM(RTRIM(ISNULL(C.CLIE_NOMBRE, '')))),
+        TipoDireccion = 'PRINCIPAL',
+        DCLI_RENGLON = NULL,
+        Domicilio = C.CLIE_DOMICILIO,
+        Localidad = C.CLIE_LOCALIDAD,
+        Telefono = C.CLIE_TELEFONO,
+        Fax = CAST(C.CLIE_FAX AS VARCHAR(100)),
+        Email = NULL,
+        Observacion = NULL
+    FROM CCOB_CLIE C
 
-        domicilio_busqueda =
-            UPPER(LTRIM(RTRIM(ISNULL(C.CLIE_DOMICILIO, '')))),
+    UNION ALL
 
-        telefono_busqueda =
+    /* Direcciones alternativas / entrega desde CCOB_DCLI */
+    SELECT
+        C.CLIE_CLIENTE,
+        C.CLIE_NOMBRE,
+        TipoDireccion = 'DIRECCION_ENTREGA',
+        D.DCLI_RENGLON,
+        Domicilio = D.DCLI_DOMICILIO,
+        Localidad = D.DCLI_LOCALIDAD,
+        Telefono = D.DCLI_TELEFONO,
+        Fax = CAST(D.DCLI_FAX AS VARCHAR(100)),
+        Email = D.DCLI_EMAIL,
+        Observacion = D.DCLI_OBSERVACION
+    FROM CCOB_CLIE C
+    INNER JOIN CCOB_DCLI D
+        ON D.DCLI_CLIENTE = C.CLIE_CLIENTE
+),
+DatosNormalizados AS (
+    SELECT
+        D.*,
+
+        NombreBusqueda = UPPER(ISNULL(D.CLIE_NOMBRE, '')),
+        DomicilioBusqueda = UPPER(ISNULL(D.Domicilio, '')),
+        LocalidadBusqueda = UPPER(ISNULL(D.Localidad, '')),
+        EmailBusqueda = UPPER(ISNULL(D.Email, '')),
+        ObservacionBusqueda = UPPER(ISNULL(D.Observacion, '')),
+
+        TelefonoBusqueda =
             REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(
-                UPPER(ISNULL(C.CLIE_TELEFONO, '')),
+                UPPER(ISNULL(D.Telefono, '')),
                 ' ', ''),
                 '-', ''),
                 '/', ''),
@@ -2610,9 +2654,9 @@ SET @buscar_limpio = LTRIM(RTRIM(ISNULL(@buscar, '')));
                 CHAR(10), ''),
                 CHAR(13), ''),
 
-        fax_busqueda =
+        FaxBusqueda =
             REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(
-                UPPER(ISNULL(CAST(C.CLIE_FAX AS VARCHAR(100)), '')),
+                UPPER(ISNULL(D.Fax, '')),
                 ' ', ''),
                 '-', ''),
                 '/', ''),
@@ -2622,57 +2666,74 @@ SET @buscar_limpio = LTRIM(RTRIM(ISNULL(@buscar, '')));
                 CHAR(9), ''),
                 CHAR(10), ''),
                 CHAR(13), '')
-    FROM CCOB_CLIE C WITH (NOLOCK)
-),
-Busqueda AS (
-    SELECT
-        buscar_original = UPPER(@buscar_limpio),
-
-        buscar_telefono =
-            REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(
-                UPPER(@buscar_limpio),
-                ' ', ''),
-                '-', ''),
-                '/', ''),
-                '.', ''),
-                '(', ''),
-                ')', ''),
-                CHAR(9), ''),
-                CHAR(10), ''),
-                CHAR(13), '')
+    FROM Datos D
 )
 SELECT
-    C.CLIE_CLIENTE,
-    C.CLIE_NOMBRE,
-    C.CLIE_DOMICILIO,
-    C.CLIE_LOCALIDAD,
-    C.CLIE_TELEFONO,
-    C.CLIE_FAX,
-    C.CLIE_EMAIL
-FROM Clientes C
-CROSS JOIN Busqueda B
+    CLIE_CLIENTE,
+    CLIE_NOMBRE,
+    TipoDireccion,
+    DCLI_RENGLON,
+    Domicilio,
+    Localidad,
+    Telefono,
+    Fax,
+    Email,
+    Observacion
+FROM DatosNormalizados DN
 WHERE
     @buscar_limpio <> ''
     AND
     (
-        C.telefono_busqueda LIKE '%' + B.buscar_telefono + '%'
+        /* Teléfono o fax, aceptando 345 4 085 177 o 3454085177 */
+        (
+            @buscar_numero <> ''
+            AND LEN(@buscar_numero) >= 5
+            AND (
+                DN.TelefonoBusqueda LIKE '%' + @buscar_numero + '%'
+                OR DN.FaxBusqueda LIKE '%' + @buscar_numero + '%'
+            )
+        )
 
-        OR C.fax_busqueda LIKE '%' + B.buscar_telefono + '%'
-        OR NOT EXISTS (
+        OR
+
+        /* Nombre con palabras desordenadas */
+        NOT EXISTS (
             SELECT 1
-            FROM string_split(B.buscar_original, ' ') P
+            FROM STRING_SPLIT(@buscar_mayus, ' ') P
             WHERE
                 LTRIM(RTRIM(P.value)) <> ''
-                AND C.nombre_busqueda NOT LIKE '%' + LTRIM(RTRIM(P.value)) + '%'
+                AND DN.NombreBusqueda NOT LIKE '%' + LTRIM(RTRIM(P.value)) + '%'
         )
-        OR NOT EXISTS (
+
+        OR
+
+        /* Domicilio con palabras desordenadas */
+        NOT EXISTS (
             SELECT 1
-            FROM string_split(B.buscar_original, ' ') P
+            FROM STRING_SPLIT(@buscar_mayus, ' ') P
             WHERE
                 LTRIM(RTRIM(P.value)) <> ''
-                AND C.domicilio_busqueda NOT LIKE '%' + LTRIM(RTRIM(P.value)) + '%'
+                AND DN.DomicilioBusqueda NOT LIKE '%' + LTRIM(RTRIM(P.value)) + '%'
         )
-    );`);
+
+        OR
+
+        /* Localidad con palabras desordenadas */
+        NOT EXISTS (
+            SELECT 1
+            FROM STRING_SPLIT(@buscar_mayus, ' ') P
+            WHERE
+                LTRIM(RTRIM(P.value)) <> ''
+                AND DN.LocalidadBusqueda NOT LIKE '%' + LTRIM(RTRIM(P.value)) + '%'
+        )
+
+        OR DN.EmailBusqueda LIKE '%' + @buscar_mayus + '%'
+        OR DN.ObservacionBusqueda LIKE '%' + @buscar_mayus + '%'
+    )
+ORDER BY
+    CLIE_NOMBRE,
+    CASE WHEN TipoDireccion = 'PRINCIPAL' THEN 0 ELSE 1 END,
+    DCLI_RENGLON;`);
   return getResponse.recordsets;
 }
 

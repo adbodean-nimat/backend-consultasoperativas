@@ -5,7 +5,9 @@
   "main": "api.js",
   "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "node --test src/modules/duplicate-transfers/duplicate-transfer.test.js src/modules/duplicate-transfers/duplicate-transfer-review.test.js src/modules/gestion/gestion.test.js",
+    "lint": "node --check api.js && node --check src/modules/duplicate-transfers/duplicate-transfer-monitor.service.js && node --check src/modules/duplicate-transfers/duplicate-transfer-review.service.js && node --check src/modules/duplicate-transfers/duplicate-transfer.routes.js",
+    "build": "node --check api.js",
     "start": "nodemon api.js",
     "jobs": "nodemon jobs.js",
     "watcher": "nodemon watcher.js"

@@ -5,6 +5,11 @@
 /logs
 *.log
 *.csv
+*.xlsx
+*.http
+*.sql
+*.patch
+/.tmp-gestion-xlsx
 /secrets
 /test
 /storage
