@@ -8,6 +8,7 @@
 *.xlsx
 *.http
 *.sql
+!database/gestion_financiera_auth.sql
 *.patch
 /.tmp-gestion-xlsx
 /secrets
@@ -16,3 +17,5 @@
 .prettierignore
 .prettierrc
 setting.json
+/database
+/scripts

@@ -11,7 +11,8 @@ test.before(async () => {
   const app = express();
   app.use(express.json());
   app.use((req, _res, next) => {
-    req.user = { sAMAccountName: "test-integracion" };
+    req.user = { sAMAccountName: "abodean" };
+    req.auth = { username: "abodean", userId: 1, iat: 1, exp: 9999999999 };
     next();
   });
   app.use("/gestion", gestionRouter);
@@ -38,6 +39,40 @@ test("GET /gestion/registro usa fecha por query y no cae en /:fecha", async () =
   assert.equal(body.data.fecha, "2026-06-26");
   assert.equal(body.data.semana, "26/06 a 02/07");
   assert.equal(body.data.existeEnPostgres, true);
+});
+
+test("GET /gestion/me devuelve identidad y permisos efectivos", async () => {
+  const response = await fetch(`${baseUrl}/gestion/me`);
+  const body = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(body.ok, true);
+  assert.equal(body.data.user.username, "abodean");
+  assert.equal(body.data.permissions.includes("gestion.ingresar"), true);
+});
+
+test("administrador puede consultar configuración y catálogo de roles", async () => {
+  const [configurationResponse, rolesResponse] = await Promise.all([
+    fetch(`${baseUrl}/gestion/configuracion-general`),
+    fetch(`${baseUrl}/gestion/admin/roles`),
+  ]);
+  const configuration = await configurationResponse.json();
+  const roles = await rolesResponse.json();
+  assert.equal(configurationResponse.status, 200);
+  assert.equal(configuration.data.some((item) => item.clave === "cmv"), true);
+  assert.equal(rolesResponse.status, 200);
+  assert.equal(roles.data.some((item) => item.code === "ADMIN_GESTION"), true);
+});
+
+test("POST /gestion/admin/usuarios existe y valida el contrato JSON", async () => {
+  const response = await fetch(`${baseUrl}/gestion/admin/usuarios`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: "{}",
+  });
+  const body = await response.json();
+  assert.equal(response.status, 400);
+  assert.equal(body.ok, false);
+  assert.equal(body.code, "VALIDATION_ERROR");
 });
 
 test("POST /gestion/registro responde JSON y no HTML 404", async () => {

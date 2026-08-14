@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import {
   mapAutomaticosPlataforma,
@@ -37,6 +38,7 @@ const validCreate = () => ({
     otrosPagosProyectados: 0,
     anticipos: 0,
     acopiosEspeciales: 0,
+    acopioCierreMes: 0,
     ajusteProveedoresAVencer: null,
     observacion: null,
   },
@@ -50,9 +52,16 @@ test("valida fechas reales con formato estricto", () => {
 
 test("POST final deriva semana, estado y sincronización", () => {
   const validated = validateCreateBody(validCreate());
-  assert.equal(validated.periodoEtiqueta, "16/07 a 22/07");
+  assert.equal(validated.periodoEtiqueta, "16/07/2026 a 22/07/2026");
   assert.equal(validated.estado, "GUARDADO");
   assert.equal(validated.fechaSincronizacionPlataforma, null);
+});
+
+test("la semana derivada cruza de año desde la fecha seleccionada", () => {
+  const body = validCreate();
+  body.fecha = "2026-12-29";
+  const validated = validateCreateBody(body);
+  assert.equal(validated.periodoEtiqueta, "29/12/2026 a 04/01/2027");
 });
 
 test("acepta semana y sincronizadoEn del contrato nuevo", () => {
@@ -76,6 +85,17 @@ test("acepta cero y ajustes negativos", () => {
   const validated = validateCreateBody(body);
   assert.equal(validated.manuales.ajusteCaja, -100);
   assert.equal(validated.manuales.bancos, 0);
+});
+
+test("acepta acopio al cierre del mes manual y rechaza negativos", () => {
+  const body = validCreate();
+  body.manuales.acopioCierreMes = 465501904.65;
+  const validated = validateCreateBody(body);
+  assert.equal(validated.manuales.acopioCierreMes, 465501904.65);
+  assert.equal(MANUAL_INDICATORS.acopioCierreMes, "acopio_cierre_mes");
+
+  body.manuales.acopioCierreMes = -1;
+  assert.throws(() => validateCreateBody(body), /no son válidos/);
 });
 
 test("rechaza bancos negativo y calculados enviados", () => {
@@ -154,16 +174,31 @@ test("automáticos siempre incluyen campos opcionales y diasCaja", () => {
     semana: "16/07 a 22/07",
     caja: 0,
     valores: null,
+    otros_opv: "8439817.95",
     ventas_netas: "199424866.75",
     dias_caja: null,
   });
   assert.equal(mapped.semana, "16/07 a 22/07");
   assert.equal(mapped.caja, 0);
   assert.equal(mapped.valores, null);
+  assert.equal(mapped.otrosOpv, 8439817.95);
   assert.equal(mapped.ventasNetas, 199424866.75);
   assert.equal(mapped.acopioCierreMes, null);
   assert.equal(mapped.diasCaja, null);
   assert.equal(typeof mapped.sincronizadoEn, "string");
+});
+
+test("el SP expone otros_opv usando un rango diario compatible con datetime", () => {
+  const sql = readFileSync(
+    new URL(
+      "./scripts/sp_gestion_finanzas_automaticos_testing_compatible.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+  assert.match(sql, /AS otros_opv/);
+  assert.match(sql, /OPPV_FECHA_EMI >= @fecha_corte/);
+  assert.match(sql, /OPPV_FECHA_EMI < DATEADD\(DAY, 1, @fecha_corte\)/);
 });
 
 test("mapea el contrato final y recalcula todos los derivados", () => {
@@ -209,6 +244,7 @@ test("mapea el contrato final y recalcula todos los derivados", () => {
   assert.equal(mapped.manuales.otrosPagosProyectados, 117467409.87);
   assert.equal(mapped.manuales.anticipos, 115470495.81);
   assert.equal(mapped.manuales.acopiosEspeciales, 81816969.06);
+  assert.equal(mapped.manuales.acopioCierreMes, 465501904.65);
   assert.equal(mapped.calculados.cajaFinal, 13000000);
   assert.equal(mapped.calculados.proveedoresAVencerFinal, 117936716.9);
   assert.equal(mapped.calculados.totalDisponibilidades, 279892260.89);
@@ -302,4 +338,18 @@ test("nuevas escrituras usan sólo el código canónico proyectado", () => {
     Object.values(MANUAL_INDICATORS).includes("otros_proyectados_semana"),
     false,
   );
+});
+
+test("la migración registra y activa el indicador proyectado canónico", () => {
+  const migration = readFileSync(
+    new URL(
+      "./scripts/ensure_opv_otros_proyectado_semana.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+
+  assert.match(migration, /'opv_otros_proyectado_semana'/);
+  assert.match(migration, /ON CONFLICT \(codigo\) DO UPDATE/);
+  assert.match(migration, /activo = true/);
 });

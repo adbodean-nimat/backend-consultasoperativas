@@ -644,7 +644,7 @@ async function getPlanillaImportar() {
     let listaPlanilla = await pool
       .request()
       .query(
-        "SELECT 'Simple Product' AS ProductType ,STOC_ARTS.ARTS_NOMBRE AS Name ,'<p>El precio corresponde a pago en efectivo, tarjeta de débito o medios electrónicos.</p><p>Consúltanos por pagos en cuotas con tarjetas créditos.</p>' AS FullDescription ,'Simple Product' AS ProductTemplate ,'' AS MetaKeywords ,'' AS MetaDescription ,'' AS MetaTitle ,'' AS SeName ,'FALSO' AS AllowCustomerReviews ,STOC_ARTS.ARTS_ARTICULO_EMP AS SKU ,'VERDADERO' AS IsShipEnabled ,'Manage Stock' AS ManageInventoryMethod ,IIf(SUBSTRING([ARTS_ARTICULO_EMP],1,2)='91','FALSO','VERDADERO') AS DisplayStockQuantity ,'1' AS NotifyAdminForQuantityBelow ,IIf(([CA08_CLASIF_8]=0130) ,'Allow Qty Below0 And Notify Customer',IIf(SUBSTRING([ARTS_ARTICULO_EMP],1,2)='81','Allow Qty Below0 And Notify Customer','No Backorders')) AS BackorderMode ,1 AS OrderMinimumQuantity ,1000 AS OrderMaximumQuantity ,'FALSO' AS CallForPrice ,STOC_CA06.CA06_NOMBRE AS Manufacturers ,[ARTS_PESO_EMB_UMS] AS Weight ,'' AS Picture1 ,IIf([ARTS_CLASIF_3] IN (0003, 0004, 0005, 0007, 0016),Round(1/NULLIF([ARTS_FACTOR_HOMSTO],0),3),0) AS BasepriceAmount ,'FALSO' AS Deleted FROM(((STOC_ARTS WITH (NOLOCK) INNER JOIN STOC_CA02 WITH (NOLOCK) ON STOC_ARTS.ARTS_CLASIF_2 = STOC_CA02.CA02_CLASIF_2) INNER JOIN STOC_CA06 WITH (NOLOCK) ON STOC_ARTS.ARTS_CLASIF_6 = STOC_CA06.CA06_CLASIF_6) INNER JOIN STOC_CA08 WITH (NOLOCK) ON STOC_ARTS.ARTS_CLASIF_8 = STOC_CA08.CA08_CLASIF_8) INNER JOIN STOC_ARVE WITH (NOLOCK) ON STOC_ARTS.ARTS_ARTICULO = STOC_ARVE.ARVE_ARTICULO",
+        "SELECT 'Simple Product' AS ProductType ,STOC_ARTS.ARTS_NOMBRE AS Name ,'<p>El precio corresponde a pago en efectivo, tarjeta de débito o medios electrónicos.</p><p>Consúltanos por pagos en cuotas con tarjetas créditos.</p>' AS FullDescription ,'Simple Product' AS ProductTemplate ,'' AS MetaKeywords ,'' AS MetaDescription ,'' AS MetaTitle ,'' AS SeName ,'FALSO' AS AllowCustomerReviews ,STOC_ARTS.ARTS_ARTICULO_EMP AS SKU ,'VERDADERO' AS IsShipEnabled ,'Manage Stock' AS ManageInventoryMethod ,IIf(SUBSTRING([ARTS_ARTICULO_EMP],1,2)='91','FALSO','VERDADERO') AS DisplayStockQuantity ,'1' AS NotifyAdminForQuantityBelow ,IIf(([CA08_CLASIF_8]=0130) ,'Allow Qty Below0 And Notify Customer',IIf(SUBSTRING([ARTS_ARTICULO_EMP],1,2)='81','Allow Qty Below0 And Notify Customer','No Backorders')) AS BackorderMode ,1 AS OrderMinimumQuantity ,1000 AS OrderMaximumQuantity ,'FALSO' AS CallForPrice ,STOC_CA06.CA06_NOMBRE AS Manufacturers ,[ARTS_PESO_EMB_UMS] AS Weight ,'' AS Picture1 ,IIf([ARTS_CLASIF_3] IN (0003, 0004, 0005, 0007, 0016, 0084),Round(1/NULLIF([ARTS_FACTOR_HOMSTO],0),3),0) AS BasepriceAmount ,'FALSO' AS Deleted FROM(((STOC_ARTS WITH (NOLOCK) INNER JOIN STOC_CA02 WITH (NOLOCK) ON STOC_ARTS.ARTS_CLASIF_2 = STOC_CA02.CA02_CLASIF_2) INNER JOIN STOC_CA06 WITH (NOLOCK) ON STOC_ARTS.ARTS_CLASIF_6 = STOC_CA06.CA06_CLASIF_6) INNER JOIN STOC_CA08 WITH (NOLOCK) ON STOC_ARTS.ARTS_CLASIF_8 = STOC_CA08.CA08_CLASIF_8) INNER JOIN STOC_ARVE WITH (NOLOCK) ON STOC_ARTS.ARTS_ARTICULO = STOC_ARVE.ARVE_ARTICULO",
       );
     return listaPlanilla.recordsets;
   } catch (error) {
@@ -1895,10 +1895,10 @@ base AS (
         d.MOSD_CANT_ING AS cantidadOriginal,
         d.MOSD_SIGNO AS signoMovimiento,
         mp.MOSP_CANT_ING AS cantidadPartida,
-        mp.MOSP_CANT_ING * CASE
-            WHEN d.MOSD_SIGNO = 'S' THEN -1
-            ELSE 1
-        END AS cantidad,
+        CASE WHEN ISNULL(mp.MOSP_CANT_ING, 0) = 0
+            THEN ISNULL(d.MOSD_CANT_ING, 0)
+            ELSE ISNULL(mp.MOSP_CANT_ING * CASE WHEN d.MOSD_SIGNO = 'S' THEN -1 ELSE 1 END, 0)
+        END AS Cantidad,
         CASE
             WHEN d.MOSD_SIGNO = 'S' THEN 'Devolución'
             ELSE 'Recepción'
@@ -1938,12 +1938,12 @@ base AS (
     INNER JOIN COMP_OCCE occe WITH (NOLOCK)
         ON d.MOSD_MOVSTO_MOST = occe.OCCE_MOVSTO_MOST
        AND d.MOSD_RENGLON_MOSD = occe.OCCE_RENGLON_MOSD
-    INNER JOIN STOC_MOSP mp WITH (NOLOCK)
+    LEFT JOIN STOC_MOSP mp WITH (NOLOCK)
         ON d.MOSD_MOVSTO_MOST = mp.MOSP_MOVSTO_MOST
        AND d.MOSD_RENGLON_MOSD = mp.MOSP_RENGLON_MOSD
        AND occe.OCCE_MOVSTO_MOST = mp.MOSP_MOVSTO_MOST
        AND occe.OCCE_RENGLON_MOSD = mp.MOSP_RENGLON_MOSD
-    INNER JOIN STOC_PART pt WITH (NOLOCK)
+    LEFT JOIN STOC_PART pt WITH (NOLOCK)
         ON mp.MOSP_PARTIDA = pt.PART_PARTIDA
     INNER JOIN STOC_AUCS aucs WITH (NOLOCK)
         ON mv.MSMV_NUMERO_MSVA = aucs.AUCS_NUMERO_COMP
@@ -2245,8 +2245,7 @@ ORDER BY
     fechaAuditoria DESC,
     rubroCompra,
     comprobante,
-    nombreArticulo;
-    `;
+    nombreArticulo;`;
     let pool = await sql.connect(plataforma);
     let getResponse = await pool
       .request()

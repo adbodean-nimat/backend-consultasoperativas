@@ -268,7 +268,7 @@ function buildPeriodoEtiqueta(fecha) {
   const format = (date) =>
     `${String(date.getUTCDate()).padStart(2, "0")}/${String(
       date.getUTCMonth() + 1,
-    ).padStart(2, "0")}`;
+    ).padStart(2, "0")}/${date.getUTCFullYear()}`;
   return `${format(start)} a ${format(end)}`;
 }
 

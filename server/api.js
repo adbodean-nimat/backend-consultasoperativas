@@ -12,6 +12,7 @@ import jwt from "jsonwebtoken";
 import helmet from "helmet";
 import multer from "multer";
 import net from "net";
+import { getLdapServerConfig } from "./src/ldap.config.js";
 
 const app = express();
 
@@ -27,6 +28,9 @@ import { logEnviadoOk, logErrorEnvio } from "./whatsapp_logger.js";
 import { initJobs, startJobs, stopJobs } from "./jobs.js";
 import { importarMasivoFinanzas } from "./controllers/importController.js";
 import gestionRouter from "./src/modules/gestion/gestion.routes.js";
+import { verifyUserToken } from "./auth.middleware.js";
+import { authorizeAdLogin } from "./src/modules/gestion/gestion-auth.service.js";
+import { GestionError } from "./src/modules/gestion/gestion.errors.js";
 import duplicateTransferRouter from "./src/modules/duplicate-transfers/duplicate-transfer.routes.js";
 import duplicateTransferScheduler from "./src/modules/duplicate-transfers/duplicate-transfer-scheduler.js";
 // import { sincronizarCompleto } from "./sync-productos-cateogorias.js";
@@ -48,9 +52,14 @@ if (process.env.NODE_APP_INSTANCE === "0") {
     .then((estado) => console.log("Cron avisos deuda:", estado))
     .catch((error) => console.error("Error inicializando cron:", error));
 }
-duplicateTransferScheduler.start().catch((error) =>
-  console.error("Error inicializando monitor de transferencias duplicadas:", error?.message),
-);
+duplicateTransferScheduler
+  .start()
+  .catch((error) =>
+    console.error(
+      "Error inicializando monitor de transferencias duplicadas:",
+      error?.message,
+    ),
+  );
 /* const accessLogStream = rfs.createStream('api.log', {
   interval: '',
   path: path.join(__dirname, 'logs')
@@ -61,35 +70,12 @@ const httpsOptions = {
   key: fs.readFileSync(process.env.SSL_KEY),
   cert: fs.readFileSync(process.env.SSL_CERT),
 };
-const verifyUserToken = (req, res, next) => {
-  if (!req.headers.authorization) {
-    return res.status(401).send("Solicitud no autorizada");
-  }
-  const token = req.headers["authorization"].split(" ")[1];
-  if (!token) {
-    return res.status(401).send("Acceso denegado. No se proporcionó token.");
-  }
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded.user;
-    next();
-  } catch (err) {
-    res.status(400).send("Token inválido.");
-  }
-};
 const upload = multer({ dest: "uploads/" });
 /* app.use(morgan('combined', { stream: accessLogStream })) */
 app.use(helmet());
 passport.use(
   new LdapStrategy({
-    server: {
-      url: process.env.LDAP_URL,
-      bindDN: process.env.LDAP_bindDN,
-      bindCredentials: process.env.LDAP_bindCredentials,
-      searchBase: process.env.LDAP_searchBase,
-      searchFilter: process.env.LDAP_searchFilter,
-      includeRaw: true,
-    },
+    server: getLdapServerConfig(),
   }),
 );
 app.use(cors());
@@ -98,6 +84,103 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 app.use(passport.initialize());
 /* app.use('/imagenes', express.static('public/img')); */
+
+app.post("/api/gestion/login", function (req, res, next) {
+  try {
+    passport.authenticate(
+      "ldapauth",
+      { session: false },
+      async function (err, user, info) {
+        if (err) {
+          console.error("[gestion-auth] Error de autenticación LDAP", {
+            message: err.message,
+          });
+          return res
+            .status(500)
+            .json({
+              ok: false,
+              code: "LDAP_AUTH_ERROR",
+              message: "No se pudo autenticar el usuario.",
+            });
+        }
+        if (!user) {
+          return res
+            .status(401)
+            .json({
+              ok: false,
+              code: "LDAP_AUTH_FAILED",
+              message: info?.message ?? "Usuario o contraseña inválidos.",
+            });
+        }
+
+        try {
+          const avatar = user._raw?.thumbnailPhoto
+            ? Buffer.from(user._raw.thumbnailPhoto).toString("base64")
+            : "";
+          const payload = {
+            cn: user.cn,
+            mail: user.mail,
+            memberOf: user.memberOf,
+            displayName: user.displayName,
+            givenName: user.givenName,
+            sn: user.sn,
+            name: user.name,
+            sAMAccountName: user.sAMAccountName,
+          };
+          const access = await authorizeAdLogin(payload, {
+            ip: req.ip ?? null,
+          });
+          const jwtToken = jwt.sign(
+            {
+              user: payload,
+              avatar,
+              token: process.env.JWT_TOKEN,
+              username: access.username,
+              roles: access.roles,
+              permissions: access.permissions,
+            },
+            process.env.JWT_SECRET,
+            { algorithm: "HS256", expiresIn: "6d" },
+          );
+          const decoded = jwt.decode(jwtToken);
+          return res.status(200).json({
+            user: payload,
+            avatar,
+            token: jwtToken,
+            iat: decoded.iat,
+            exp: decoded.exp,
+          });
+        } catch (error) {
+          const known = error instanceof GestionError;
+          if (!known)
+            console.error("[gestion-auth] Error al autorizar Gestión", {
+              code: error?.code,
+              message: error?.message,
+            });
+          return res.status(known ? error.status : 500).json({
+            ok: false,
+            code: known ? error.code : "GESTION_AUTH_ERROR",
+            message: known
+              ? error.message
+              : "No se pudo autorizar el acceso a Gestión Financiera.",
+          });
+        }
+      },
+    )(req, res, next);
+  } catch (error) {
+    console.error("[gestion-auth] Error inesperado", {
+      message: error?.message,
+    });
+    return res
+      .status(500)
+      .json({
+        ok: false,
+        code: "GESTION_AUTH_ERROR",
+        message: "No se pudo autorizar el acceso a Gestión Financiera.",
+      });
+  }
+});
+
 app.use("/api", verifyUserToken, router);
 app.post("/login", function (req, res, next) {
   try {

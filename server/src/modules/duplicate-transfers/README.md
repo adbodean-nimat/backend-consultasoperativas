@@ -12,6 +12,16 @@ Módulo administrativo para detectar posibles transferencias repetidas mediante 
 - `duplicate-transfer-config.service.js`: lectura, actualización y validación de configuración.
 - `duplicate-transfer-review.service.js`: consulta manual paginada y estrictamente de solo lectura.
 
+### Verificación en PM2
+
+El script `scripts/check-duplicate-transfer-pm2.sh` inspecciona el clúster sin ejecutar el monitor y comprueba que solamente una instancia esté habilitada para programar el cron:
+
+```bash
+bash scripts/check-duplicate-transfer-pm2.sh <nombre-aplicacion-pm2>
+```
+
+Opcionalmente, el segundo argumento permite cambiar la cantidad de líneas recientes examinadas en los logs. El script no consulta SQL Server, no modifica PostgreSQL y no envía WhatsApp.
+
 El procedimiento devuelve únicamente movimientos con `RASI_SIGNO = 'D'`. `group_key` se calcula con cuenta, importe decimal normalizado, cliente y signo. La versión vigente debe devolver `RASI_RENGLON`; `source_key` utiliza la PK de `SIST_RASI` (división, asiento y renglón). El fallback anterior se conserva temporalmente para compatibilidad, y cualquier colisión aborta la ejecución. `COMPROBANTE` es descriptivo y no forma parte de ninguna clave.
 
 Antes de desplegar esta versión debe aplicarse, con el mecanismo operativo habitual, la migración aditiva `migrations/001_add_sign_current_account_receipt.sql`. Agrega `rasi_signo`, `ctec_ctacte_ctec` y `comprobante` sin recrear la tabla. Las filas históricas quedan con signo nulo y se reconcilian de manera conservadora al reaparecer: se preservan `first_seen_*` y `notified_at`, y más de una coincidencia histórica detiene la persistencia con un error de colisión.

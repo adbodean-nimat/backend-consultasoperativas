@@ -47,6 +47,7 @@ export function mapAutomaticosPlataforma(row) {
     valores: toNullableNumber(row.valores),
     fondosFci: toNullableNumber(row.fondos_fci),
     proveedores: toNullableNumber(row.proveedores),
+    otrosOpv: toNullableNumber(row.otros_opv),
     proveedoresAVencer: toNullableNumber(row.proveedores_a_vencer),
     cobranzas: toNullableNumber(row.cobranzas),
     ventasNetas: toNullableNumber(row.ventas_netas),
@@ -126,6 +127,7 @@ export function mapRegistro(row) {
     otrosPagosProyectados: toNullableNumber(row.opv_otros_proyectado_semana),
     anticipos: toNullableNumber(row.anticipos),
     acopiosEspeciales: toNullableNumber(row.acopios_especiales),
+    acopioCierreMes: toNullableNumber(row.acopio_cierre_mes),
     ajusteProveedoresAVencer: toNullableNumber(
       row.ajuste_proveedores_a_vencer,
     ),

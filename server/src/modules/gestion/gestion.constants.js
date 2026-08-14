@@ -28,6 +28,7 @@ export const MANUAL_INDICATORS = Object.freeze({
   otrosPagosProyectados: "opv_otros_proyectado_semana",
   anticipos: "anticipos",
   acopiosEspeciales: "acopios_especiales",
+  acopioCierreMes: "acopio_cierre_mes",
   ajusteProveedoresAVencer: "ajuste_proveedores_a_vencer",
 });
 
@@ -38,6 +39,7 @@ export const NON_NEGATIVE_MANUAL_INDICATORS = new Set([
   "otrosPagosProyectados",
   "anticipos",
   "acopiosEspeciales",
+  "acopioCierreMes",
 ]);
 
 export const DEFAULT_LIMIT = 50;
