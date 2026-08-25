@@ -77,6 +77,25 @@ El JWT usa `HS256`, pero los permisos efectivos se vuelven a consultar en Postgr
 endpoint protegido. Desactivar un usuario o cambiar sus roles invalida su autorización sin esperar
 el vencimiento del token.
 
+## Sincronización automática
+
+La API inicializa `gestion_sincronizacion_automatica` en `gf_configuracion_general` con:
+
+```json
+{
+  "activo": true,
+  "cron": "30 10 * * 5",
+  "timezone": "America/Argentina/Buenos_Aires"
+}
+```
+
+El valor predeterminado ejecuta Plataforma todos los viernes a las 10:30. Se consulta nuevamente
+cada 60 segundos, por lo que los cambios realizados mediante
+`PUT /api/gestion/configuracion-general/gestion_sincronizacion_automatica` no requieren reiniciar
+la API. Sólo la instancia primaria de PM2 programa el proceso y un advisory lock PostgreSQL evita
+duplicados entre procesos. El job conserva manuales y estado existentes, actualiza únicamente los
+indicadores con fuente `PLATAFORMA` y crea registros nuevos con estado `SINCRONIZADO`.
+
 ## Verificación
 
 ```powershell

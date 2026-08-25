@@ -188,17 +188,55 @@ test("automáticos siempre incluyen campos opcionales y diasCaja", () => {
   assert.equal(typeof mapped.sincronizadoEn, "string");
 });
 
-test("el SP expone otros_opv usando un rango diario compatible con datetime", () => {
+test("el SP de producción conserva exactamente el contrato funcional aprobado", () => {
   const sql = readFileSync(
+    new URL(
+      "./scripts/sp_gestion_finanzas_automaticos_produccion.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+  const approvedSql = readFileSync(
     new URL(
       "./scripts/sp_gestion_finanzas_automaticos_testing_compatible.sql",
       import.meta.url,
     ),
     "utf8",
   );
+  const procedureBody = (source) => {
+    const normalized = source.replace(/\r\n/g, "\n");
+    const start = normalized.indexOf("CREATE OR ALTER PROCEDURE");
+    const end = normalized.indexOf("\nGO", start);
+    return normalized.slice(start, end).replace(/\s+/g, " ").trim();
+  };
+  assert.equal(
+    procedureBody(sql),
+    procedureBody(approvedSql),
+    "Producción debe conservar los mismos tokens funcionales aprobados en Testing",
+  );
   assert.match(sql, /AS otros_opv/);
-  assert.match(sql, /OPPV_FECHA_EMI >= @fecha_corte/);
-  assert.match(sql, /OPPV_FECHA_EMI < DATEADD\(DAY, 1, @fecha_corte\)/);
+  assert.match(sql, /OPPV_FECHA_EMI = @fecha_corte/);
+  assert.match(sql, /valores_saldo_inicial AS/);
+  assert.match(sql, /valores_fechacorte AS/);
+  assert.match(sql, /c\.CASI_FECHA < @fecha_corte/);
+  assert.match(sql, /c\.CASI_FECHA = @fecha_corte/);
+  assert.match(sql, /CREATE OR ALTER PROCEDURE dbo\.sp_gestion_finanzas_automaticos/);
+  assert.match(sql, /sys\.dm_exec_describe_first_result_set_for_object/);
+  assert.doesNotMatch(sql, /^\s*DROP\s+PROCEDURE/im);
+
+  const finalSelect = sql.slice(sql.lastIndexOf("\nSELECT\n    @fecha_corte AS fecha"));
+  const expectedOrder = [
+    "AS fecha", "AS semana", "AS caja", "AS valores", "AS fondos_fci",
+    "AS proveedores", "AS otros_opv", "AS cobranzas",
+    "AS proveedores_a_vencer", "AS ventas_netas", "AS stock_costo_reposicion",
+    "AS acopio_mes_actual", "AS cuenta_corriente_clientes", "AS dias_caja",
+  ];
+  let previousIndex = -1;
+  for (const alias of expectedOrder) {
+    const index = finalSelect.indexOf(alias);
+    assert.ok(index > previousIndex, `${alias} debe respetar el orden contractual`);
+    previousIndex = index;
+  }
 });
 
 test("mapea el contrato final y recalcula todos los derivados", () => {

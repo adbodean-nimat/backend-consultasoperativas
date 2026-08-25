@@ -210,7 +210,7 @@ function validateBody(body, { partial }) {
   validateIndicatorObject(body.automaticos, AUTOMATIC_INDICATORS, "automaticos.", errors, {
     required: !partial,
     requireAll: !partial,
-    optionalFields: new Set(["ventasNetas", "acopioCierreMes", "diasCaja"]),
+    optionalFields: new Set(["otrosOpv", "ventasNetas", "acopioCierreMes", "diasCaja"]),
   });
   validateIndicatorObject(body.manuales, MANUAL_INDICATORS, "manuales.", errors, {
     required: !partial,
@@ -239,6 +239,7 @@ function validateBody(body, { partial }) {
     normalized.fechaSincronizacionPlataforma ??= null;
     normalized.automaticos = {
       ...normalized.automaticos,
+      otrosOpv: normalized.automaticos.otrosOpv ?? null,
       ventasNetas: normalized.automaticos.ventasNetas ?? null,
       acopioCierreMes: normalized.automaticos.acopioCierreMes ?? null,
       diasCaja: normalized.automaticos.diasCaja ?? null,

@@ -51,6 +51,7 @@ async function saveIndicators({
   source,
   username,
   deleteNulls = false,
+  execute = executeFunction,
 }) {
   if (!values) return;
   for (const [field, code] of Object.entries(mapping)) {
@@ -60,7 +61,7 @@ async function saveIndicators({
       if (deleteNulls) await deleteIndicator(client, registroId, code);
       continue;
     }
-    await executeFunction(client, contract, {
+    await execute(client, contract, {
       registro_id: registroId,
       codigo_indicador: code,
       valor: value,
@@ -101,6 +102,78 @@ function headerArguments(data, username, current = null) {
 
 export async function getAutomaticos(fecha) {
   return obtenerAutomaticos(fecha);
+}
+
+function buildScheduledPeriod(fecha) {
+  const start = new Date(`${fecha}T00:00:00Z`);
+  const end = new Date(start);
+  end.setUTCDate(end.getUTCDate() + 6);
+  const format = (date) =>
+    `${String(date.getUTCDate()).padStart(2, "0")}/${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
+  return `${format(start)} a ${format(end)}`;
+}
+
+export async function synchronizeAutomaticosScheduled(
+  fecha,
+  { username = "sistema:gestion-cron", dependencies = {} } = {},
+) {
+  const deps = {
+    getAutomaticos: obtenerAutomaticos,
+    pool: gestionPool,
+    findHeaderByFecha,
+    resolveFunctionContract,
+    executeFunction,
+    extractRegistroId,
+    findByFecha,
+    ...dependencies,
+  };
+  const automaticos = await deps.getAutomaticos(fecha);
+  const client = await deps.pool.connect();
+  let transactionStarted = false;
+  try {
+    await client.query("BEGIN");
+    transactionStarted = true;
+    const current = await deps.findHeaderByFecha(client, fecha);
+    const data = {
+      fecha,
+      periodoEtiqueta: current?.periodo_etiqueta ?? automaticos.semana ?? buildScheduledPeriod(fecha),
+      estado: current?.estado ?? "SINCRONIZADO",
+      fechaSincronizacionPlataforma: automaticos.sincronizadoEn ?? new Date().toISOString(),
+      automaticos,
+    };
+    const registroContract = await deps.resolveFunctionContract(client, "fn_upsert_registro");
+    const valorContract = await deps.resolveFunctionContract(client, "fn_upsert_valor");
+    const scheduledHeaderArguments = headerArguments(data, username, current);
+    if (current?.usuario_carga) {
+      scheduledHeaderArguments.usuario_carga = current.usuario_carga;
+    }
+    const headerResult = await deps.executeFunction(
+      client,
+      registroContract,
+      scheduledHeaderArguments,
+    );
+    const registroId = deps.extractRegistroId(headerResult);
+    await saveIndicators({
+      client,
+      contract: valorContract,
+      registroId,
+      values: automaticos,
+      mapping: AUTOMATIC_INDICATORS,
+      source: "PLATAFORMA",
+      username,
+      execute: deps.executeFunction,
+    });
+    const saved = await deps.findByFecha(client, fecha);
+    await client.query("COMMIT");
+    transactionStarted = false;
+    console.info("[gestion-cron] Sincronización automática guardada", { fecha, registroId });
+    return mapRegistro(saved);
+  } catch (error) {
+    if (transactionStarted) await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 export async function getByFecha(fecha) {

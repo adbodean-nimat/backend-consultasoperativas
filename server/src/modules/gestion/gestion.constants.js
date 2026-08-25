@@ -10,6 +10,7 @@ export const AUTOMATIC_INDICATORS = Object.freeze({
   valores: "valores",
   fondosFci: "fondos_fci",
   proveedores: "proveedores",
+  otrosOpv: "opv_otros",
   proveedoresAVencer: "proveedores_a_vencer",
   cobranzas: "cobranzas",
   ventasNetas: "ventas_netas",

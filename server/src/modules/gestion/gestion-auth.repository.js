@@ -216,6 +216,28 @@ export async function listConfiguration(executor) {
   return result.rows;
 }
 
+export async function ensureGestionScheduleConfiguration(executor, key, value) {
+  await executor.query(
+    `INSERT INTO gf_configuracion_general (clave, valor, descripcion)
+     VALUES ($1, $2::jsonb, $3)
+     ON CONFLICT (clave) DO NOTHING`,
+    [
+      key,
+      JSON.stringify(value),
+      "Programación de la sincronización automática de Gestión Financiera desde Plataforma.",
+    ],
+  );
+}
+
+export async function getConfigurationByKey(executor, key) {
+  const result = await executor.query(
+    `SELECT clave, valor, descripcion, actualizado_por, actualizado_en
+     FROM gf_configuracion_general WHERE clave = $1`,
+    [key],
+  );
+  return result.rows[0] ?? null;
+}
+
 export async function findConfigurationForUpdate(client, key) {
   const result = await client.query(
     `SELECT clave, valor, descripcion, actualizado_por, actualizado_en

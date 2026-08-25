@@ -8,7 +8,7 @@
 *.xlsx
 *.http
 *.sql
-!database/gestion_financiera_auth.sql
+/src/modules/gestion/scripts/*.sql
 *.patch
 /.tmp-gestion-xlsx
 /secrets

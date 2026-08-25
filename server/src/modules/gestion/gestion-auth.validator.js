@@ -1,3 +1,4 @@
+import cron from "node-cron";
 import { ValidationError } from "./gestion.errors.js";
 
 const ROLE_PATTERN = /^[A-Z][A-Z0-9_]*$/;
@@ -12,6 +13,23 @@ const CONFIG_VALIDATORS = Object.freeze({
       value.porcentaje >= 0 && value.porcentaje <= 100 &&
       typeof value.diasLaborales === "number" && Number.isFinite(value.diasLaborales) &&
       value.diasLaborales > 0 && value.diasLaborales <= 7;
+  },
+  gestion_sincronizacion_automatica(value) {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+    const keys = Object.keys(value);
+    if (keys.length !== 3 ||
+        !keys.includes("activo") || !keys.includes("cron") || !keys.includes("timezone") ||
+        typeof value.activo !== "boolean" ||
+        typeof value.cron !== "string" || !cron.validate(value.cron) ||
+        typeof value.timezone !== "string" || !value.timezone.trim()) {
+      return false;
+    }
+    try {
+      new Intl.DateTimeFormat("es-AR", { timeZone: value.timezone }).format();
+      return true;
+    } catch {
+      return false;
+    }
   },
 });
 

@@ -28,6 +28,7 @@ import { logEnviadoOk, logErrorEnvio } from "./whatsapp_logger.js";
 import { initJobs, startJobs, stopJobs } from "./jobs.js";
 import { importarMasivoFinanzas } from "./controllers/importController.js";
 import gestionRouter from "./src/modules/gestion/gestion.routes.js";
+import gestionScheduler from "./src/modules/gestion/gestion-scheduler.js";
 import { verifyUserToken } from "./auth.middleware.js";
 import { authorizeAdLogin } from "./src/modules/gestion/gestion-auth.service.js";
 import { GestionError } from "./src/modules/gestion/gestion.errors.js";
@@ -57,6 +58,14 @@ duplicateTransferScheduler
   .catch((error) =>
     console.error(
       "Error inicializando monitor de transferencias duplicadas:",
+      error?.message,
+    ),
+  );
+gestionScheduler
+  .start()
+  .catch((error) =>
+    console.error(
+      "Error inicializando sincronización automática de Gestión:",
       error?.message,
     ),
   );
@@ -95,22 +104,18 @@ app.post("/api/gestion/login", function (req, res, next) {
           console.error("[gestion-auth] Error de autenticación LDAP", {
             message: err.message,
           });
-          return res
-            .status(500)
-            .json({
-              ok: false,
-              code: "LDAP_AUTH_ERROR",
-              message: "No se pudo autenticar el usuario.",
-            });
+          return res.status(500).json({
+            ok: false,
+            code: "LDAP_AUTH_ERROR",
+            message: "No se pudo autenticar el usuario.",
+          });
         }
         if (!user) {
-          return res
-            .status(401)
-            .json({
-              ok: false,
-              code: "LDAP_AUTH_FAILED",
-              message: info?.message ?? "Usuario o contraseña inválidos.",
-            });
+          return res.status(401).json({
+            ok: false,
+            code: "LDAP_AUTH_FAILED",
+            message: info?.message ?? "Usuario o contraseña inválidos.",
+          });
         }
 
         try {
@@ -171,13 +176,11 @@ app.post("/api/gestion/login", function (req, res, next) {
     console.error("[gestion-auth] Error inesperado", {
       message: error?.message,
     });
-    return res
-      .status(500)
-      .json({
-        ok: false,
-        code: "GESTION_AUTH_ERROR",
-        message: "No se pudo autorizar el acceso a Gestión Financiera.",
-      });
+    return res.status(500).json({
+      ok: false,
+      code: "GESTION_AUTH_ERROR",
+      message: "No se pudo autorizar el acceso a Gestión Financiera.",
+    });
   }
 });
 
@@ -1746,12 +1749,12 @@ router.route("/recepcion-proveedores").get(async (request, response) => {
     const fechaAuditoriaHasta =
       parseDate(request.query.fechaAuditoriaHasta) ||
       getDefaultFechaAuditoriaHasta();
-    const fechaComprobanteDesde = parseDate(
-      request.query.fechaComprobanteDesde,
-    );
-    const fechaComprobanteHasta = parseDate(
-      request.query.fechaComprobanteHasta,
-    );
+
+    const fechaComprobanteDesde =
+      parseDate(request.query.fechaComprobanteDesde) || fechaAuditoriaDesde;
+    const fechaComprobanteHasta =
+      parseDate(request.query.fechaComprobanteHasta) || fechaAuditoriaHasta;
+
     const comprador = parseStringOrNull(request.query.comprador, 10);
     const proveedorId = parseIntOrNull(request.query.proveedorId);
     const codigoArticulo = parseStringOrNull(request.query.codigoArticulo, 50);
