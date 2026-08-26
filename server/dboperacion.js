@@ -1843,8 +1843,7 @@ async function getRecepcionProveedores(data) {
       .filter(Boolean)
       .join(",");
 
-    const query = `
-    WITH TiposCompStock AS (
+    const query = `WITH TiposCompStock AS (
     SELECT UPPER(LTRIM(RTRIM(value))) AS TipoMSVA
     FROM STRING_SPLIT(@pTiposCompStock, ',')
     WHERE LTRIM(RTRIM(value)) <> ''
@@ -1994,35 +1993,7 @@ base AS (
 ),
 base_calc AS (
     SELECT
-        b.*,
-        SUM(b.cantidad) OVER (
-            PARTITION BY
-                b.proveedorId,
-                b.division,
-                b.sucursal,
-                b.tipoComprobante,
-                b.numeroComprobante,
-                b.articuloId
-        ) AS cantidadTotalArticuloComprobante,
-        CASE
-            WHEN b.clasif2 = '0027'
-            THEN
-                CAST(b.peso AS decimal(18, 4))
-                /
-                NULLIF(
-                    SUM(b.cantidad) OVER (
-                        PARTITION BY
-                            b.proveedorId,
-                            b.division,
-                            b.sucursal,
-                            b.tipoComprobante,
-                            b.numeroComprobante,
-                            b.articuloId
-                    ),
-                    0
-                )
-            ELSE NULL
-        END AS pesoRealXUniCalc
+        b.*
     FROM base b
 ),
 iros AS (
@@ -2046,6 +2017,12 @@ agrupado AS (
         b.numeroComprobante,
         b.comprobante,
         b.referenciaComprobante,
+
+        b.movimientoId,
+        b.renglonMovimiento,
+        b.descripcionMovimiento,
+        b.OrdenCompra,
+
         b.articuloId,
         b.codigoArticulo,
         b.nombreArticulo,
@@ -2061,9 +2038,9 @@ agrupado AS (
         b.compradorCodigo,
         b.compradorNombre,
         b.rubroCompraNombre,
-        b.fechaOrdenCompra,
-        b.OrdenCompra,
-        b.diasOrdenCompra_Auditoria,
+
+        MIN(b.fechaOrdenCompra) AS fechaOrdenCompra,
+        MIN(b.diasOrdenCompra_Auditoria) AS diasOrdenCompra_Auditoria,
 
         CASE
             WHEN b.diasVencimientoPartida IS NOT NULL
@@ -2091,14 +2068,13 @@ agrupado AS (
         MAX(b.cantidadOriginal) AS cantidadOriginal,
         MAX(b.signoMovimiento) AS signoMovimiento,
         MAX(b.tipoMovimiento) AS tipoMovimiento,
-        MAX(b.descripcionMovimiento) AS descripcionMovimiento,
 
-        MAX(b.peso) AS peso,
-        MAX(b.pesoRealXUniCalc) AS pesoRealXUniCalc,
-        MAX(b.cantidadTotalArticuloComprobante) AS cantidadTotalArticuloComprobante,
-
-        MIN(b.movimientoId) AS movimientoId,
-        MIN(b.renglonMovimiento) AS renglonMovimiento
+        MAX(
+            CASE
+                WHEN b.clasif2 = '0027' THEN b.peso
+                ELSE NULL
+            END
+        ) AS peso
 
     FROM base_calc b
     GROUP BY
@@ -2112,6 +2088,12 @@ agrupado AS (
         b.numeroComprobante,
         b.comprobante,
         b.referenciaComprobante,
+
+        b.movimientoId,
+        b.renglonMovimiento,
+        b.descripcionMovimiento,
+        b.OrdenCompra,
+
         b.articuloId,
         b.codigoArticulo,
         b.nombreArticulo,
@@ -2127,9 +2109,6 @@ agrupado AS (
         b.compradorCodigo,
         b.compradorNombre,
         b.rubroCompraNombre,
-        b.fechaOrdenCompra,
-        b.OrdenCompra,
-        b.diasOrdenCompra_Auditoria,
 
         CASE
             WHEN b.diasVencimientoPartida IS NOT NULL
@@ -2152,26 +2131,45 @@ agrupado AS (
             ELSE CAST(0 AS bit)
         END
 ),
+agrupado_calc AS (
+    SELECT
+        a.*,
+
+        CASE
+            WHEN a.clasif2 = '0027'
+            THEN
+                CAST(a.peso AS decimal(18, 4))
+                /
+                NULLIF(CAST(a.cantidad AS decimal(18, 4)), 0)
+            ELSE NULL
+        END AS pesoRealXUniCalc
+
+    FROM agrupado a
+),
 final_data AS (
     SELECT
         b.*,
         i.ENAP_PK AS enapPk,
+
         CASE
             WHEN b.tipoComprobante = 'IRO' THEN CAST(1 AS bit)
             ELSE CAST(0 AS bit)
         END AS esIRO,
+
         CASE
             WHEN i.ENAP_PK IS NOT NULL AND i.ENAP_PK <> '' THEN CAST(0 AS bit)
             WHEN b.tipoComprobante = 'IRO' THEN CAST(1 AS bit)
             ELSE CAST(0 AS bit)
         END AS iroAVerificar
-    FROM agrupado b
+
+    FROM agrupado_calc b
     LEFT JOIN iros i
         ON b.numeroComprobante = i.numeroIRO
        AND b.tipoComprobante = i.tipoIRO
        AND b.sucursal = i.sucursalIRO
        AND b.division = i.divisionIRO
 )
+
 SELECT
     fechaOrdenCompra,
     OrdenCompra,
