@@ -10,6 +10,54 @@ import Pg from "./dboperacion_pg.js";
 const httpsAgent = new https.Agent({ rejectUnauthorized: false });
 const token = process.env.JWT_TOKEN;
 
+async function getSTOC_CA04() {
+  try {
+    let pool = await sql.connect(plataforma);
+    let listaSTOC_CA04 = await pool
+      .request()
+      .query("SELECT * FROM STOC_CA04 WITH (NOLOCK);");
+    return listaSTOC_CA04.recordset;
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+async function getSTOC_CA05() {
+  try {
+    let pool = await sql.connect(plataforma);
+    let listaSTOC_CA05 = await pool
+      .request()
+      .query("SELECT * FROM STOC_CA05 WITH (NOLOCK);");
+    return listaSTOC_CA05.recordset;
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+async function getSTOC_CA06() {
+  try {
+    let pool = await sql.connect(plataforma);
+    let listaSTOC_CA06 = await pool
+      .request()
+      .query("SELECT * FROM STOC_CA06 WITH (NOLOCK);");
+    return listaSTOC_CA06.recordset;
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+async function getSTOC_CA08() {
+  try {
+    let pool = await sql.connect(plataforma);
+    let listaSTOC_CA08 = await pool
+      .request()
+      .query("SELECT * FROM STOC_CA08 WITH (NOLOCK);");
+    return listaSTOC_CA08.recordset;
+  } catch (error) {
+    console.error(error);
+  }
+}
+
 async function getRubroVta() {
   try {
     let pool = await sql.connect(plataforma);
@@ -2734,7 +2782,454 @@ ORDER BY
   return getResponse.recordsets;
 }
 
+async function getRotacionGeneralProductos() {
+  const [
+    DepExcluidos,
+    ArtOmitidos,
+    Compradores,
+    TipoArt,
+    TipoComprob,
+    TipoNPCA,
+    DepExhibidos,
+  ] = await Promise.all([
+    Pg.select_gv_depositos_excluidos(),
+    Pg.select_gv_articulos_omitidos(),
+    Pg.select_gv_compradores(),
+    Pg.select_gv_tipos_articulo(),
+    Pg.select_gv_tipos_comprobante_recepcion(),
+    Pg.select_gv_tipos_npca(),
+    Pg.select_gv_depositos_exhibidos(),
+  ]);
+
+  const configuracionActiva = (rows) =>
+    rows.filter((row) => row.activo !== false);
+
+  const configuracion = {
+    DepExcluidos: configuracionActiva(DepExcluidos),
+    ArtOmitidos: configuracionActiva(ArtOmitidos),
+    Compradores: configuracionActiva(Compradores),
+    TipoArt: configuracionActiva(TipoArt),
+    TipoComprob: configuracionActiva(TipoComprob),
+    TipoNPCA: configuracionActiva(TipoNPCA),
+    DepExhibidos: configuracionActiva(DepExhibidos),
+  };
+
+  const parametrosSql = [];
+  const listaParametros = (rows, field, prefix, type) => {
+    const placeholders = rows.map((row, index) => {
+      const name = `${prefix}${index}`;
+      parametrosSql.push({ name, type, value: row[field] });
+      return `@${name}`;
+    });
+    return placeholders.length ? placeholders.join(", ") : "NULL";
+  };
+
+  const tiposArticuloSql = listaParametros(
+    configuracion.TipoArt,
+    "codigo_tipo_articulo",
+    "TipoArt",
+    sql.VarChar(20),
+  );
+  const tiposComprobanteSql = listaParametros(
+    configuracion.TipoComprob,
+    "codigo_tipo_comprobante",
+    "TipoComprob",
+    sql.VarChar(20),
+  );
+  const tiposNpcaSql = listaParametros(
+    configuracion.TipoNPCA,
+    "codigo_tipo_npca",
+    "TipoNPCA",
+    sql.VarChar(20),
+  );
+  const depositosExhibidosSql = listaParametros(
+    configuracion.DepExhibidos,
+    "codigo_deposito",
+    "DepExhibido",
+    sql.Int,
+  );
+  const depositosExcluidosSql = listaParametros(
+    configuracion.DepExcluidos,
+    "codigo_deposito",
+    "DepExcluido",
+    sql.Int,
+  );
+  const articulosOmitidosSql = listaParametros(
+    configuracion.ArtOmitidos,
+    "codigo_articulo",
+    "ArtOmitido",
+    sql.VarChar(50),
+  );
+  const excluirDepositosSql = configuracion.DepExcluidos.length
+    ? `AND s.SDPP_DEPOSITO NOT IN (${depositosExcluidosSql})`
+    : "";
+  const excluirArticulosSql = configuracion.ArtOmitidos.length
+    ? `AND s.CodigoArticulo NOT IN (${articulosOmitidosSql})`
+    : "";
+
+  const compradoresSql = configuracion.Compradores.length
+    ? configuracion.Compradores.map((row, index) => {
+        const codigoName = `CompradorCodigo${index}`;
+        const nombreName = `CompradorNombre${index}`;
+        parametrosSql.push(
+          {
+            name: codigoName,
+            type: sql.VarChar(3),
+            value: row.codigo_comprador,
+          },
+          {
+            name: nombreName,
+            type: sql.NVarChar(100),
+            value: row.nombre_comprador,
+          },
+        );
+        return `(@${codigoName}, @${nombreName})`;
+      }).join(",\n        ")
+    : "(CAST(NULL AS varchar(3)), CAST(NULL AS nvarchar(100)))";
+
+  const query = `SET NOCOUNT ON;
+SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
+
+;WITH
+Compradores AS
+(
+    SELECT DISTINCT
+        v.CodigoComprador,
+        v.NombreComprador
+    FROM
+    (
+        VALUES
+        ${compradoresSql}
+    ) AS v (CodigoComprador, NombreComprador)
+    WHERE v.CodigoComprador IS NOT NULL
+),
+Stock AS
+(
+    SELECT
+        a.ARTS_ARTICULO,
+        a.ARTS_ARTICULO_EMP AS CodigoArticulo,
+        a.ARTS_NOMBRE       AS NombreArticulo,
+        SUM(s.SDPP_STOCK_ACT) AS StockUnidades,
+        ca04.CA04_NOMBRE,
+        ca05.CA05_NOMBRE,
+        ca06.CA06_NOMBRE,
+        ca08.CA08_NOMBRE
+    FROM dbo.STOC_ARTS AS a
+    INNER JOIN dbo.STOC_SDPP AS s
+        ON s.SDPP_ARTICULO = a.ARTS_ARTICULO
+    INNER JOIN dbo.STOC_CA02 AS ca02
+        ON ca02.CA02_CLASIF_2 = a.ARTS_CLASIF_2
+    INNER JOIN dbo.STOC_CA03 AS ca03
+        ON ca03.CA03_CLASIF_3 = a.ARTS_CLASIF_3
+    INNER JOIN dbo.STOC_CA04 AS ca04
+        ON ca04.CA04_CLASIF_4 = a.ARTS_CLASIF_4
+    INNER JOIN dbo.STOC_CA05 AS ca05
+        ON ca05.CA05_CLASIF_5 = a.ARTS_CLASIF_5
+    INNER JOIN dbo.STOC_CA06 AS ca06
+        ON ca06.CA06_CLASIF_6 = a.ARTS_CLASIF_6
+    INNER JOIN dbo.STOC_CA08 AS ca08
+        ON ca08.CA08_CLASIF_8 = a.ARTS_CLASIF_8
+    WHERE a.ARTS_TIPO_ART IN (${tiposArticuloSql})
+    ${excluirDepositosSql}
+    GROUP BY
+        a.ARTS_ARTICULO,
+        a.ARTS_ARTICULO_EMP,
+        a.ARTS_NOMBRE,
+        ca04.CA04_NOMBRE,
+        ca05.CA05_NOMBRE,
+        ca06.CA06_NOMBRE,
+        ca08.CA08_NOMBRE
+    HAVING SUM(s.SDPP_STOCK_ACT) > 0
+),
+StockExhibido AS
+(
+    SELECT
+        s.SDPP_ARTICULO,
+        SUM(s.SDPP_STOCK_ACT) AS Exhibido
+    FROM dbo.STOC_SDPP AS s
+    WHERE s.SDPP_DEPOSITO IN (${depositosExhibidosSql})
+    GROUP BY s.SDPP_ARTICULO
+),
+UltimaVenta AS
+(
+    SELECT
+        a.ARTS_ARTICULO_EMP AS CodigoArticulo,
+        MAX(cvcl.CVCL_FECHA_EMI) AS UltimaVenta
+    FROM dbo.CCOB_CVCL AS cvcl
+    INNER JOIN dbo.VENT_CVRF AS cvrf
+        ON cvrf.CVRF_DIVISION_CVCL = cvcl.CVCL_DIVISION_CVCL
+       AND cvrf.CVRF_SUCURSAL_CVCL = cvcl.CVCL_SUCURSAL_IMP
+       AND cvrf.CVRF_TIPO_CVCL     = cvcl.CVCL_TIPO_VAR
+       AND cvrf.CVRF_NUMERO_CVCL   = cvcl.CVCL_NUMERO_CVCL
+    INNER JOIN dbo.CCOB_CLIE AS clie
+        ON clie.CLIE_CLIENTE = cvcl.CVCL_CLIENTE
+    INNER JOIN dbo.STOC_ARTS AS a
+        ON a.ARTS_ARTICULO = cvrf.CVRF_ARTICULO
+    GROUP BY a.ARTS_ARTICULO_EMP
+),
+RecepcionesPorFecha AS
+(
+    SELECT
+        a.ARTS_ARTICULO_EMP AS CodigoArticulo,
+        most.MOST_FECHA_EMI AS FechaRecepcion,
+        SUM(mosd.MOSD_CANT_ING) AS CantidadRecibida
+    FROM dbo.STOC_MOSD AS mosd
+    INNER JOIN dbo.STOC_MOST AS most
+        ON most.MOST_MOVSTO_MOST = mosd.MOSD_MOVSTO_MOST
+    INNER JOIN dbo.STOC_MSMV AS msmv
+        ON msmv.MSMV_MOVSTO_MOST = most.MOST_MOVSTO_MOST
+    INNER JOIN dbo.STOC_ARTS AS a
+        ON a.ARTS_ARTICULO = mosd.MOSD_ARTICULO
+    INNER JOIN dbo.STOC_TCST AS tcst
+        ON tcst.TCST_TIPO_COM = msmv.MSMV_TIPO_MSVA
+    WHERE a.ARTS_TIPO_ART IN (${tiposArticuloSql})
+      AND tcst.TCST_TIPO_COM IN (${tiposComprobanteSql})
+    GROUP BY
+        a.ARTS_ARTICULO_EMP,
+        most.MOST_FECHA_EMI
+),
+RecepcionesOrdenadas AS
+(
+    SELECT
+        r.CodigoArticulo,
+        r.FechaRecepcion,
+        r.CantidadRecibida,
+        DENSE_RANK() OVER
+        (
+            PARTITION BY r.CodigoArticulo
+            ORDER BY r.FechaRecepcion DESC
+        ) AS OrdenReciente
+    FROM RecepcionesPorFecha AS r
+),
+UltimaRecepcion AS
+(
+    SELECT
+        r.CodigoArticulo,
+        r.FechaRecepcion AS UltimaEntradaProveedor,
+        SUM(r.CantidadRecibida) AS CantidadUltimaEntradaProveedor
+    FROM RecepcionesOrdenadas AS r
+    WHERE r.OrdenReciente = 1
+    GROUP BY r.CodigoArticulo, r.FechaRecepcion
+),
+NotasPedidoPendientes AS
+(
+    SELECT
+        a.ARTS_ARTICULO_EMP AS CodigoArticulo,
+        SUM(npde.NPDE_CANT_PEDIDA - npde.NPDE_CANT_ENTREG) AS UnidadesPendientes
+    FROM dbo.VENT_NPCA AS npca
+    INNER JOIN dbo.VENT_NPDE AS npde
+        ON npde.NPDE_DIVISION_NPCA = npca.NPCA_DIVISION_NPCA
+       AND npde.NPDE_TIPO_NPCA     = npca.NPCA_TIPO_NPCA
+       AND npde.NPDE_NUMERO_NPCA   = npca.NPCA_NUMERO_NPCA
+    INNER JOIN dbo.STOC_ARTS AS a
+        ON a.ARTS_ARTICULO = npde.NPDE_ARTICULO
+    WHERE npca.NPCA_TIPO_NPCA IN (${tiposNpcaSql})
+      AND a.ARTS_TIPO_ART IN (${tiposArticuloSql})
+      AND npde.NPDE_MOTIVO_CANC IS NULL
+      AND npde.NPDE_CANT_PEDIDA - npde.NPDE_CANT_ENTREG > 0
+    GROUP BY a.ARTS_ARTICULO_EMP
+),
+PrecioLista100 AS
+(
+    SELECT
+        p.ARPV_ARTICULO,
+        ROUND
+        (
+            p.ARPV_PRECIO_VTA
+            * COALESCE(NULLIF(cot.COTI_COTIZACION, 0), 1),
+            2
+        ) AS PrecioContadoSinIvaLista100
+    FROM dbo.VENT_ARPV AS p
+    OUTER APPLY
+    (
+        SELECT TOP (1)
+            c.COTI_COTIZACION
+        FROM dbo.SIST_COTI AS c
+        WHERE c.COTI_MONEDA1 = p.ARPV_MONEDA
+        ORDER BY c.COTI_FECHA DESC
+    ) AS cot
+    WHERE p.ARPV_LISTA_PRECVTA = 100
+      AND EXISTS
+          (
+              SELECT 1
+              FROM dbo.VENT_ARVI AS vi
+              INNER JOIN dbo.SIST_CIMP AS ci
+                  ON ci.CIMP_CATEGORIA_IMP = vi.ARVI_CATEGORIA_IMP
+                 AND ci.CIMP_IMPUESTO       = vi.ARVI_IMPUESTO
+              WHERE vi.ARVI_ARTICULO = p.ARPV_ARTICULO
+          )
+),
+PrecioLista1 AS
+(
+    SELECT
+        a.ARTS_ARTICULO_EMP AS CodigoArticulo,
+        ROUND
+        (
+            p.ARPV_PRECIO_VTA
+            * COALESCE(NULLIF(cot.COTI_COTIZACION, 0), 1)
+            * 0.8
+            * (1 + ci.CIMP_TASA / 100.0),
+            2
+        ) AS PrecioContadoConIvaLista1
+    FROM dbo.VENT_ARPV AS p
+    INNER JOIN dbo.STOC_ARTS AS a
+        ON a.ARTS_ARTICULO = p.ARPV_ARTICULO
+    INNER JOIN dbo.VENT_ARVI AS vi
+        ON vi.ARVI_ARTICULO = p.ARPV_ARTICULO
+    INNER JOIN dbo.SIST_CIMP AS ci
+        ON ci.CIMP_CATEGORIA_IMP = vi.ARVI_CATEGORIA_IMP
+       AND ci.CIMP_IMPUESTO       = vi.ARVI_IMPUESTO
+    OUTER APPLY
+    (
+        SELECT TOP (1)
+            c.COTI_COTIZACION
+        FROM dbo.SIST_COTI AS c
+        WHERE c.COTI_MONEDA1 = p.ARPV_MONEDA
+        ORDER BY c.COTI_FECHA DESC
+    ) AS cot
+    WHERE p.ARPV_LISTA_PRECVTA = 1
+),
+VentasUltimoAnio AS
+(
+    SELECT
+        a.ARTS_ARTICULO_EMP AS CodigoArticulo,
+        SUM
+        (
+            CASE
+                WHEN msmv.MSMV_TIPO_MSVA = 'RVP'
+                    THEN mosd.MOSD_CANT_ING
+                WHEN msmv.MSMV_TIPO_MSVA IN ('dve', 'dvc')
+                    THEN -mosd.MOSD_CANT_ING
+                ELSE 0
+            END
+        ) AS VentasUltimoAnio
+    FROM dbo.STOC_MOSD AS mosd
+    INNER JOIN dbo.STOC_MSMV AS msmv
+        ON msmv.MSMV_MOVSTO_MOST = mosd.MOSD_MOVSTO_MOST
+    INNER JOIN dbo.STOC_MOST AS most
+        ON most.MOST_MOVSTO_MOST = mosd.MOSD_MOVSTO_MOST
+    INNER JOIN dbo.STOC_ARTS AS a
+        ON a.ARTS_ARTICULO = mosd.MOSD_ARTICULO
+    WHERE most.MOST_FECHA_EMI >= DATEADD(DAY, -365, CONVERT(date, GETDATE()))
+    GROUP BY a.ARTS_ARTICULO_EMP
+),
+DatosBase AS
+(
+    SELECT
+        s.CodigoArticulo,
+        s.NombreArticulo,
+        s.StockUnidades,
+        s.StockUnidades - COALESCE(np.UnidadesPendientes, 0) AS StockDisponible,
+        se.Exhibido,
+        uv.UltimaVenta,
+        ur.UltimaEntradaProveedor,
+        ur.CantidadUltimaEntradaProveedor,
+        p100.PrecioContadoSinIvaLista100,
+        arve.ARVE_BLOQUEO_VENTA AS BloqueoVenta,
+        s.CA04_NOMBRE,
+        s.CA05_NOMBRE,
+        s.CA06_NOMBRE,
+        s.CA08_NOMBRE,
+        LEFT(rubc.RUBC_NOMBRE, 3) AS CodigoComprador
+    FROM Stock AS s
+    LEFT JOIN StockExhibido AS se
+        ON se.SDPP_ARTICULO = s.ARTS_ARTICULO
+    LEFT JOIN UltimaVenta AS uv
+        ON uv.CodigoArticulo = s.CodigoArticulo
+    LEFT JOIN UltimaRecepcion AS ur
+        ON ur.CodigoArticulo = s.CodigoArticulo
+    LEFT JOIN NotasPedidoPendientes AS np
+        ON np.CodigoArticulo = s.CodigoArticulo
+    LEFT JOIN PrecioLista100 AS p100
+        ON p100.ARPV_ARTICULO = s.ARTS_ARTICULO
+    INNER JOIN dbo.STOC_ARVE AS arve
+        ON arve.ARVE_ARTICULO = s.ARTS_ARTICULO
+       AND arve.ARVE_BLOQUEO_VENTA = 0
+    LEFT JOIN dbo.STOC_ARCO AS arco
+        ON arco.ARCO_ARTICULO = s.ARTS_ARTICULO
+    LEFT JOIN dbo.CPAG_RUBC AS rubc
+        ON rubc.RUBC_RUBRO_COMPRA = arco.ARCO_RUBRO_COMPRA
+    WHERE s.CA06_NOMBRE NOT IN ('-', '_NO APLICA', ' NO EVALUADO')
+      ${excluirArticulosSql}
+)
+SELECT
+    b.CodigoArticulo                    AS [Cód Art],
+    b.NombreArticulo                    AS [Nombre Art],
+    b.StockUnidades                     AS [Stock Uni],
+    b.StockDisponible                   AS [Stock Disp],
+    b.Exhibido,
+    b.UltimaVenta                       AS [Ultima Vta],
+    b.UltimaEntradaProveedor            AS [Ult Entr Proveed],
+    b.CantidadUltimaEntradaProveedor    AS [Cant Ult Ent Prov],
+    dias.DiasSinVenta                   AS [Días sin venta],
+    dias.DiasUltimaEntradaProveedor     AS [Días Ult Ent Prov],
+    CASE
+        WHEN dias.DiasUltimaEntradaProveedor IS NULL THEN dias.DiasSinVenta
+        WHEN dias.DiasSinVenta IS NULL THEN dias.DiasUltimaEntradaProveedor
+        WHEN dias.DiasSinVenta < dias.DiasUltimaEntradaProveedor THEN dias.DiasSinVenta
+        ELSE dias.DiasUltimaEntradaProveedor
+    END                                 AS [Días Ult Mov],
+    b.PrecioContadoSinIvaLista100       AS [Costo Uni sin IVA],
+    ROUND
+    (
+        b.PrecioContadoSinIvaLista100 * b.StockUnidades,
+        2
+    )                                   AS [Costo item sin IVA],
+    p1.PrecioContadoConIvaLista1        AS [Venta Uni Cdo con IVA L1],
+    b.BloqueoVenta                      AS [Bloq Vta 1SI 0NO],
+    b.CA04_NOMBRE,
+    b.CA05_NOMBRE,
+    b.CA06_NOMBRE,
+    b.CA08_NOMBRE,
+    c.NombreComprador                   AS [Nombre Comprador],
+    vua.VentasUltimoAnio                AS [Vtas Ult Año]
+FROM DatosBase AS b
+CROSS APPLY
+(
+    VALUES
+    (
+        CASE
+            WHEN b.UltimaVenta IS NULL THEN NULL
+            ELSE DATEDIFF(DAY, CONVERT(date, b.UltimaVenta), CONVERT(date, GETDATE()))
+        END,
+        CASE
+            WHEN b.UltimaEntradaProveedor IS NULL THEN NULL
+            ELSE DATEDIFF(DAY, CONVERT(date, b.UltimaEntradaProveedor), CONVERT(date, GETDATE()))
+        END
+    )
+) dias (DiasSinVenta, DiasUltimaEntradaProveedor)
+LEFT JOIN PrecioLista1 AS p1
+    ON p1.CodigoArticulo = b.CodigoArticulo
+LEFT JOIN Compradores AS c
+    ON c.CodigoComprador = b.CodigoComprador
+LEFT JOIN VentasUltimoAnio AS vua
+    ON vua.CodigoArticulo = b.CodigoArticulo;
+
+SET TRANSACTION ISOLATION LEVEL READ COMMITTED;`;
+
+  let pool = await sql.connect(plataforma);
+  const inicioSql = performance.now();
+  const request = pool.request();
+  for (const { name, type, value } of parametrosSql) {
+    request.input(name, type, value);
+  }
+
+  const getResponse = await request.query(query);
+  const rows = getResponse.recordset || [];
+
+  console.log({
+    sqlServerMs: Math.round(performance.now() - inicioSql),
+    filas: rows.length,
+  });
+
+  return rows;
+}
+
 export default {
+  getSTOC_CA04: getSTOC_CA04,
+  getSTOC_CA05: getSTOC_CA05,
+  getSTOC_CA06: getSTOC_CA06,
+  getSTOC_CA08: getSTOC_CA08,
   getControl: getControl,
   getOrder: getOrder,
   getListaClientes: getListaClientes,
@@ -2814,4 +3309,5 @@ export default {
   obtenerDetalleRevendedorDeudaPorCliente:
     obtenerDetalleRevendedorDeudaPorCliente,
   getBuscarClientePorTelefono: getBuscarClientePorTelefono,
+  getRotacionGeneralProductos: getRotacionGeneralProductos,
 };

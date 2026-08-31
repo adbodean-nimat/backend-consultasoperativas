@@ -5,7 +5,7 @@
   "main": "api.js",
   "type": "module",
   "scripts": {
-    "test": "node --test src/modules/duplicate-transfers/duplicate-transfer.test.js src/modules/duplicate-transfers/duplicate-transfer-review.test.js src/modules/gestion/gestion.test.js src/modules/gestion/gestion-auth.test.js src/modules/gestion/gestion-scheduler.test.js src/modules/gestion/gestion.routes.test.js",
+    "test": "node --test src/modules/rotacion-general-productos/rotacion-general-productos.test.js src/modules/duplicate-transfers/duplicate-transfer.test.js src/modules/duplicate-transfers/duplicate-transfer-review.test.js src/modules/gestion/gestion.test.js src/modules/gestion/gestion-auth.test.js src/modules/gestion/gestion-scheduler.test.js src/modules/gestion/gestion.routes.test.js",
     "lint": "node --check api.js && node --check src/ldap.config.js && node --check src/modules/duplicate-transfers/duplicate-transfer-monitor.service.js && node --check src/modules/duplicate-transfers/duplicate-transfer-review.service.js && node --check src/modules/duplicate-transfers/duplicate-transfer.routes.js && node --check src/modules/gestion/gestion-auth.repository.js && node --check src/modules/gestion/gestion-directory.service.js && node --check src/modules/gestion/gestion-auth.service.js && node --check src/modules/gestion/gestion-auth.middleware.js && node --check src/modules/gestion/gestion-auth.controller.js && node --check src/modules/gestion/gestion-scheduler.js",
     "build": "node --check api.js",
     "start": "nodemon api.js",

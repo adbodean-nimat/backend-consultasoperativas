@@ -3649,6 +3649,227 @@ async function obtenerRegistrarEnvioWhatsappPDF(id) {
   return result.rows;
 }
 
+async function select_gv_articulos_omitidos() {
+  const result = await pool.query("SELECT * FROM gv_articulos_omitidos");
+  return result.rows;
+}
+
+async function insert_gv_articulos_omitidos(cod_art, nombre_art) {
+  const result = await pool.query(
+    "INSERT INTO gv_articulos_omitidos (codigo_articulo, descripcion, activo, actualizado_en) VALUES ($1, $2, $3, CURRENT_TIMESTAMP) RETURNING *",
+    [cod_art, nombre_art, true],
+  );
+  return result.rows;
+}
+
+async function update_gv_articulos_omitidos(cod_art, nombre_art, boolean) {
+  const result = await pool.query(
+    "UPDATE gv_articulos_omitidos SET codigo_articulo = $1, descripcion = $2, activo = $3 WHERE codigo_articulo = $4 RETURNING *",
+    [cod_art, nombre_art, boolean, cod_art],
+  );
+  return result.rows;
+}
+
+async function delete_gv_articulos_omitidos(cod_art) {
+  const result = await pool.query(
+    "DELETE FROM gv_articulos_omitidos WHERE codigo_articulo = $1",
+    [cod_art],
+  );
+  return result.rows;
+}
+
+async function select_gv_compradores() {
+  const result = await pool.query("SELECT * FROM gv_compradores");
+  return result.rows;
+}
+
+async function insert_gv_compradores(codigo_comprador, nombre_comprador) {
+  const result = await pool.query(
+    "INSERT INTO gv_compradores (codigo_comprador, nombre_comprador, activo, actualizado_en) VALUES ($1, $2, $3, CURRENT_TIMESTAMP) RETURNING *",
+    [codigo_comprador, nombre_comprador, true],
+  );
+  return result.rows;
+}
+
+async function update_gv_compradores(
+  codigo_comprador,
+  nombre_comprador,
+  boolean,
+) {
+  const result = await pool.query(
+    "UPDATE gv_compradores SET codigo_comprador = $1, nombre_comprador = $2, activo = $3 WHERE codigo_comprador = $4 RETURNING *",
+    [codigo_comprador, nombre_comprador, boolean, codigo_comprador],
+  );
+  return result.rows;
+}
+
+async function delete_gv_compradores(codigo_comprador) {
+  const result = await pool.query(
+    "DELETE FROM gv_compradores WHERE codigo_comprador = $1",
+    [codigo_comprador],
+  );
+  return result.rows;
+}
+
+async function select_gv_depositos_excluidos() {
+  const result = await pool.query("SELECT * FROM gv_depositos_excluidos");
+  return result.rows;
+}
+
+async function insert_gv_depositos_excluidos(cod_deposito, nombre_deposito) {
+  const result = await pool.query(
+    "INSERT INTO gv_depositos_excluidos (codigo_deposito, nombre_deposito, activo, actualizado_en) VALUES ($1, $2, $3, CURRENT_TIMESTAMP) RETURNING *",
+    [cod_deposito, nombre_deposito, true],
+  );
+  return result.rows;
+}
+
+async function update_gv_depositos_excluidos(
+  cod_deposito,
+  nombre_deposito,
+  boolean,
+) {
+  const result = await pool.query(
+    "UPDATE gv_depositos_excluidos SET codigo_deposito = $1, nombre_deposito = $2, activo = $3 WHERE codigo_deposito = $4 RETURNING *",
+    [cod_deposito, nombre_deposito, boolean, cod_deposito],
+  );
+  return result.rows;
+}
+
+async function delete_gv_depositos_excluidos(cod_deposito) {
+  const result = await pool.query(
+    "DELETE FROM gv_depositos_excluidos WHERE codigo_deposito = $1",
+    [cod_deposito],
+  );
+  return result.rows;
+}
+
+async function select_gv_depositos_exhibidos() {
+  const result = await pool.query("SELECT * FROM gv_depositos_exhibidos");
+  return result.rows;
+}
+
+async function insert_gv_depositos_exhibidos(cod_deposito, descripcion) {
+  const result = await pool.query(
+    "INSERT INTO gv_depositos_exhibidos (codigo_deposito, descripcion, activo, actualizado_en) VALUES ($1, $2, $3, CURRENT_TIMESTAMP) RETURNING *",
+    [cod_deposito, descripcion, true],
+  );
+  return result.rows;
+}
+
+async function update_gv_depositos_exhibidos(
+  cod_deposito,
+  descripcion,
+  boolean,
+) {
+  const result = await pool.query(
+    "UPDATE gv_depositos_exhibidos SET codigo_deposito = $1, descripcion = $2, activo = $3 WHERE codigo_deposito = $4 RETURNING *",
+    [cod_deposito, descripcion, boolean, cod_deposito],
+  );
+  return result.rows;
+}
+
+async function delete_gv_depositos_exhibidos(cod_deposito) {
+  const result = await pool.query(
+    "DELETE FROM gv_depositos_exhibidos WHERE codigo_deposito = $1",
+    [cod_deposito],
+  );
+  return result.rows;
+}
+
+async function select_gv_tipos_articulo() {
+  const result = await pool.query("SELECT * FROM public.gv_tipos_articulo");
+  return result.rows;
+}
+
+async function insert_gv_tipos_articulo(cod_tipo, nombre_tipo) {
+  const result = await pool.query(
+    "INSERT INTO gv_tipos_articulo (codigo_tipo_articulo, nombre_tipo_articulo, activo, actualizado_en) VALUES ($1, $2, $3, CURRENT_TIMESTAMP) RETURNING *",
+    [cod_tipo, nombre_tipo, true],
+  );
+  return result.rows;
+}
+
+async function update_gv_tipos_articulo(cod_tipo, nombre_tipo, boolean) {
+  const result = await pool.query(
+    "UPDATE gv_tipos_articulo SET codigo_tipo_articulo = $1, nombre_tipo_articulo = $2, activo = $3 WHERE codigo_tipo_articulo = $4 RETURNING *",
+    [cod_tipo, nombre_tipo, boolean, cod_tipo],
+  );
+  return result.rows;
+}
+
+async function delete_gv_tipos_articulo(cod_tipo) {
+  const result = await pool.query(
+    "DELETE FROM gv_tipos_articulo WHERE codigo_tipo_articulo = $1",
+    [cod_tipo],
+  );
+  return result.rows;
+}
+
+async function select_gv_tipos_comprobante_recepcion() {
+  const result = await pool.query(
+    "SELECT * FROM gv_tipos_comprobante_recepcion",
+  );
+  return result.rows;
+}
+
+async function insert_gv_tipos_comprobante_recepcion(cod_tipo, nombre_tipo) {
+  const result = await pool.query(
+    "INSERT INTO gv_tipos_comprobante_recepcion (codigo_tipo_comprobante, nombre_tipo_comprobante, activo, actualizado_en) VALUES ($1, $2, $3, CURRENT_TIMESTAMP) RETURNING *",
+    [cod_tipo, nombre_tipo, true],
+  );
+  return result.rows;
+}
+
+async function update_gv_tipos_comprobante_recepcion(
+  cod_tipo,
+  nombre_tipo,
+  boolean,
+) {
+  const result = await pool.query(
+    "UPDATE gv_tipos_comprobante_recepcion SET codigo_tipo_comprobante = $1, nombre_tipo_comprobante = $2, activo = $3 WHERE codigo_tipo_comprobante = $4 RETURNING *",
+    [cod_tipo, nombre_tipo, boolean, cod_tipo],
+  );
+  return result.rows;
+}
+
+async function delete_gv_tipos_comprobante_recepcion(cod_tipo) {
+  const result = await pool.query(
+    "DELETE FROM gv_tipos_comprobante_recepcion WHERE codigo_tipo_comprobante = $1",
+    [cod_tipo],
+  );
+  return result.rows;
+}
+
+async function select_gv_tipos_npca() {
+  const result = await pool.query("SELECT * FROM gv_tipos_npca");
+  return result.rows;
+}
+
+async function insert_gv_tipos_npca(cod_tipo, nombre_tipo) {
+  const result = await pool.query(
+    "INSERT INTO gv_tipos_npca (codigo_tipo_npca, nombre_tipo_npca, activo, actualizado_en) VALUES ($1, $2, $3, CURRENT_TIMESTAMP) RETURNING *",
+    [cod_tipo, nombre_tipo, true],
+  );
+  return result.rows;
+}
+
+async function update_gv_tipos_npca(cod_tipo, nombre_tipo, boolean) {
+  const result = await pool.query(
+    "UPDATE gv_tipos_npca SET codigo_tipo_npca = $1, nombre_tipo_npca = $2, activo = $3 WHERE codigo_tipo_npca = $4 RETURNING *",
+    [cod_tipo, nombre_tipo, boolean, cod_tipo],
+  );
+  return result.rows;
+}
+
+async function delete_gv_tipos_npca(cod_tipo) {
+  const result = await pool.query(
+    "DELETE FROM gv_tipos_npca WHERE codigo_tipo_npca = $1",
+    [cod_tipo],
+  );
+  return result.rows;
+}
+
 export default {
   getDeposANoConsiderar,
   getDeposANoConsiderarByCod,
@@ -3869,4 +4090,32 @@ export default {
   obtenerRegistrarEnvioWhatsapp,
   actualizarConfigCron,
   obtenerRegistrarEnvioWhatsappPDF,
+  select_gv_articulos_omitidos,
+  insert_gv_articulos_omitidos,
+  update_gv_articulos_omitidos,
+  delete_gv_articulos_omitidos,
+  select_gv_compradores,
+  insert_gv_compradores,
+  update_gv_compradores,
+  delete_gv_compradores,
+  select_gv_depositos_excluidos,
+  insert_gv_depositos_excluidos,
+  update_gv_depositos_excluidos,
+  delete_gv_depositos_excluidos,
+  select_gv_depositos_exhibidos,
+  insert_gv_depositos_exhibidos,
+  update_gv_depositos_exhibidos,
+  delete_gv_depositos_exhibidos,
+  select_gv_tipos_articulo,
+  insert_gv_tipos_articulo,
+  update_gv_tipos_articulo,
+  delete_gv_tipos_articulo,
+  select_gv_tipos_comprobante_recepcion,
+  insert_gv_tipos_comprobante_recepcion,
+  update_gv_tipos_comprobante_recepcion,
+  delete_gv_tipos_comprobante_recepcion,
+  select_gv_tipos_npca,
+  insert_gv_tipos_npca,
+  update_gv_tipos_npca,
+  delete_gv_tipos_npca,
 };

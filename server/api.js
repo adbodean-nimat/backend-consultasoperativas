@@ -13,6 +13,11 @@ import helmet from "helmet";
 import multer from "multer";
 import net from "net";
 import { getLdapServerConfig } from "./src/ldap.config.js";
+import {
+  RotacionGeneralProductosValidationError,
+  filtrarRotacionGeneralProductos,
+  validarFiltrosRotacionGeneralProductos,
+} from "./src/modules/rotacion-general-productos/rotacion-general-productos.validator.js";
 
 const app = express();
 
@@ -1982,6 +1987,135 @@ router.route("/buscarclienteportelefono").get(async (req, res) => {
       ok: false,
       message: "Ocurrió un error al buscar cliente por telefono",
       error: error.message,
+    });
+  }
+});
+
+router
+  .route("/rotaciongeneralproductos/clasif4")
+  .get(async (request, response) => {
+    try {
+      const clasif4 = await Db.getSTOC_CA04();
+      return response.status(200).json({
+        ok: true,
+        total: clasif4.length,
+        rows: clasif4,
+      });
+    } catch (error) {
+      console.error("Error en /api/rotaciongeneralproductos/clasif4:", error);
+      return response.status(500).json({
+        ok: false,
+        message: "Ocurrió un error al obtener clasificación 4 de productos",
+        error: error.message,
+      });
+    }
+  });
+
+router
+  .route("/rotaciongeneralproductos/clasif5")
+  .get(async (request, response) => {
+    try {
+      const clasif5 = await Db.getSTOC_CA05();
+      return response.status(200).json({
+        ok: true,
+        total: clasif5.length,
+        rows: clasif5,
+      });
+    } catch (error) {
+      console.error("Error en /api/rotaciongeneralproductos/clasif5:", error);
+      return response.status(500).json({
+        ok: false,
+        message: "Ocurrió un error al obtener clasificación 5 de productos",
+        error: error.message,
+      });
+    }
+  });
+
+router
+  .route("/rotaciongeneralproductos/clasif6")
+  .get(async (request, response) => {
+    try {
+      const clasif6 = await Db.getSTOC_CA06();
+      return response.status(200).json({
+        ok: true,
+        total: clasif6.length,
+        rows: clasif6,
+      });
+    } catch (error) {
+      console.error("Error en /api/rotaciongeneralproductos/clasif6:", error);
+      return response.status(500).json({
+        ok: false,
+        message: "Ocurrió un error al obtener clasificación 6 de productos",
+        error: error.message,
+      });
+    }
+  });
+
+router
+  .route("/rotaciongeneralproductos/clasif8")
+  .get(async (request, response) => {
+    try {
+      const clasif8 = await Db.getSTOC_CA08();
+      return response.status(200).json({
+        ok: true,
+        total: clasif8.length,
+        rows: clasif8,
+      });
+    } catch (error) {
+      console.error("Error en /api/rotaciongeneralproductos/clasif8:", error);
+      return response.status(500).json({
+        ok: false,
+        message: "Ocurrió un error al obtener clasificación 8 de productos",
+        error: error.message,
+      });
+    }
+  });
+
+router.route("/rotaciongeneralproductos/compradores").get(async (req, res) => {
+  try {
+    const compradores = await Pg.select_gv_compradores();
+    res.status(200).json({
+      ok: true,
+      total: compradores.length,
+      rows: compradores,
+    });
+  } catch (error) {
+    console.error("Error en /api/rotaciongeneralproductos/compradores:", error);
+    res.status(500).json({
+      ok: false,
+      message: "Ocurrió un error al obtener los compradores",
+      error: error.message,
+    });
+  }
+});
+
+router.route("/rotaciongeneralproductos").get(async (req, res) => {
+  try {
+    const inicio = performance.now();
+    const filtros = validarFiltrosRotacionGeneralProductos(req.query);
+    const allRows = await Db.getRotacionGeneralProductos();
+    const rows = filtrarRotacionGeneralProductos(allRows, filtros);
+
+    console.log({
+      endpointMs: Math.round(performance.now() - inicio),
+      filas: rows.length,
+    });
+
+    return res.status(200).json({
+      ok: true,
+      total: rows.length,
+      rows,
+    });
+  } catch (error) {
+    if (error instanceof RotacionGeneralProductosValidationError) {
+      return res.status(400).json({ ok: false, message: error.message });
+    }
+
+    console.error("Error en /api/rotaciongeneralproductos:", error);
+
+    return res.status(500).json({
+      ok: false,
+      message: "Ocurrió un error al obtener la rotación general de productos",
     });
   }
 });
