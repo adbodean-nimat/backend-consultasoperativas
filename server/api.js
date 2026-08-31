@@ -18,6 +18,7 @@ import {
   filtrarRotacionGeneralProductos,
   validarFiltrosRotacionGeneralProductos,
 } from "./src/modules/rotacion-general-productos/rotacion-general-productos.validator.js";
+import rotacionProductosConfigRouter from "./src/modules/rotacion-general-productos/rotacion-general-productos-config.routes.js";
 
 const app = express();
 
@@ -2119,6 +2120,11 @@ router.route("/rotaciongeneralproductos").get(async (req, res) => {
     });
   }
 });
+
+router.use(
+  "/rotaciongeneralproductos/configuracion",
+  rotacionProductosConfigRouter,
+);
 
 const httpPort = 8099;
 const httpsPort = 8090;
