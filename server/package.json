@@ -48,5 +48,8 @@
   },
   "devDependencies": {
     "nodemon": "^3.1.14"
+  },
+  "allowScripts": {
+    "puppeteer@25.5.0": true
   }
 }

@@ -369,10 +369,39 @@ router.route("/clientescad").get((request, response) => {
   });
 });
 
-router.route("/vblesentrnp/:id").get((request, response) => {
-  Db.getVblesEntrNP(request.params.id).then((data) => {
-    response.json(data[0]);
-  });
+router.route("/vblesentnp/clasif6").get(async (request, response) => {
+  try {
+    const clasif6 = await Db.getSTOC_CA06();
+    return response.status(200).json({
+      ok: true,
+      total: clasif6.length,
+      rows: clasif6,
+    });
+  } catch (error) {
+    console.error("Error en /api/vblesentnp/clasif6:", error);
+    return response.status(500).json({
+      ok: false,
+      message: "Ocurrió un error al obtener clasificación 6 de productos",
+      error: error.message,
+    });
+  }
+});
+
+router.route("/vblesentrnp").get(async (request, response) => {
+  try {
+    const diasAtras = request.query.diasAtras || 30;
+    const marcaClasif6 = request.query.marcaClasif6 || null;
+    const data = await Db.getVblesEntrNP(diasAtras, marcaClasif6);
+    response.status(200).json({ ok: true, total: data.length, rows: data });
+  } catch (error) {
+    console.error("Error en /api/vblesentrnp/:", error);
+    response.status(500).json({
+      ok: false,
+      code: "VBLESENTRNP_ERROR",
+      message: "Ocurrió un error al obtener los precios de venta al publico",
+      error: error.message,
+    });
+  }
 });
 
 router.route("/combo/:id").get((request, response) => {
