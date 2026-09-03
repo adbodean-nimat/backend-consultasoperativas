@@ -443,12 +443,20 @@ async function getComboArt(comboArt) {
 }
 
 // Consulta Vbles. Entr. NP +
-async function getVblesEntrNP(diasAtras, clasif6) {
+async function getVblesEntrNP(diasAtras, clasif6, fechaDesde, fechaHasta) {
   const query = `
 ;WITH
 Parametros AS (
-    SELECT 
-        DATEADD(DAY, -ISNULL(@dias_atras, 30), CONVERT(date, GETDATE())) AS fecha_desde
+    SELECT
+        COALESCE(
+            TRY_CONVERT(date, @fechaDesde),
+            DATEADD(DAY, -ISNULL(@diasAtras, 30), CONVERT(date, GETDATE()))
+        ) AS fecha_desde,
+
+        COALESCE(
+            TRY_CONVERT(date, @fechaHasta),
+            CONVERT(date, GETDATE())
+        ) AS fecha_hasta
 ),
 NP_A_Considerar AS (
     SELECT
@@ -680,6 +688,7 @@ Base1 AS (
       AND npde.NPDE_CANT_PEDIDA > npde.NPDE_CANT_ENTREG
       AND npde.NPDE_MOTIVO_CANC IS NULL
       AND npca.NPCA_FECHA_EMI >= p.fecha_desde
+      AND npca.NPCA_FECHA_EMI < DATEADD(DAY, 1, p.fecha_hasta)
       AND (
             @marcaClasif6 IS NULL
             OR arts.ARTS_CLASIF_6 = @marcaClasif6
@@ -870,6 +879,7 @@ Vincul1 AS (
     WHERE npde.NPDE_CANT_PEDIDA > npde.NPDE_CANT_ENTREG
       AND npde.NPDE_MOTIVO_CANC IS NULL
       AND npca.NPCA_FECHA_EMI >= p.fecha_desde
+      AND npca.NPCA_FECHA_EMI < DATEADD(DAY, 1, p.fecha_hasta)
       AND (
             @marcaClasif6 IS NULL
             OR arts.ARTS_CLASIF_6 = @marcaClasif6
@@ -1118,8 +1128,10 @@ ORDER BY
   let pool = await sql.connect(plataforma);
   let VblesEntrNP = await pool
     .request()
-    .input("dias_atras", sql.Int, diasAtras || 30)
+    .input("diasAtras", sql.Int, Number(diasAtras) || 30)
     .input("marcaClasif6", sql.VarChar(10), clasif6 || null)
+    .input("fechaDesde", sql.Date, fechaDesde || null)
+    .input("fechaHasta", sql.Date, fechaHasta || null)
     .query(query);
 
   return VblesEntrNP.recordset;

@@ -391,7 +391,14 @@ router.route("/vblesentrnp").get(async (request, response) => {
   try {
     const diasAtras = request.query.diasAtras || 30;
     const marcaClasif6 = request.query.marcaClasif6 || null;
-    const data = await Db.getVblesEntrNP(diasAtras, marcaClasif6);
+    const fechaDesde = request.query.fechaDesde || null;
+    const fechaHasta = request.query.fechaHasta || null;
+    const data = await Db.getVblesEntrNP(
+      diasAtras,
+      marcaClasif6,
+      fechaDesde,
+      fechaHasta,
+    );
     response.status(200).json({ ok: true, total: data.length, rows: data });
   } catch (error) {
     console.error("Error en /api/vblesentrnp/:", error);
