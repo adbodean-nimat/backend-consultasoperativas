@@ -3870,6 +3870,13 @@ async function delete_gv_tipos_npca(cod_tipo) {
   return result.rows;
 }
 
+async function simulador_mediosdepagos() {
+  const result = await pool.query(
+    "SELECT * FROM public.simulador_cobranzas_medios_de_pagos",
+  );
+  return result.rows;
+}
+
 export default {
   getDeposANoConsiderar,
   getDeposANoConsiderarByCod,
@@ -4118,4 +4125,5 @@ export default {
   insert_gv_tipos_npca,
   update_gv_tipos_npca,
   delete_gv_tipos_npca,
+  simulador_mediosdepagos,
 };

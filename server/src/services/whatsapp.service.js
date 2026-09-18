@@ -8,15 +8,20 @@ const {
   WABA_PHONE_NUMBER_ID,
   WHATSAPP_TEMPLATE_NAME,
   WHATSAPP_TEMPLATE_LANG,
+  WEP_WHATSAPP_TEMPLATE_NAME,
+  WEP_WHATSAPP_TEMPLATE_LANG,
   WABA_VERSION,
 } = process.env;
 
-function validarConfigWhatsapp() {
+function validarConfigWhatsapp(
+  templateName = WHATSAPP_TEMPLATE_NAME,
+  templateVariableName = "WHATSAPP_TEMPLATE_NAME",
+) {
   const faltantes = [];
 
   if (!WHATSAPP_TOKEN) faltantes.push("WHATSAPP_TOKEN");
   if (!WABA_PHONE_NUMBER_ID) faltantes.push("WABA_PHONE_NUMBER_ID");
-  if (!WHATSAPP_TEMPLATE_NAME) faltantes.push("WHATSAPP_TEMPLATE_NAME");
+  if (!templateName) faltantes.push(templateVariableName);
   if (!WABA_VERSION) faltantes.push("WABA_VERSION");
 
   if (faltantes.length > 0) {
@@ -206,4 +211,63 @@ async function enviarTemplateDeudaConPdf({
   };
 }
 
-export { subirPdfAMeta, enviarTemplateDeudaConPdf, limpiarTelefonoWhatsapp };
+async function enviarTemplateEntregaEnCamino({ telefono, nombreCliente }) {
+  validarConfigWhatsapp(
+    WEP_WHATSAPP_TEMPLATE_NAME,
+    "WEP_WHATSAPP_TEMPLATE_NAME",
+  );
+
+  const telefonoLimpio = limpiarTelefonoWhatsapp(telefono);
+  if (!telefonoLimpio) {
+    throw new Error("Teléfono WhatsApp vacío o inválido");
+  }
+
+  const url = `https://graph.facebook.com/${WABA_VERSION}/${WABA_PHONE_NUMBER_ID}/messages`;
+  const body = {
+    messaging_product: "whatsapp",
+    recipient_type: "individual",
+    to: telefonoLimpio,
+    type: "template",
+    template: {
+      name: WEP_WHATSAPP_TEMPLATE_NAME,
+      language: {
+        code: WEP_WHATSAPP_TEMPLATE_LANG || "es_AR",
+      },
+      components: [
+        {
+          type: "body",
+          parameters: [
+            {
+              type: "text",
+              text: String(nombreCliente || "cliente"),
+            },
+          ],
+        },
+      ],
+    },
+  };
+
+  const response = await postMetaWhatsapp(url, body, {
+    headers: {
+      Authorization: `Bearer ${WHATSAPP_TOKEN}`,
+      "Content-Type": "application/json",
+    },
+    timeout: 60000,
+  });
+  const messageId = response.data?.messages?.[0]?.id;
+  if (!messageId) {
+    throw new Error("Meta no devolvió un identificador de mensaje");
+  }
+
+  return {
+    messageId,
+    templateName: WEP_WHATSAPP_TEMPLATE_NAME,
+  };
+}
+
+export {
+  subirPdfAMeta,
+  enviarTemplateDeudaConPdf,
+  enviarTemplateEntregaEnCamino,
+  limpiarTelefonoWhatsapp,
+};

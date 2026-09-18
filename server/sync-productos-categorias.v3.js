@@ -1,0 +1,1505 @@
+import dotenv from "dotenv";
+import crypto from "node:crypto";
+import xlsx from "xlsx";
+import fs from "fs";
+import path from "path";
+import { encode } from "@toon-format/toon";
+
+dotenv.config();
+
+const EXCEL_PRODUCTOS = process.env.EXCEL_PRODUCTOS_PATH;
+const EXCEL_CATEGORIAS = process.env.EXCEL_CATEGORIAS_PATH;
+const EXCEL_URLS = process.env.EXCEL_URLS_PATH;
+const OUTPUT_JSON = process.env.OUTPUT_JSON_V3 || process.env.OUTPUT_JSON_V2;
+const OUTPUT_TOON = process.env.OUTPUT_TOON_V3 || process.env.OUTPUT_TOON_V2;
+const OUTPUT_TXT = process.env.OUTPUT_TXT_V3 || process.env.OUTPUT_TXT_V2;
+const OUTPUT_JSONL = process.env.OUTPUT_JSONL_V3 || process.env.OUTPUT_JSONL_V2
+  ? process.env.OUTPUT_JSONL_V3 || process.env.OUTPUT_JSONL_V2
+  : OUTPUT_JSON
+    ? OUTPUT_JSON.replace(/\.json$/i, "") + ".jsonl"
+    : "./productos_vectorstore.jsonl";
+const OUTPUT_VECTOR_PRODUCTS_DIR =
+  process.env.OUTPUT_VECTOR_PRODUCTS_DIR_V3 ||
+  process.env.OUTPUT_VECTOR_PRODUCTS_DIR_V2 ||
+  path.join(path.dirname(OUTPUT_JSON || "."), "vector-products");
+const OUTPUT_VECTOR_MANIFEST =
+  process.env.OUTPUT_VECTOR_MANIFEST_V3 ||
+  process.env.OUTPUT_VECTOR_MANIFEST_V2 ||
+  path.join(path.dirname(OUTPUT_JSON || "."), "vector-products.manifest.json");
+const SYNC_STATE_PATH =
+  process.env.SYNC_PRODUCTOS_CATEGORIAS_V3_STATE_PATH ||
+  path.join("storage", "sync-productos-categorias.v3.state.json");
+const NIMAT_BASE_URL = "https://www.nimat.com.ar";
+
+function sha256(value) {
+  return crypto.createHash("sha256").update(value).digest("hex");
+}
+
+function productDocumentFilename(sku) {
+  const safeSku = String(sku)
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 80);
+  return `prod_${safeSku || "sin_sku"}_${sha256(String(sku)).slice(0, 10)}.md`;
+}
+
+function manifestAttributes(product) {
+  const metadata = product.metadata;
+  const categoryPath = Array.isArray(metadata.categoria_path)
+    ? metadata.categoria_path
+    : [];
+  return {
+    document_kind: "product",
+    sku: metadata.sku.slice(0, 512),
+    brand: String(metadata.marca || "").slice(0, 512),
+    category_root: String(metadata.categoria_root || "General").slice(0, 512),
+    category: String(metadata.categoria || "General").slice(0, 512),
+    category_leaf: String(categoryPath.at(-1) || metadata.categoria || "General").slice(
+      0,
+      512,
+    ),
+    outlet: Boolean(metadata.outlet),
+    active: Boolean(metadata.activo),
+  };
+}
+
+function renderProductDocument(product) {
+  const metadata = product.metadata;
+  const description = stripHtml(metadata.descripcion || "")
+    .replace(/\s+/g, " ")
+    .trim();
+  const tags = [...new Set([...(metadata.tags || []), ...(metadata.hard_tokens || [])])];
+
+  return [
+    `# ${metadata.nombre}`,
+    "",
+    `SKU: ${metadata.sku}`,
+    metadata.marca ? `Marca: ${metadata.marca}` : "",
+    `Categoría: ${metadata.categoria}`,
+    `Rubro: ${metadata.categoria_root}`,
+    metadata.peso_kg ? `Peso: ${metadata.peso_kg} kg` : "",
+    `Outlet: ${metadata.outlet ? "sí" : "no"}`,
+    tags.length ? `Términos de búsqueda: ${tags.slice(0, 80).join(", ")}` : "",
+    description ? `Descripción: ${description}` : "",
+    metadata.url ? `Producto: ${metadata.url}` : "",
+    metadata.url_categoria ? `Categoría web: ${metadata.url_categoria}` : "",
+    metadata.ficha_tecnica_url
+      ? `Ficha técnica: ${metadata.ficha_tecnica_url}`
+      : "",
+    metadata.manual_url ? `Manual: ${metadata.manual_url}` : "",
+    "",
+  ]
+    .filter((line) => line !== "")
+    .join("\n");
+}
+
+function readPreviousProductManifest() {
+  try {
+    return JSON.parse(fs.readFileSync(OUTPUT_VECTOR_MANIFEST, "utf8"));
+  } catch {
+    return { products: {} };
+  }
+}
+
+function writeProductDocuments(products) {
+  fs.mkdirSync(OUTPUT_VECTOR_PRODUCTS_DIR, { recursive: true });
+  const previousManifest = readPreviousProductManifest();
+  const nextProducts = {};
+
+  for (const product of products) {
+    const sku = product.metadata.sku;
+    if (!sku) continue;
+    const filename = productDocumentFilename(sku);
+    const content = renderProductDocument(product);
+    const filePath = path.join(OUTPUT_VECTOR_PRODUCTS_DIR, filename);
+    fs.writeFileSync(filePath, content, "utf8");
+    nextProducts[sku] = {
+      filename,
+      sha256: sha256(content),
+      attributes: manifestAttributes(product),
+    };
+  }
+
+  const vectorDir = path.resolve(OUTPUT_VECTOR_PRODUCTS_DIR);
+  for (const [sku, oldEntry] of Object.entries(previousManifest.products || {})) {
+    if (nextProducts[sku] || !oldEntry?.filename) continue;
+    const stalePath = path.resolve(vectorDir, oldEntry.filename);
+    if (path.dirname(stalePath) === vectorDir && fs.existsSync(stalePath)) {
+      fs.unlinkSync(stalePath);
+    }
+  }
+
+  const manifest = {
+    version: 1,
+    generated_at: new Date().toISOString(),
+    products_directory: path.resolve(OUTPUT_VECTOR_PRODUCTS_DIR),
+    product_count: Object.keys(nextProducts).length,
+    products: nextProducts,
+  };
+  fs.mkdirSync(path.dirname(OUTPUT_VECTOR_MANIFEST), { recursive: true });
+  fs.writeFileSync(
+    OUTPUT_VECTOR_MANIFEST,
+    JSON.stringify(manifest, null, 2),
+    "utf8",
+  );
+  console.log(
+    `✅ Documentos vectoriales generados: ${manifest.product_count} en ${OUTPUT_VECTOR_PRODUCTS_DIR}`,
+  );
+  console.log(`✅ Manifiesto vectorial generado: ${OUTPUT_VECTOR_MANIFEST}`);
+}
+
+const DROPBOX_SOURCES = [
+  {
+    key: "categorias",
+    label: "categorías",
+    dropboxPath: EXCEL_CATEGORIAS,
+  },
+  {
+    key: "productos",
+    label: "productos",
+    dropboxPath: EXCEL_PRODUCTOS,
+  },
+  {
+    key: "urls",
+    label: "URLs de productos",
+    dropboxPath: EXCEL_URLS,
+  },
+];
+
+async function getAccessToken() {
+  const body = new URLSearchParams({
+    grant_type: "refresh_token",
+    refresh_token: process.env.DROPBOX_REFRESH_TOKEN,
+  });
+  const auth = Buffer.from(
+    `${process.env.DROPBOX_APP_KEY}:${process.env.DROPBOX_APP_SECRET}`,
+  ).toString("base64");
+
+  return withDropboxRetry(
+    async () => {
+      let res;
+
+      try {
+        res = await fetchWithTimeout(
+          "https://api.dropboxapi.com/oauth2/token",
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Basic ${auth}`,
+              "Content-Type": "application/x-www-form-urlencoded",
+            },
+            body,
+          },
+          20_000,
+        );
+      } catch (error) {
+        const wrapped = new Error(
+          `Dropbox OAuth token network error: ${formatFetchError(error)}`,
+        );
+        wrapped.code = getErrorCode(error);
+        wrapped.cause = error;
+        throw wrapped;
+      }
+
+      if (!res.ok) {
+        const errText = await readDropboxErrorResponse(res);
+        const error = new Error(`OAuth token error ${res.status}: ${errText}`);
+        error.status = res.status;
+        error.retryAfter = res.headers.get("retry-after");
+        throw error;
+      }
+
+      return res.json();
+    },
+    { label: "Dropbox OAuth token" },
+  );
+}
+
+let _cachedAccess = null;
+async function ensureAccessToken() {
+  const now = Date.now();
+  if (_cachedAccess && _cachedAccess.expiresAt > now + 30_000) {
+    return _cachedAccess.token;
+  }
+  const t = await getAccessToken();
+  _cachedAccess = {
+    token: t.access_token,
+    expiresAt: now + ((t.expires_in ?? 3600) - 60) * 1000,
+  };
+  return _cachedAccess.token;
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function getErrorCode(error) {
+  return error?.code || error?.cause?.code || error?.errno || "";
+}
+
+function formatFetchError(error) {
+  const parts = [
+    error?.message,
+    error?.name,
+    getErrorCode(error),
+    error?.cause?.message,
+  ].filter(Boolean);
+
+  return parts.join(" | ") || "sin detalle";
+}
+
+function isRetryableDropboxError(error) {
+  const status = error?.status || error?.response?.status;
+  const code = getErrorCode(error);
+
+  if (status === 429) return true;
+  if (status && status >= 500) return true;
+
+  return [
+    "ETIMEDOUT",
+    "ECONNRESET",
+    "ECONNREFUSED",
+    "EAI_AGAIN",
+    "ENOTFOUND",
+    "UND_ERR_CONNECT_TIMEOUT",
+    "UND_ERR_HEADERS_TIMEOUT",
+    "UND_ERR_BODY_TIMEOUT",
+  ].includes(code);
+}
+
+async function withDropboxRetry(
+  fn,
+  { retries = 3, baseDelayMs = 700, label = "Dropbox" } = {},
+) {
+  let lastError;
+
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error;
+
+      if (!isRetryableDropboxError(error) || attempt === retries) {
+        break;
+      }
+
+      const retryAfter = Number(error?.retryAfter || 0);
+      const backoff = baseDelayMs * Math.pow(2, attempt);
+      const jitter = Math.floor(Math.random() * 250);
+      const waitMs = (retryAfter > 0 ? retryAfter * 1000 : backoff) + jitter;
+
+      console.warn(
+        `⚠️ ${label}: retry ${attempt + 1}/${retries} en ${waitMs}ms - ${formatFetchError(error)}`,
+      );
+      await sleep(waitMs);
+    }
+  }
+
+  throw lastError;
+}
+
+function normalizeDropboxPath(filePath) {
+  if (!filePath || typeof filePath !== "string") return null;
+  const cleanPath = filePath.trim();
+  if (!cleanPath) return null;
+  return cleanPath.startsWith("/") ? cleanPath : `/${cleanPath}`;
+}
+
+async function fetchWithTimeout(url, options, timeoutMs) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    return await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    });
+  } catch (error) {
+    if (error?.name === "AbortError") {
+      const timeoutError = new Error(`timeout ${timeoutMs}ms`);
+      timeoutError.code = "ETIMEDOUT";
+      timeoutError.cause = error;
+      throw timeoutError;
+    }
+
+    throw error;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function readDropboxErrorResponse(response) {
+  const text = await response.text().catch(() => "");
+  return text || response.statusText || "sin detalle";
+}
+
+async function dropboxPostJson(accessToken, endpoint, body) {
+  return withDropboxRetry(
+    async () => {
+      let response;
+
+      try {
+        response = await fetchWithTimeout(
+          `https://api.dropboxapi.com/2/${endpoint}`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(body),
+          },
+          20_000,
+        );
+      } catch (error) {
+        const wrapped = new Error(
+          `Dropbox ${endpoint} network error: ${formatFetchError(error)}`,
+        );
+        wrapped.code = getErrorCode(error);
+        wrapped.cause = error;
+        throw wrapped;
+      }
+
+      if (!response.ok) {
+        const details = await readDropboxErrorResponse(response);
+        const error = new Error(
+          `Dropbox ${endpoint} error ${response.status}: ${details}`,
+        );
+        error.status = response.status;
+        error.retryAfter = response.headers.get("retry-after");
+        throw error;
+      }
+
+      return response.json();
+    },
+    { label: `Dropbox ${endpoint}` },
+  );
+}
+
+async function dropboxGetMetadata(accessToken, filePath) {
+  const normalizedPath = normalizeDropboxPath(filePath);
+  if (!normalizedPath) {
+    throw new Error(`Path Dropbox inválido: ${filePath}`);
+  }
+
+  return dropboxPostJson(accessToken, "files/get_metadata", {
+    path: normalizedPath,
+    include_media_info: false,
+    include_deleted: false,
+    include_has_explicit_shared_members: false,
+  });
+}
+
+async function dropboxDownloadBuffer(accessToken, filePath) {
+  const normalizedPath = normalizeDropboxPath(filePath);
+  if (!normalizedPath) {
+    throw new Error(`Path Dropbox inválido: ${filePath}`);
+  }
+
+  return withDropboxRetry(
+    async () => {
+      let response;
+
+      try {
+        response = await fetchWithTimeout(
+          "https://content.dropboxapi.com/2/files/download",
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              "Dropbox-API-Arg": JSON.stringify({ path: normalizedPath }),
+            },
+          },
+          60_000,
+        );
+      } catch (error) {
+        const wrapped = new Error(
+          `Dropbox files/download network error: ${formatFetchError(error)}`,
+        );
+        wrapped.code = getErrorCode(error);
+        wrapped.cause = error;
+        throw wrapped;
+      }
+
+      if (!response.ok) {
+        const details = await readDropboxErrorResponse(response);
+        const error = new Error(
+          `Dropbox files/download error ${response.status}: ${details}`,
+        );
+        error.status = response.status;
+        error.retryAfter = response.headers.get("retry-after");
+        throw error;
+      }
+
+      const arrayBuffer = await response.arrayBuffer();
+      return Buffer.from(arrayBuffer);
+    },
+    { baseDelayMs: 1_000, label: `Dropbox files/download ${normalizedPath}` },
+  );
+}
+
+function readSyncState() {
+  try {
+    if (!fs.existsSync(SYNC_STATE_PATH)) {
+      return { files: {} };
+    }
+
+    return JSON.parse(fs.readFileSync(SYNC_STATE_PATH, "utf8"));
+  } catch (error) {
+    console.warn(
+      `⚠️ No se pudo leer el estado de sincronización (${SYNC_STATE_PATH}): ${error.message}`,
+    );
+    return { files: {} };
+  }
+}
+
+function normalizeDropboxMetadata(metadata) {
+  return {
+    id: metadata.id || "",
+    path: metadata.path_lower || metadata.path_display || metadata.name || "",
+    path_display: metadata.path_display || "",
+    rev: metadata.rev || "",
+    server_modified: metadata.server_modified || "",
+    client_modified: metadata.client_modified || "",
+    content_hash: metadata.content_hash || "",
+    size: metadata.size || 0,
+  };
+}
+
+function hasDropboxFileChanged(previous, current) {
+  if (!previous) return true;
+
+  if (previous.rev || current.rev) {
+    return previous.rev !== current.rev;
+  }
+
+  if (previous.content_hash || current.content_hash) {
+    return previous.content_hash !== current.content_hash;
+  }
+
+  if (previous.server_modified || current.server_modified) {
+    return previous.server_modified !== current.server_modified;
+  }
+
+  return previous.size !== current.size;
+}
+
+async function getDropboxFilesMetadata(accessToken) {
+  return Promise.all(
+    DROPBOX_SOURCES.map(async (source) => {
+      const metadata = await dropboxGetMetadata(
+        accessToken,
+        source.dropboxPath,
+      );
+
+      return {
+        ...source,
+        metadata: normalizeDropboxMetadata(metadata),
+      };
+    }),
+  );
+}
+
+function writeSyncState(dropboxFiles) {
+  const nextState = {
+    updated_at: new Date().toISOString(),
+    files: dropboxFiles.reduce((acc, file) => {
+      acc[file.key] = file.metadata;
+      return acc;
+    }, {}),
+  };
+
+  const stateDir = path.dirname(SYNC_STATE_PATH);
+  if (stateDir && stateDir !== ".") {
+    fs.mkdirSync(stateDir, { recursive: true });
+  }
+
+  fs.writeFileSync(SYNC_STATE_PATH, JSON.stringify(nextState, null, 2), "utf8");
+  return nextState;
+}
+
+// Función para construir árbol de categorías
+function construirArbolCategorias(categorias) {
+  const categoriasMap = {};
+  const arbol = [];
+
+  // Primer paso: crear mapa de todas las categorías
+  categorias.forEach((cat) => {
+    categoriasMap[cat.Id] = {
+      id: cat.Id,
+      nombre: cat.Name,
+      slug: cat.SeName,
+      url_categoria: "https://www.nimat.com.ar/" + cat.SeName,
+      descripcion: cat.Description || "",
+      parent_id: cat.ParentCategoryId || 0,
+      orden: cat.DisplayOrder || 0,
+      visible: cat.Published,
+      hijos: [],
+    };
+  });
+
+  // Segundo paso: construir jerarquía
+  Object.values(categoriasMap).forEach((cat) => {
+    if (cat.parent_id === 0) {
+      arbol.push(cat);
+    } else {
+      const padre = categoriasMap[cat.parent_id];
+      if (padre) {
+        padre.hijos.push(cat);
+      }
+    }
+  });
+
+  // Ordenar por DisplayOrder
+  const ordenar = (cats) => {
+    cats.sort((a, b) => a.orden - b.orden);
+    cats.forEach((cat) => {
+      if (cat.hijos.length > 0) {
+        ordenar(cat.hijos);
+      }
+    });
+  };
+
+  ordenar(arbol);
+
+  return { arbol, mapa: categoriasMap };
+}
+
+// Función para parsear IDs de categorías desde formato "id|orden;id|orden"
+function parsearCategorias(categoriesStr) {
+  if (!categoriesStr || categoriesStr.trim() === "") return [];
+
+  return categoriesStr
+    .split(";")
+    .map((item) => {
+      const [id, orden] = item.split("|").map((s) => s.trim());
+      return {
+        id: parseInt(id),
+        orden: parseInt(orden) || 0,
+      };
+    })
+    .filter((item) => !isNaN(item.id));
+}
+
+// --- Helper: normalización y tokenización para keywords (búsqueda robusta) ---
+function normalizarTexto(texto = "") {
+  return String(texto)
+    .toLowerCase()
+    .replace(/×/g, "x")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "") // quitar acentos
+    .replace(/[“”"']/g, "") // comillas
+    .replace(/[^a-z0-9\/\.\-\sx]/g, " ") // dejar letras, números y separadores útiles
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function tokenizar(texto) {
+  const norm = normalizarTexto(texto);
+  if (!norm) return [];
+  const tokens = new Set();
+
+  for (const raw of norm.split(" ")) {
+    if (!raw) continue;
+
+    // Conservar tokens con números aunque sean cortos (ej: 6m, 1/2, 8mm)
+    if (raw.length >= 3 || /\d/.test(raw)) {
+      tokens.add(raw);
+    }
+
+    // Dividir medidas tipo 31x60 o 0.60x0.40
+    if (raw.includes("x")) {
+      const parts = raw.split("x").filter(Boolean);
+      if (parts.length >= 2) {
+        parts.forEach((p) => {
+          tokens.add(p);
+
+          // Variante sin puntos (0.60 -> 060)
+          const sinPuntos = p.replace(/\./g, "");
+          if (sinPuntos && sinPuntos !== p) tokens.add(sinPuntos);
+
+          // Variante sin ceros iniciales (060 -> 60)
+          const sinCeros = p.replace(/^0+/, "");
+          if (sinCeros && sinCeros !== p) tokens.add(sinCeros);
+        });
+      }
+    }
+
+    // Quitar punto final (kg. -> kg)
+    if (raw.endsWith(".")) tokens.add(raw.slice(0, -1));
+
+    // Singular simple (chapas -> chapa) evitando "gris" (y similares)
+    if (raw.endsWith("s") && raw.length > 3 && !raw.endsWith("is")) {
+      tokens.add(raw.slice(0, -1));
+    }
+
+    // Normalizar porcellanato(s) -> porcelanato(s)
+    if (raw.startsWith("porcellanat")) {
+      tokens.add(raw.replace("porcellanat", "porcelanat"));
+    }
+
+    // Zincalum / Cincalum (variantes comunes)
+    if (raw.includes("cincalum"))
+      tokens.add(raw.replace("cincalum", "zincalum"));
+    if (raw.includes("zincalum"))
+      tokens.add(raw.replace("zincalum", "cincalum"));
+  }
+
+  return Array.from(tokens);
+}
+
+function mergeTokens(set, ...textos) {
+  textos.forEach((t) => tokenizar(t).forEach((tok) => set.add(tok)));
+}
+
+// ---------- MEDIDAS / UNIDADES: extractor robusto ----------
+
+function uniq(arr) {
+  return Array.from(new Set(arr.filter(Boolean)));
+}
+
+function toLowerNoAccents(s = "") {
+  return String(s)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
+function normSpaces(s = "") {
+  return String(s).replace(/\s+/g, " ").trim();
+}
+
+function decodeHtmlEntities(texto = "") {
+  const namedEntities = {
+    amp: "&",
+    apos: "'",
+    quot: '"',
+    nbsp: " ",
+    lt: "<",
+    gt: ">",
+    aacute: "á",
+    eacute: "é",
+    iacute: "í",
+    oacute: "ó",
+    uacute: "ú",
+    ntilde: "ñ",
+    Aacute: "Á",
+    Eacute: "É",
+    Iacute: "Í",
+    Oacute: "Ó",
+    Uacute: "Ú",
+    Ntilde: "Ñ",
+  };
+
+  return String(texto)
+    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(Number(code)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, code) =>
+      String.fromCharCode(parseInt(code, 16)),
+    )
+    .replace(/&([a-zA-Z]+);/g, (entity, name) => namedEntities[name] ?? entity);
+}
+
+function stripHtml(texto = "") {
+  return normSpaces(decodeHtmlEntities(String(texto).replace(/<[^>]+>/g, " ")));
+}
+
+function textoLinkEsFichaTecnica(texto = "") {
+  const normalizado = toLowerNoAccents(stripHtml(texto));
+  return /\bficha\s+tecnica\b/.test(normalizado);
+}
+
+function textoLinkEsManual(texto = "") {
+  const normalizado = toLowerNoAccents(stripHtml(texto));
+  return /\bmanual\b/.test(normalizado);
+}
+
+function absolutizarUrlNimat(href = "") {
+  const limpio = decodeHtmlEntities(href).trim();
+  if (!limpio || /^(javascript|mailto|tel):/i.test(limpio)) return null;
+  if (/^https?:\/\//i.test(limpio)) return limpio;
+
+  try {
+    return new URL(limpio, `${NIMAT_BASE_URL}/`).href;
+  } catch {
+    return null;
+  }
+}
+
+function extraerFichaTecnicaUrl(descripcion = "") {
+  const html = String(descripcion || "");
+  if (!html) return null;
+
+  const anchorRegex =
+    /<a\b[^>]*\bhref\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))[^>]*>([\s\S]*?)<\/a>/gi;
+  let match;
+
+  while ((match = anchorRegex.exec(html)) !== null) {
+    const href = match[1] || match[2] || match[3] || "";
+    const texto = match[4] || "";
+
+    if (!textoLinkEsFichaTecnica(texto)) continue;
+
+    const url = absolutizarUrlNimat(href);
+    if (url) return url;
+  }
+
+  return null;
+}
+
+function extraerManualUrl(descripcion = "") {
+  const html = String(descripcion || "");
+  if (!html) return null;
+
+  const anchorRegex =
+    /<a\b[^>]*\bhref\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))[^>]*>([\s\S]*?)<\/a>/gi;
+  let match;
+
+  while ((match = anchorRegex.exec(html)) !== null) {
+    const href = match[1] || match[2] || match[3] || "";
+    const texto = match[4] || "";
+
+    if (!textoLinkEsManual(texto)) continue;
+
+    const url = absolutizarUrlNimat(href);
+    if (url) return url;
+  }
+
+  return null;
+}
+
+function normalizeX(s = "") {
+  // convierte × a x, y agrega espacios alrededor de x cuando es separador
+  return String(s)
+    .replace(/×/g, "x")
+    .replace(/(\d)\s*x\s*(\d)/gi, "$1x$2")
+    .replace(/\s+/g, " ");
+}
+
+// Convierte fracción "a/b" a decimal (number)
+function fracToDec(a, b) {
+  a = Number(a);
+  b = Number(b);
+  if (!isFinite(a) || !isFinite(b) || b === 0) return null;
+  return a / b;
+}
+
+// Parsea pulgadas con formatos comunes:
+// - 1 1/2"
+// - 1-1/2"
+// - 1/2"
+// - 1.5"
+// - 1½" (si aparece el caracter)
+// Devuelve tokens normalizados: ["1 1/2in", "1-1/2in", "1.5in", "1/2in", ...]
+function extractInchesTokens(raw = "") {
+  const s0 = normalizeX(toLowerNoAccents(raw));
+  let s = s0;
+
+  // Normaliza caracteres fracción Unicode comunes (½ ¼ ¾)
+  // Podés extender si aparece.
+  const unicodeFractions = {
+    "½": "1/2",
+    "¼": "1/4",
+    "¾": "3/4",
+    "⅛": "1/8",
+    "⅜": "3/8",
+    "⅝": "5/8",
+    "⅞": "7/8",
+  };
+  for (const [u, repl] of Object.entries(unicodeFractions)) {
+    s = s.replace(new RegExp(u, "g"), repl);
+  }
+
+  const tokens = [];
+
+  // Caso: N (espacio o guión) A/B seguido de " o pulg/in
+  const reMixed =
+    /(\d+)\s*[- ]\s*(\d+)\s*\/\s*(\d+)\s*(?:"|in\b|pulg\b|pulgadas?\b)/g;
+  let m;
+  while ((m = reMixed.exec(s)) !== null) {
+    const whole = Number(m[1]);
+    const num = Number(m[2]);
+    const den = Number(m[3]);
+    const frac = fracToDec(num, den);
+    if (frac == null) continue;
+    const dec = whole + frac;
+
+    tokens.push(`${whole} ${num}/${den}in`);
+    tokens.push(`${whole}-${num}/${den}in`);
+    tokens.push(`${dec.toFixed(3).replace(/0+$/, "").replace(/\.$/, "")}in`);
+  }
+
+  // Caso: A/B seguido de " o pulg/in
+  const reFracOnly = /(\d+)\s*\/\s*(\d+)\s*(?:"|in\b|pulg\b|pulgadas?\b)/g;
+  while ((m = reFracOnly.exec(s)) !== null) {
+    const num = Number(m[1]);
+    const den = Number(m[2]);
+    const dec = fracToDec(num, den);
+    if (dec == null) continue;
+    tokens.push(`${num}/${den}in`);
+    tokens.push(`${dec.toFixed(3).replace(/0+$/, "").replace(/\.$/, "")}in`);
+  }
+
+  // Caso: decimal pulgadas: 1.5" / 1,5"
+  const reDec = /(\d+(?:[.,]\d+)?)\s*(?:"|in\b|pulg\b|pulgadas?\b)/g;
+  while ((m = reDec.exec(s)) !== null) {
+    const val = Number(String(m[1]).replace(",", "."));
+    if (!isFinite(val)) continue;
+    tokens.push(`${val.toFixed(3).replace(/0+$/, "").replace(/\.$/, "")}in`);
+  }
+
+  return uniq(tokens);
+}
+
+// Extrae dimensiones tipo:
+// - 60x60 (cm o mm según contexto)
+// - 0.60x0.60
+// - 5x30 cm
+// - 4,5x3,0mm
+// Devuelve tokens: ["60x60", "60 x 60", "60x60cm", "60x60 cm", ...]
+function extractDimensionsTokens(raw = "") {
+  const s = normalizeX(toLowerNoAccents(raw)).replace(/,/g, ".");
+  const tokens = [];
+
+  // Captura N x M con decimales opcionales y unidad opcional
+  // Ej: 0.60x0.60 m, 60x60 cm, 4.5x3.0mm
+  const re = /(\d+(?:\.\d+)?)\s*x\s*(\d+(?:\.\d+)?)(?:\s*(mm|cm|m)\b)?/g;
+  let m;
+  while ((m = re.exec(s)) !== null) {
+    const a = m[1];
+    const b = m[2];
+    const unit = m[3] || "";
+
+    // tokens base
+    tokens.push(`${a}x${b}`);
+    tokens.push(`${a} x ${b}`);
+
+    if (unit) {
+      tokens.push(`${a}x${b}${unit}`);
+      tokens.push(`${a}x${b} ${unit}`);
+      tokens.push(`${a} x ${b} ${unit}`);
+    }
+  }
+  return uniq(tokens);
+}
+
+// Extrae unidades sueltas: kg, g, l, ml, m2, mm, cm, m (cuando vienen con números)
+// Devuelve tokens: ["25kg","25 kg","280ml","280 ml","3l/6l","3l","6l",...]
+function extractUnitTokens(raw = "") {
+  const s = normalizeX(toLowerNoAccents(raw));
+
+  const tokens = [];
+
+  // 3l/6l ó 3 l / 6 l
+  const reDualLiters = /(\d+(?:[.,]\d+)?)\s*l\s*\/\s*(\d+(?:[.,]\d+)?)\s*l/g;
+  let m;
+  while ((m = reDualLiters.exec(s)) !== null) {
+    const a = String(m[1]).replace(",", ".");
+    const b = String(m[2]).replace(",", ".");
+    tokens.push(`${a}l/${b}l`);
+    tokens.push(`${a}l`);
+    tokens.push(`${b}l`);
+    tokens.push(`${a} l`);
+    tokens.push(`${b} l`);
+  }
+
+  // número + unidad (kg, g, l, ml, mm, cm, m, m2)
+  const re = /(\d+(?:[.,]\d+)?)\s*(kg|g|l|ml|mm|cm|m2|m)\b/g;
+  while ((m = re.exec(s)) !== null) {
+    const num = String(m[1]).replace(",", ".");
+    const unit = m[2];
+    tokens.push(`${num}${unit}`);
+    tokens.push(`${num} ${unit}`);
+  }
+
+  return uniq(tokens);
+}
+
+// Genera tokens duros a partir del nombre (medidas + unidades + pulgadas)
+function extractHardTokensFromName(nombre = "") {
+  const n = normSpaces(nombre);
+  const out = [
+    ...extractInchesTokens(n),
+    ...extractDimensionsTokens(n),
+    ...extractUnitTokens(n),
+  ];
+
+  // Normalizaciones extra útiles:
+  // - 1 1/2" también como 1-1/2" (ya sale) y 1.5in
+  // - 0.60 -> 60 (a veces usuarios escriben 60 y el nombre trae 0.60)
+  //   Agregamos equivalencias simples para decimales tipo 0.60 => 60 (solo para m/cm en dimensiones o números aislados)
+  //   (esto es opcional; lo dejo suave)
+  const eq = [];
+  for (const t of out) {
+    const mm = t.match(/^0\.(\d{1,2})x0\.(\d{1,2})$/);
+    if (mm) eq.push(`${Number(mm[1])}x${Number(mm[2])}`);
+  }
+
+  return uniq([...out, ...eq]);
+}
+
+// Función para enriquecer productos con info de categorías
+function enriquecerProductos(productos, categoriasMap) {
+  return productos.map((prod) => {
+    const categoriasProd = parsearCategorias(prod.categorias);
+
+    // Obtener nombres de categorías
+    const categoriasInfo = categoriasProd
+      .map((cp) => {
+        const cat = categoriasMap[cp.id];
+        if (!cat) return null;
+
+        // Construir ruta completa (ej: "Construcción > Cales y Cementos")
+        const ruta = [];
+        let catActual = cat;
+        while (catActual) {
+          ruta.unshift(catActual.nombre);
+          catActual = catActual.parent_id
+            ? categoriasMap[catActual.parent_id]
+            : null;
+        }
+
+        return {
+          id: cp.id,
+          nombre: cat.nombre,
+          slug: cat.slug,
+          ruta: ruta.join(" > "),
+          ruta_principal: ruta[0],
+          orden: cp.orden,
+        };
+      })
+      .filter((c) => c !== null);
+
+    // Categoría principal (la primera en orden)
+    const categoriaPrincipal =
+      categoriasInfo.length > 0
+        ? categoriasInfo.sort((a, b) => a.orden - b.orden)[0]
+        : null;
+
+    return {
+      ...prod,
+      categoria_principal: categoriaPrincipal
+        ? categoriaPrincipal.nombre
+        : "General",
+      categoria_principal_slug: categoriaPrincipal
+        ? categoriaPrincipal.slug
+        : "general",
+      categorias_completas: categoriasInfo,
+      ruta_categoria: categoriaPrincipal ? categoriaPrincipal.ruta : "General",
+      url_categoria: categoriaPrincipal
+        ? "https://www.nimat.com.ar/" + categoriaPrincipal.slug
+        : "https://www.nimat.com.ar/" + prod.marca,
+    };
+  });
+}
+
+// Función para crear índices por categoría mejorados
+function crearIndicesCategorias(productos, arbolCategorias) {
+  const indices = {
+    por_categoria_id: {},
+    por_categoria_nombre: {},
+    por_categoria_slug: {},
+  };
+
+  productos.forEach((prod, idx) => {
+    prod.categorias_completas.forEach((cat) => {
+      // Por ID
+      if (!indices.por_categoria_id[cat.id]) {
+        indices.por_categoria_id[cat.id] = {
+          info: cat,
+          productos: [],
+        };
+      }
+      indices.por_categoria_id[cat.id].productos.push(idx);
+
+      // Por nombre
+      if (!indices.por_categoria_nombre[cat.nombre]) {
+        indices.por_categoria_nombre[cat.nombre] = [];
+      }
+      indices.por_categoria_nombre[cat.nombre].push(idx);
+
+      // Por slug
+      if (!indices.por_categoria_slug[cat.slug]) {
+        indices.por_categoria_slug[cat.slug] = [];
+      }
+      indices.por_categoria_slug[cat.slug].push(idx);
+    });
+  });
+
+  return indices;
+}
+
+export async function sincronizarCompletoV3() {
+  try {
+    console.log("🚀 Iniciando sincronización completa...\n");
+    const token = await ensureAccessToken();
+
+    console.log("🔎 Verificando cambios en Dropbox...");
+    const dropboxFiles = await getDropboxFilesMetadata(token);
+    const previousSyncState = readSyncState();
+    const changedFiles = dropboxFiles.filter((file) =>
+      hasDropboxFileChanged(previousSyncState.files?.[file.key], file.metadata),
+    );
+
+    if (changedFiles.length === 0) {
+      console.log(
+        "✅ Sin cambios en Dropbox. No se descargan archivos ni se regeneran salidas.",
+      );
+      return { updated: false, changedFiles: [] };
+    }
+
+    console.log(
+      `   • Cambios detectados: ${changedFiles.map((file) => file.label).join(", ")}`,
+    );
+
+    // 1. Cargar Excel de Categorías
+    console.log("📥 Descargando categorías...");
+    const catBuffer = await dropboxDownloadBuffer(token, EXCEL_CATEGORIAS);
+    const wbCat = xlsx.read(catBuffer, { type: "buffer" });
+    const categorias = xlsx.utils.sheet_to_json(
+      wbCat.Sheets[wbCat.SheetNames[0]],
+    );
+
+    console.log(`   ✓ Categorías leídas: ${categorias.length}`);
+
+    // 2. Construir árbol de categorías
+    console.log("🌳 Construyendo árbol de categorías...");
+    const { arbol, mapa } = construirArbolCategorias(categorias);
+
+    const categoriasActivas = Object.values(mapa).filter((c) => c.visible);
+    console.log(`   ✓ Categorías activas: ${categoriasActivas.length}`);
+    console.log(`   ✓ Categorías principales: ${arbol.length}`);
+
+    // 3. Cargar Excel de Productos
+    console.log("\n📥 Descargando productos...");
+    const prodBuffer = await dropboxDownloadBuffer(token, EXCEL_PRODUCTOS);
+    const wbProd = xlsx.read(prodBuffer, { type: "buffer" });
+    const productosRaw = xlsx.utils.sheet_to_json(
+      wbProd.Sheets[wbProd.SheetNames[0]],
+    );
+
+    console.log(`   ✓ Productos leídos: ${productosRaw.length}`);
+
+    // 3.5. Cargar Excel de URLs
+    console.log("\n📥 Descargando URLs de productos...");
+    const urlsBuffer = await dropboxDownloadBuffer(token, EXCEL_URLS);
+    const wbUrls = xlsx.read(urlsBuffer, { type: "buffer" });
+    const urlsRaw = xlsx.utils.sheet_to_json(
+      wbUrls.Sheets[wbUrls.SheetNames[0]],
+    );
+
+    console.log(`   ✓ URLs leídas: ${urlsRaw.length}`);
+
+    // Crear mapa de URLs por SKU
+    const urlsMap = {};
+    urlsRaw.forEach((row) => {
+      const sku = (row.Sku || row.SKU || "").trim();
+      const textoPrecio =
+        "El precio corresponde a pago en efectivo, tarjeta de débito o medios electrónicos. Consúltanos por pagos en cuotas con tarjetas de crédito.";
+
+      const FullDescriptionLarga = (row.FullDescription || "")
+        .replace(`<p>${textoPrecio}</p>`, "")
+        .replace(textoPrecio, "");
+      //console.log(FullDescriptionLarga)
+      if (sku) {
+        urlsMap[sku] = {
+          id: row.Id || "",
+          url: row.url || "",
+          imageUrl: row.imageUrl || "",
+          FullDescription: FullDescriptionLarga || "",
+        };
+      }
+    });
+
+    console.log(`   ✓ URLs mapeadas: ${Object.keys(urlsMap).length}`);
+
+    // 4. Procesar productos (combinando con URLs)
+    console.log("\n🔄 Procesando productos...");
+    const productosBase = productosRaw
+      .filter(
+        (row) => row.Published === "TRUE" && row.VisibleIndividually === "TRUE",
+      )
+      .map((row) => {
+        const sku = (row.SKU || "").trim();
+        const urlData = urlsMap[sku] || {
+          id: "",
+          url: "",
+          imageUrl: "",
+          FullDescription: "",
+        };
+
+        return {
+          id: urlData.id,
+          sku: sku,
+          nombre: row.Name || "",
+          descripcion_corta: (row.ShortDescription || "").replace(
+            /<[^>]+>/g,
+            "",
+          ),
+          descripcion_larga: urlData.FullDescription,
+          precio: parseFloat(row.Price) || 0,
+          stock: parseInt(row.StockQuantity) || 0,
+          marca: row.Manufacturers || "",
+          peso_kg: parseFloat(row.Weight) || 0,
+          categorias: row.Categories || "",
+          url: urlData.url,
+          imageUrl: urlData.imageUrl,
+          activo: true,
+          visible: true,
+          keywords: [],
+        };
+      });
+
+    // 5. Enriquecer productos con info de categorías
+    console.log("✨ Enriqueciendo productos con categorías...");
+    const productosEnriquecidos = enriquecerProductos(productosBase, mapa);
+
+    // 6. Generar keywords (robusto y útil para búsquedas vagas)
+    // Incluye: nombre, marca y TODAS las rutas de categorías (root + rutas completas)
+    productosEnriquecidos.forEach((p) => {
+      const kw = new Set();
+
+      // Campos base
+      mergeTokens(
+        kw,
+        p.nombre,
+        p.marca,
+        p.categoria_principal,
+        p.ruta_categoria,
+      );
+
+      // Todas las categorías (para capturar root tipo "Techos", "Aberturas", etc.)
+      if (Array.isArray(p.categorias_completas)) {
+        p.categorias_completas.forEach((c) => {
+          mergeTokens(kw, c.nombre, c.ruta);
+        });
+      }
+
+      // Descripción corta (si aporta contenido; puede estar vacía)
+      /* if (p.descripcion_corta) {
+        mergeTokens(kw, p.descripcion_corta);
+      } */
+
+      p.keywords = Array.from(kw);
+    });
+
+    // 7. Crear índices
+    console.log("📑 Creando índices...");
+    const indicesCategorias = crearIndicesCategorias(
+      productosEnriquecidos,
+      arbol,
+    );
+
+    // Índices adicionales (por marca, precio, etc.)
+    const indicesMarca = {};
+    const indicesPrecio = { economico: [], medio: [], premium: [], alto: [] };
+
+    productosEnriquecidos.forEach((prod, idx) => {
+      // Por marca
+      if (prod.marca) {
+        if (!indicesMarca[prod.marca]) indicesMarca[prod.marca] = [];
+        indicesMarca[prod.marca].push(idx);
+      }
+
+      // Por precio
+      if (prod.precio < 50000) indicesPrecio.economico.push(idx);
+      else if (prod.precio < 150000) indicesPrecio.medio.push(idx);
+      else if (prod.precio < 250000) indicesPrecio.premium.push(idx);
+      else indicesPrecio.alto.push(idx);
+    });
+
+    // 8. Crear estructura final
+    const catalogoCompleto = {
+      metadata: {
+        ultima_actualizacion: new Date().toISOString(),
+        total_productos: productosEnriquecidos.length,
+        productos_disponibles: productosEnriquecidos.filter((p) => p.stock > 0)
+          .length,
+        total_categorias: categoriasActivas.length,
+        categorias_principales: arbol.length,
+        marcas_total: Object.keys(indicesMarca).length,
+      },
+
+      categorias: {
+        arbol: arbol,
+        todas: categoriasActivas.map((c) => ({
+          id: c.id,
+          nombre: c.nombre,
+          slug: c.slug,
+          parent_id: c.parent_id,
+        })),
+      },
+
+      indices: {
+        por_categoria_id: indicesCategorias.por_categoria_id,
+        por_categoria_nombre: indicesCategorias.por_categoria_nombre,
+        por_categoria_slug: indicesCategorias.por_categoria_slug,
+        por_marca: indicesMarca,
+        por_rango_precio: indicesPrecio,
+      },
+
+      productos: productosEnriquecidos,
+    };
+
+    // 9. Guardar JSON
+    const catalogoCompletoToJSON = JSON.stringify(catalogoCompleto, null, 2);
+    const catalogoCompletoToTOON = encode(catalogoCompleto);
+
+    // --- LÓGICA DE SELECCIÓN DE CATEGORÍA ---
+    let rawData = catalogoCompleto.productos;
+
+    // Función Helper: Elegir la categoría más descriptiva
+    function elegirMejorCategoria(data) {
+      let categoriaGanadora = "General"; // Valor por defecto (Plan D)
+      let urlCategoriaGanadora = "https://www.nimat.com.ar/"; // Default
+
+      if (
+        Array.isArray(data.categorias_completas) &&
+        data.categorias_completas.length > 0
+      ) {
+        const categoriaMasProfunda = data.categorias_completas.sort((a, b) => {
+          const profundidadA = (a.ruta.match(/>/g) || []).length;
+          const profundidadB = (b.ruta.match(/>/g) || []).length;
+          return profundidadB - profundidadA; // De mayor a menor
+        })[0];
+
+        categoriaGanadora = categoriaMasProfunda.ruta;
+        // Intentamos armar la URL con el slug de esa categoría específica
+        if (categoriaMasProfunda.slug) {
+          urlCategoriaGanadora = `https://www.nimat.com.ar/${categoriaMasProfunda.slug}`;
+        }
+
+        // PLAN B: Si no hay array, usamos el campo plano 'ruta_categoria' si existe
+      } else if (data.ruta_categoria) {
+        categoriaGanadora = data.ruta_categoria;
+        // Usamos la URL de categoría que ya viene en el root
+        if (data.url_categoria) urlCategoriaGanadora = data.url_categoria;
+
+        // PLAN C: Usamos la 'categoria_principal' como último recurso
+      } else if (data.categoria_principal) {
+        categoriaGanadora = data.categoria_principal;
+        if (data.url_categoria) urlCategoriaGanadora = data.url_categoria;
+      }
+      return categoriaGanadora;
+    }
+
+    function elegirMejorUrlCategoria(data) {
+      let categoriaGanadora = "General"; // Valor por defecto (Plan D)
+      let urlCategoriaGanadora = "https://www.nimat.com.ar/"; // Default
+
+      if (
+        Array.isArray(data.categorias_completas) &&
+        data.categorias_completas.length > 0
+      ) {
+        const categoriaMasProfunda = data.categorias_completas.sort((a, b) => {
+          const profundidadA = (a.ruta.match(/>/g) || []).length;
+          const profundidadB = (b.ruta.match(/>/g) || []).length;
+          return profundidadB - profundidadA; // De mayor a menor
+        })[0];
+
+        categoriaGanadora = categoriaMasProfunda.ruta;
+        // Intentamos armar la URL con el slug de esa categoría específica
+        if (categoriaMasProfunda.slug) {
+          urlCategoriaGanadora = `https://www.nimat.com.ar/${categoriaMasProfunda.slug}`;
+        }
+
+        // PLAN B: Si no hay array, usamos el campo plano 'ruta_categoria' si existe
+      } else if (data.ruta_categoria) {
+        categoriaGanadora = data.ruta_categoria;
+        // Usamos la URL de categoría que ya viene en el root
+        if (data.url_categoria) urlCategoriaGanadora = data.url_categoria;
+
+        // PLAN C: Usamos la 'categoria_principal' como último recurso
+      } else if (data.categoria_principal) {
+        categoriaGanadora = data.categoria_principal;
+        if (data.url_categoria) urlCategoriaGanadora = data.url_categoria;
+      }
+      return urlCategoriaGanadora;
+    }
+
+    // --- PROCESO PRINCIPAL ---
+
+    const productosLimpios = rawData
+      .filter((p) => p.activo && p.visible && p.precio > 0)
+      .map((p) => {
+        // 1. Resolvemos la categoría antes de crear el objeto
+        const mejorCategoria = elegirMejorCategoria(p); // p.categorias puede ser array o string
+        const mejorUrlCategoria = elegirMejorUrlCategoria(p);
+        // 2. Categoría raíz (para filtros en la app y mejor desambiguación)
+        const categoriaRoot =
+          (mejorCategoria || "").split(" > ")[0] || "General";
+
+        // 3. Keywords finales (fusionamos lo precomputado + categoría elegida)
+        const kwFinal = new Set(Array.isArray(p.keywords) ? p.keywords : []);
+        mergeTokens(kwFinal, p.nombre, p.marca, mejorCategoria, categoriaRoot);
+
+        // tokens duros de medidas/unidades desde el nombre
+        const hard = extractHardTokensFromName(p.nombre || "");
+        for (const t of hard) kwFinal.add(t);
+
+        if (p.sku) kwFinal.add(String(p.sku).trim());
+
+        const keywordsFinalArr = Array.from(kwFinal); // <-- ARRAY
+
+        const skuStr = String(p.sku || "").trim();
+
+        // id estable (ideal para vector store)
+        const id = `prod_${skuStr.replace(/[^a-z0-9]+/g, "_")}`;
+
+        // categoría path (útil para filtros y desambiguación)
+        const categoria_path = (mejorCategoria || "")
+          .split(" > ")
+          .map((x) => x.trim())
+          .filter(Boolean);
+
+        const isOutlet = keywordsFinalArr?.length
+          ? keywordsFinalArr.some((t) => String(t).toLowerCase() === "outlet")
+          : false;
+
+        const outletLine = isOutlet ? "Outlet: sí\n" : "Outlet: no\n";
+        const fichaTecnicaUrl = extraerFichaTecnicaUrl(p.descripcion_larga);
+        const manualUrl = extraerManualUrl(p.descripcion_larga);
+
+        // content para embeddings
+        const content = [
+          `Nombre: ${p.nombre.trim()}`,
+          p.marca ? `Marca: ${p.marca}` : "",
+          skuStr ? `SKU: ${skuStr}` : "",
+          mejorCategoria ? `Categoría: ${mejorCategoria}` : "",
+          categoriaRoot ? `Rubro: ${categoriaRoot}` : "",
+          p.peso_kg && p.peso_kg > 0 ? `Peso: ${p.peso_kg} kg` : "",
+          typeof p.precio === "number" ? `Precio: ${p.precio} ARS` : "",
+          `Stock: ${p.stock > 0 ? "sí" : "no"}`,
+          keywordsFinalArr?.length
+            ? `Tags: ${keywordsFinalArr.slice(0, 40).join(", ")}`
+            : "",
+          outletLine.trimEnd(),
+          fichaTecnicaUrl ? `Ficha técnica: ${fichaTecnicaUrl}` : "",
+          manualUrl ? `Manual: ${manualUrl}` : "",
+        ]
+          .filter(Boolean)
+          .join("\n");
+
+        const hardTokens = extractHardTokensFromName(p.nombre || "");
+        const tags = keywordsFinalArr.filter((t) => !hardTokens.includes(t));
+        // JSONL record listo para vector store
+        return {
+          id,
+          content,
+          metadata: {
+            activo: p.activo,
+            sku: skuStr,
+            nombre: p.nombre.trim().replaceAll("*", ""),
+            descripcion: p.descripcion_larga,
+            ficha_tecnica_url: fichaTecnicaUrl,
+            manual_url: manualUrl,
+            marca: p.marca,
+            outlet: tags.includes("outlet"),
+            categoria: mejorCategoria,
+            categoria_root: categoriaRoot,
+            categoria_path,
+            url_categoria: mejorUrlCategoria,
+            precio: p.precio,
+            stock: p.stock > 0,
+            url: p.url,
+            imageUrl: p.imageUrl,
+            peso_kg: p.peso_kg,
+            tags,
+            hard_tokens: hardTokens,
+          },
+        };
+      });
+
+    // Guardar productosLimpios en productos.json
+    // Salida JSONL
+    fs.writeFileSync(
+      OUTPUT_JSONL,
+      productosLimpios.map((doc) => JSON.stringify(doc)).join("\n") + "\n",
+      "utf8",
+    );
+    console.log(
+      `✅ JSONL generado: ${OUTPUT_JSONL} (${productosLimpios.length} docs)`,
+    );
+
+    fs.writeFileSync(OUTPUT_TOON, catalogoCompletoToTOON);
+    fs.writeFileSync(
+      OUTPUT_JSON,
+      JSON.stringify(productosLimpios, null, 2),
+      "utf8",
+    );
+    writeProductDocuments(productosLimpios);
+    const output = [];
+    for (const p of productosLimpios) {
+      if (p.metadata.activo === false) continue;
+      output.push(
+        `=== PRODUCTO ===
+ID: prod_${p.metadata.sku}
+SKU: ${p.metadata.sku}
+Nombre: ${p.metadata.nombre}
+Marca: ${p.metadata.marca}
+Outlet: ${p.metadata.outlet}
+Categoría: ${p.metadata.categoria}
+Rubro: ${p.metadata.categoria_root}
+Precio: ${p.metadata.precio} ARS
+Stock: ${p.metadata.stock ? "disponible" : "agotado"}
+Peso: ${p.metadata.peso_kg ?? "N/D"} kg
+Tags: ${p.metadata.tags} 
+URL: ${p.metadata.url}
+URL Categoría: ${p.metadata.url_categoria}
+Imagen: ${p.metadata.imageUrl}
+=== FIN PRODUCTO ===`,
+      );
+    }
+
+    fs.writeFileSync(OUTPUT_TXT, output.join("\n\n"), "utf8");
+    console.log("✅ TXT generado");
+    // Ver productos arriba
+    //console.log(catalogoCompleto.productos[0])
+    // 10. Estadísticas finales
+    console.log("\n✅ SINCRONIZACIÓN COMPLETA\n");
+    console.log("📊 Estadísticas:");
+    console.log(
+      `   • Total productos activos: ${catalogoCompleto.metadata.total_productos}`,
+    );
+    console.log(
+      `   • Con stock: ${catalogoCompleto.metadata.productos_disponibles}`,
+    );
+    console.log(
+      `   • Categorías activas: ${catalogoCompleto.metadata.total_categorias}`,
+    );
+    console.log(
+      `   • Categorías principales: ${catalogoCompleto.metadata.categorias_principales}`,
+    );
+    console.log(`   • Marcas: ${catalogoCompleto.metadata.marcas_total}`);
+    console.log(
+      `\n💾 Archivo generado: ${OUTPUT_JSON} (${(fs.statSync(OUTPUT_JSON).size / 1024).toFixed(2)} KB)`,
+    );
+    console.log(
+      `💾 Archivo generado: ${OUTPUT_JSONL} (${(fs.statSync(OUTPUT_JSONL).size / 1024).toFixed(2)} KB)`,
+    );
+    console.log(
+      `💾 Archivo generado: ${OUTPUT_TXT} (${(fs.statSync(OUTPUT_TXT).size / 1024).toFixed(2)} KB)`,
+    );
+    console.log(
+      `💾 Archivo generado: ${OUTPUT_TOON} (${(fs.statSync(OUTPUT_TOON).size / 1024).toFixed(2)} KB)\n`,
+    );
+    writeSyncState(dropboxFiles);
+    console.log(`📝 Estado Dropbox actualizado: ${SYNC_STATE_PATH}`);
+    //console.log(`📦 Tamaño JSON: ${(fs.statSync(OUTPUT_JSON).size / 1024).toFixed(2)} KB`);
+    //console.log(`📦 Tamaño TOON: ${(fs.statSync(OUTPUT_TOON).size / 1024).toFixed(2)} KB\n`);
+
+    // Mostrar algunas categorías principales
+    /* console.log('🌳 Categorías principales:');
+    arbol.slice(0, 5).forEach(cat => {
+      console.log(`   • ${cat.nombre} (${cat.hijos.length} subcategorías)`);
+    }); */
+  } catch (error) {
+    console.error("\n❌ ERROR SYNC PRODUCTOS-CATEGORIAS V2:", error.message);
+    //console.error(error);
+  }
+}
+
+// Ejecutar
+// sincronizarCompletoV3();
+

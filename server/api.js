@@ -40,6 +40,8 @@ import { authorizeAdLogin } from "./src/modules/gestion/gestion-auth.service.js"
 import { GestionError } from "./src/modules/gestion/gestion.errors.js";
 import duplicateTransferRouter from "./src/modules/duplicate-transfers/duplicate-transfer.routes.js";
 import duplicateTransferScheduler from "./src/modules/duplicate-transfers/duplicate-transfer-scheduler.js";
+import chatbotCatalogRouter from "./src/modules/chatbot-catalog/chatbot-catalog.routes.js";
+import wepRouter from "./src/modules/wep/wep.routes.js";
 // import { sincronizarCompleto } from "./sync-productos-cateogorias.js";
 import { sincronizarCompletoV2 } from "./sync-productos-categorias.v2.js";
 // import { syncOpenAI } from "./sync-openai.js";
@@ -99,6 +101,8 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 app.use(passport.initialize());
 /* app.use('/imagenes', express.static('public/img')); */
+
+app.use("/internal/chatbot/catalog", chatbotCatalogRouter);
 
 app.post("/api/gestion/login", function (req, res, next) {
   try {
@@ -190,6 +194,9 @@ app.post("/api/gestion/login", function (req, res, next) {
   }
 });
 
+// WEP usa tokens opacos propios en /auth y /pwa. Sus rutas técnicas conservan
+// internamente el JWT corporativo que antes aplicaba el middleware global.
+app.use("/api/wep", wepRouter);
 app.use("/api", verifyUserToken, router);
 app.post("/login", function (req, res, next) {
   try {
@@ -2161,6 +2168,24 @@ router.use(
   "/rotaciongeneralproductos/configuracion",
   rotacionProductosConfigRouter,
 );
+
+router.route("/simulador/mediosdepagos").get(async (req, res) => {
+  try {
+    const mediosDePago = await Pg.simulador_mediosdepagos();
+    res.status(200).json({
+      ok: true,
+      total: mediosDePago.length,
+      rows: mediosDePago,
+    });
+  } catch (error) {
+    console.error("Error en /api/simulador/mediosdepagos:", error);
+    res.status(500).json({
+      ok: false,
+      message: "Ocurrió un error al obtener los medios de pagos",
+      error: error.message,
+    });
+  }
+});
 
 const httpPort = 8099;
 const httpsPort = 8090;
