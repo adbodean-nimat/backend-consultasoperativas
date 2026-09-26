@@ -28,7 +28,7 @@ const sourceRow = {
   VolumenCalculado: 2.25,
   BultosCalculados: 3,
   Estado: "Preparado sin remitir",
-  CodigoVehiculo: "001",
+  CodigoVehiculo: "101",
   NombreVehiculo: "Camión 1",
   PatenteVehiculo: "AA123BB",
   Vuelta: 1,
@@ -128,7 +128,7 @@ test("sincroniza por codigo_erp y la segunda ejecución actualiza sin duplicar",
   const vehicleParams = database.queries.find(({ sql }) =>
     sql.includes("public.vehiculos"),
   ).params;
-  assert.deepEqual(vehicleParams, ["001", "Camión 1", "AA123BB"]);
+  assert.deepEqual(vehicleParams, ["101", "Camión 1", "AA123BB"]);
 
   const tripQuery = database.queries.find(({ sql }) =>
     sql.includes("public.viajes"),
@@ -172,8 +172,8 @@ test("mantiene el mismo vehículo si cambia el formato o el valor de la patente"
   assert.deepEqual(
     vehicleQueries.map(({ params }) => params),
     [
-      ["001", "Camión 1", "AB172IL"],
-      ["001", "Camión 1", "AC123ZZ"],
+      ["101", "Camión 1", "AB172IL"],
+      ["101", "Camión 1", "AC123ZZ"],
     ],
   );
   const tripQueries = database.queries.filter(({ sql }) =>
@@ -188,8 +188,8 @@ test("mantiene el mismo vehículo si cambia el formato o el valor de la patente"
 test("conserva codigo ERP como string y resuelve filas por codigo, no por patente", async () => {
   const database = createDatabase();
   const service = createService(database, [
-    { ...sourceRow, CodigoVehiculo: " 001 ", PatenteVehiculo: "AB 172 IL" },
-    { ...sourceRow, CodigoVehiculo: "001", PatenteVehiculo: "AB172IL" },
+    { ...sourceRow, CodigoVehiculo: " 101 ", PatenteVehiculo: "AB 172 IL" },
+    { ...sourceRow, CodigoVehiculo: "101", PatenteVehiculo: "AB172IL" },
   ]);
 
   const result = await service.synchronize(filters);
@@ -199,7 +199,7 @@ test("conserva codigo ERP como string y resuelve filas por codigo, no por patent
     sql.includes("public.vehiculos"),
   );
   assert.equal(vehicleQueries.length, 1);
-  assert.equal(vehicleQueries[0].params[0], "001");
+  assert.equal(vehicleQueries[0].params[0], "101");
   assert.equal(typeof vehicleQueries[0].params[0], "string");
 });
 
@@ -216,7 +216,7 @@ test("si la patente viene vacía conserva y resuelve el vehículo existente por 
   const vehicleQuery = database.queries.find(({ sql }) =>
     sql.includes("public.vehiculos"),
   );
-  assert.deepEqual(vehicleQuery.params, ["001", "Camión 1", null]);
+  assert.deepEqual(vehicleQuery.params, ["101", "Camión 1", null]);
   assert.match(vehicleQuery.sql, /WHERE codigo_erp = \$1/);
   assert.match(
     vehicleQuery.sql,
@@ -273,6 +273,39 @@ test("omite filas sin CodigoVehiculo", async () => {
   assert.equal(result.resumenOmisiones.codigoVehiculoVacio, 1);
   assert.equal(
     database.queries.some(({ sql }) => sql.includes("public.vehiculos")),
+    false,
+  );
+});
+
+test("ignora por completo códigos ERP distintos de 101, 102 y 103", async () => {
+  const database = createDatabase();
+  const service = createService(database, [
+    sourceRow,
+    {
+      ...sourceRow,
+      CodigoVehiculo: "114",
+      NombreVehiculo: "Vehículo fuera de WEP",
+      PatenteVehiculo: "0",
+      NumeroOrdenPreparacion: 999,
+    },
+  ]);
+
+  const result = await service.synchronize(filters);
+
+  assert.equal(result.sourceRows, 2);
+  assert.equal(result.vehiculos.procesados, 1);
+  assert.equal(result.viajes.procesados, 1);
+  assert.equal(result.entregas.procesadas, 1);
+  assert.equal(result.filasOmitidas, 1);
+  assert.equal(result.resumenOmisiones.codigoVehiculoNoPermitido, 1);
+
+  const vehicleQueries = database.queries.filter(({ sql }) =>
+    sql.includes("public.vehiculos"),
+  );
+  assert.equal(vehicleQueries.length, 1);
+  assert.equal(vehicleQueries[0].params[0], "101");
+  assert.equal(
+    database.queries.some(({ params }) => params?.includes("114")),
     false,
   );
 });

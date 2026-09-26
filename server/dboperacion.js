@@ -3904,6 +3904,33 @@ SET TRANSACTION ISOLATION LEVEL READ COMMITTED;`;
   return rows;
 }
 
+async function detectarNuevosProductos() {
+  let pool = await sql.connect(plataforma);
+  let getResponse = await pool.request()
+    .query(`DECLARE @_UltimoNumeroAuditoriaDesde INT;
+
+SELECT @_UltimoNumeroAuditoriaDesde = tp.TPRG_ULT_NRO_AUDITORIA
+FROM TPRG_TPRG tp
+WHERE tp.TPRG_CODIGO_TPRG = 74;
+
+IF @_UltimoNumeroAuditoriaDesde IS NULL
+    THROW 50000, 'No se encontro el cursor de auditoria del programa 74', 1;
+
+SELECT
+    ARTS.ARTS_ARTICULO_EMP AS codigo_articulo,
+    ARTS.ARTS_NOMBRE AS nombre_articulo
+FROM STOC_ARTS ARTS
+INNER JOIN STOC_AUAR AUAR
+    ON ARTS.ARTS_ARTICULO = AUAR.AUAR_ARTICULO
+INNER JOIN SEGU_AUDI AUDI
+    ON AUAR.AUAR_AUDITOR = AUDI.AUDI_AUDITOR
+WHERE AUDI.AUDI_PROGRAMA = 'STO0120'
+  AND AUDI.AUDI_INSERTA = 1
+  AND AUDI.AUDI_AUDITOR > @_UltimoNumeroAuditoriaDesde
+ORDER BY AUDI.AUDI_AUDITOR DESC;`);
+  return getResponse.recordset;
+}
+
 export default {
   getSTOC_CA04: getSTOC_CA04,
   getSTOC_CA05: getSTOC_CA05,
@@ -3989,4 +4016,5 @@ export default {
     obtenerDetalleRevendedorDeudaPorCliente,
   getBuscarClientePorTelefono: getBuscarClientePorTelefono,
   getRotacionGeneralProductos: getRotacionGeneralProductos,
+  detectarNuevosProductos: detectarNuevosProductos,
 };

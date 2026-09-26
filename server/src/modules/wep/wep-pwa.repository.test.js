@@ -97,6 +97,8 @@ test("agrupa entregas normalizadas en paradas, calcula resumen e incluye viajes 
   assert.equal(viajes[0].paradas.length, 1);
   assert.deepEqual(viajes[1].paradas, []);
   const [parada] = viajes[0].paradas;
+  assert.equal(parada.entregas[0].observacionEntrega, 'Descargar por portón lateral');
+  assert.equal(parada.entregas[0].observaciones, 'Frágil');
   assert.match(parada.grupoId, /^stop_[a-f0-9]{12}$/);
   assert.equal(parada.ordenSecuencia, 1);
   assert.deepEqual(parada.cliente, {
@@ -407,6 +409,7 @@ test("inicia un viaje y sus entregas compatibles en una sola transacción", asyn
       iniciadoAt: database.iniciadoAt,
     },
     entregasActualizadas: 2,
+    entregaIdsActualizadas: [101, 102],
   });
   assert.equal(database.queries[0].sql, "BEGIN");
   assert.match(database.queries[1].sql, /FOR UPDATE/);

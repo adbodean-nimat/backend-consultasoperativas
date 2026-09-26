@@ -19,6 +19,15 @@ const ROOT_FIELDS = new Set([
   "automaticos",
   "manuales",
 ]);
+const REQUIRED_MANUAL_FIELDS = [
+  "bancos",
+  "bancosDescubierto",
+  "opvOtros",
+  "otrosPagosProyectados",
+  "anticipos",
+  "acopiosEspeciales",
+  "acopioCierreMes",
+];
 
 const hasOwn = (object, key) => Object.prototype.hasOwnProperty.call(object, key);
 const isObject = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
@@ -244,6 +253,14 @@ function validateBody(body, { partial }) {
       acopioCierreMes: normalized.automaticos.acopioCierreMes ?? null,
       diasCaja: normalized.automaticos.diasCaja ?? null,
     };
+  } else if (
+    !hasOwn(body, "estado") &&
+    isObject(body.manuales) &&
+    REQUIRED_MANUAL_FIELDS.every(
+      (field) => hasOwn(body.manuales, field) && body.manuales[field] !== null,
+    )
+  ) {
+    normalized.estado = "GUARDADO";
   }
 
   if (isObject(body.manuales)) {

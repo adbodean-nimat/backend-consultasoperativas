@@ -2,6 +2,7 @@ import {
   WEP_NO_ENTREGA_MOTIVOS,
   WEP_NO_ENTREGA_OBSERVACION_MAX_LENGTH,
 } from "./wep-non-delivery.constants.js";
+import { normalizeWepWhatsappPhone } from "./wep-phone.util.js";
 
 const DATE_ERROR_MESSAGE =
   "Los parámetros fechaDesde y fechaHasta son obligatorios y deben tener formato YYYY-MM-DD";
@@ -142,6 +143,60 @@ export function validateEntregasProgramadasBody(body) {
       : null;
 
   return { fechaDesde, fechaHasta, vehiculo, vuelta };
+}
+
+export function validateProgrammedNotificationsBody(body) {
+  const payload =
+    body && typeof body === "object" && !Array.isArray(body) ? body : {};
+
+  let fecha = null;
+  if (payload.fecha !== undefined && payload.fecha !== null && payload.fecha !== "") {
+    if (!isValidDate(payload.fecha)) {
+      throw new WepValidationError(
+        "El campo fecha debe tener formato YYYY-MM-DD",
+      );
+    }
+    fecha = payload.fecha;
+  }
+
+  if (payload.dryRun !== undefined && typeof payload.dryRun !== "boolean") {
+    throw new WepValidationError("El campo dryRun debe ser booleano");
+  }
+
+  return {
+    fecha,
+    // El default seguro del endpoint manual es validar sin enviar.
+    dryRun: payload.dryRun ?? true,
+  };
+}
+
+export function validateProgrammedNotificationTestBody(body) {
+  const payload =
+    body && typeof body === "object" && !Array.isArray(body) ? body : {};
+
+  if (
+    !Number.isSafeInteger(payload.entregaRepresentativaId) ||
+    payload.entregaRepresentativaId <= 0
+  ) {
+    throw new WepValidationError(
+      "El campo entregaRepresentativaId es obligatorio y debe ser un entero positivo",
+    );
+  }
+  if (typeof payload.telefono !== "string" || !payload.telefono.trim()) {
+    throw new WepValidationError(
+      "El campo telefono es obligatorio y debe ser un string",
+    );
+  }
+
+  const telefono = normalizeWepWhatsappPhone(payload.telefono);
+  if (!telefono) {
+    throw new WepValidationError("El campo telefono no es un número válido para WhatsApp");
+  }
+
+  return {
+    entregaRepresentativaId: payload.entregaRepresentativaId,
+    telefono,
+  };
 }
 
 export function validatePwaViajesQuery(query) {

@@ -2,6 +2,8 @@ import wepRepository from "./wep.repository.js";
 import wepPostgresPool from "./wep-postgres.js";
 import { normalizePlate } from "./plate.util.js";
 
+const ALLOWED_VEHICLE_ERP_CODES = new Set(["101", "102", "103"]);
+
 const VEHICLE_UPSERT = `
   WITH updated_incomplete_erp_data AS (
     UPDATE public.vehiculos
@@ -125,7 +127,9 @@ function dateOnly(value) {
   const match = String(value).match(/^(\d{4})-(\d{2})-(\d{2})/);
   if (!match) return null;
   const [, year, month, day] = match;
-  const parsed = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)));
+  const parsed = new Date(
+    Date.UTC(Number(year), Number(month) - 1, Number(day)),
+  );
   if (
     parsed.getUTCFullYear() !== Number(year) ||
     parsed.getUTCMonth() !== Number(month) - 1 ||
@@ -170,6 +174,7 @@ function entityKey(parts) {
 function prepareRows(rows) {
   const quality = {
     codigoVehiculoVacio: 0,
+    codigoVehiculoNoPermitido: 0,
     patenteVacia: 0,
     nombreVehiculoVacio: 0,
     ordenPreparacionIncompleta: 0,
@@ -192,10 +197,14 @@ function prepareRows(rows) {
     const orderType = textOrNull(row.TipoOrdenPreparacion);
     const orderNumber = textOrNull(row.NumeroOrdenPreparacion);
     const exclusionReasons = [];
+    const codigoErpPermitido = ALLOWED_VEHICLE_ERP_CODES.has(codigoErp);
 
     if (!codigoErp) {
       quality.codigoVehiculoVacio += 1;
       exclusionReasons.push("codigoVehiculoVacio");
+    } else if (!codigoErpPermitido) {
+      quality.codigoVehiculoNoPermitido += 1;
+      exclusionReasons.push("codigoVehiculoNoPermitido");
     }
     if (!patente) {
       quality.patenteVacia += 1;
@@ -221,6 +230,7 @@ function prepareRows(rows) {
     return {
       row,
       codigoErp,
+      codigoErpPermitido,
       patente,
       vehicleName,
       tripDate,
@@ -239,8 +249,20 @@ function prepareRows(rows) {
 function safeErrorMessage(error) {
   const message = String(error?.message || "Error desconocido")
     .replace(/password\s*=\s*[^;\s]+/gi, "password=[REDACTED]")
-    .replace(/WEP_PG_PASSWORD\s*[:=]\s*[^;\s]+/gi, "WEP_PG_PASSWORD=[REDACTED]");
+    .replace(
+      /WEP_PG_PASSWORD\s*[:=]\s*[^;\s]+/gi,
+      "WEP_PG_PASSWORD=[REDACTED]",
+    );
   return error?.code ? `${error.code}: ${message}` : message;
+}
+
+function normalizeSqlTime(value) {
+  if (!value) return null;
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+
+  return date.toISOString().slice(11, 19);
 }
 
 export class WepSyncService {
@@ -262,13 +284,25 @@ export class WepSyncService {
       this.logger.info?.(`[WEP SYNC] Filas ERP recibidas: ${rows.length}`);
 
       const { prepared, quality } = prepareRows(rows);
+      const ignoredVehicleCodes = [
+        ...new Set(
+          prepared
+            .filter((item) => item.codigoErp && !item.codigoErpPermitido)
+            .map((item) => item.codigoErp),
+        ),
+      ];
+      if (ignoredVehicleCodes.length) {
+        this.logger.warn?.(
+          `[WEP SYNC] Códigos ERP ignorados: ${ignoredVehicleCodes.join(", ")}`,
+        );
+      }
       client = await this.postgresPool.connect();
       await client.query("BEGIN");
       transactionStarted = true;
 
       const vehicles = new Map();
       for (const item of prepared) {
-        if (!item.codigoErp) continue;
+        if (!item.codigoErpPermitido) continue;
         const previous = vehicles.get(item.codigoErp);
         vehicles.set(item.codigoErp, {
           codigoErp: item.codigoErp,
@@ -286,10 +320,11 @@ export class WepSyncService {
         this.logger.info?.(
           `[WEP SYNC] Vehículo ERP=${codigoErp} patenteERP=${JSON.stringify(vehicle.patenteErp ?? null)} patenteNormalizada=${JSON.stringify(vehicle.patente)}`,
         );
-        const result = await client.query(
-          VEHICLE_UPSERT,
-          [codigoErp, vehicle.nombre, vehicle.patente],
-        );
+        const result = await client.query(VEHICLE_UPSERT, [
+          codigoErp,
+          vehicle.nombre,
+          vehicle.patente,
+        ]);
         const vehicleId = result.rows[0]?.id;
         if (vehicleId === null || vehicleId === undefined) {
           this.logger.warn?.(
@@ -298,7 +333,8 @@ export class WepSyncService {
           continue;
         }
         vehicleIds.set(codigoErp, vehicleId);
-        const action = result.rows[0]?.insertado === true ? "creado" : "actualizado";
+        const action =
+          result.rows[0]?.insertado === true ? "creado" : "actualizado";
         this.logger.info?.(
           `[WEP SYNC] Vehículo ${action} codigoErp=${codigoErp} id=${vehicleId}`,
         );
@@ -307,7 +343,9 @@ export class WepSyncService {
 
       const trips = new Map();
       for (const item of prepared) {
-        if (!item.codigoErp || !item.tripDate || !item.vuelta) continue;
+        if (!item.codigoErpPermitido || !item.tripDate || !item.vuelta) {
+          continue;
+        }
         const vehicleId = vehicleIds.get(item.codigoErp);
         if (vehicleId === null || vehicleId === undefined) {
           quality.vehiculoNoResoluble += 1;
@@ -351,9 +389,7 @@ export class WepSyncService {
         );
         programmedStateId = state.rows[0]?.id;
         if (programmedStateId === null || programmedStateId === undefined) {
-          throw new Error(
-            "No existe el estado PROGRAMADA en entrega_estados",
-          );
+          throw new Error("No existe el estado PROGRAMADA en entrega_estados");
         }
       }
 
@@ -374,6 +410,14 @@ export class WepSyncService {
         }
 
         const row = item.row;
+        const horaDesde =
+          normalizeSqlTime(row.DesdeHoraEntrega) ??
+          normalizeSqlTime(row.DesdeHoraVuelta) ??
+          null;
+        const horaHasta =
+          normalizeSqlTime(row.HastaHoraEntrega) ??
+          normalizeSqlTime(row.HastaHoraVuelta) ??
+          null;
         const result = await client.query(DELIVERY_UPSERT, [
           item.orderDivision,
           item.orderType,
@@ -387,12 +431,12 @@ export class WepSyncService {
           textOrNull(row.Localidad),
           textOrNull(row.CodigoZonaDistribucion),
           textOrNull(row.NombreZonaDistribucion),
-          textOrNull(row.TelefonoCliente),
           textOrNull(row.TelefonoDomicilio),
+          textOrNull(row.TelefonoCliente),
           textOrNull(row.EmailCliente),
           item.deliveryDate,
-          timeOrNull(row.DesdeHoraEntrega),
-          timeOrNull(row.HastaHoraEntrega),
+          timeOrNull(horaDesde),
+          timeOrNull(horaHasta),
           textOrNull(row.ObservacionEntrega),
           textOrNull(row.Observaciones),
           row.PesoCalculado ?? null,

@@ -106,7 +106,7 @@ test("usa el teléfono alternativo cuando el principal no contiene dígitos", as
 
   const result = await repository.reserveNotice(101, 3);
 
-  assert.equal(result.telefonoDestino, "3451111111");
+  assert.equal(result.telefonoDestino, "5493451111111");
 });
 
 test("rechaza estados no permitidos sin crear una notificación", async () => {

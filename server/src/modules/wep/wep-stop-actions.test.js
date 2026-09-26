@@ -14,7 +14,10 @@ import {
   WepPwaStopViajeNotFoundError,
   WepStopActionsRepository,
 } from "./wep-stop-actions.repository.js";
-import { WepStopActionsService } from "./wep-stop-actions.service.js";
+import {
+  WepEtaUnavailableError,
+  WepStopActionsService,
+} from "./wep-stop-actions.service.js";
 import { createStopGroupId } from "./wep-stop.util.js";
 import { createWepRouter } from "./wep.routes.js";
 import {
@@ -91,7 +94,44 @@ function delivery(id, state = "EN_REPARTO", overrides = {}) {
     localidad: STOP_FIELDS.localidad,
     telefono: "+54 9 345 000-0000",
     telefono_alternativo: null,
+    destino_latitud: -31.2,
+    destino_longitud: -58.1,
     ...overrides,
+  };
+}
+
+function etaDependencies() {
+  return {
+    geocoder: {
+      canUsePersistentCoordinateCache() { return true; },
+      async geocodeDeliveryDestination() {
+        return { latitude: -31.2, longitude: -58.1, provider: "test" };
+      },
+    },
+    vehiclePositionService: {
+      async getCurrentPositionByPlate() {
+        return {
+          latitude: -31,
+          longitude: -58,
+          positionDate: "2026-09-21T12:00:00.000Z",
+        };
+      },
+    },
+    routeCalculator: {
+      async calculateRouteEta() {
+        return {
+          durationSeconds: 1380,
+          durationMinutes: 23,
+          distanceMeters: 12450,
+        };
+      },
+    },
+    trackingService: {
+      async getOrCreateTrackingForStop() {
+        return { publicId: "abcdefghijklmnopqrstuv" };
+      },
+    },
+    logger: { log() {}, warn() {} },
   };
 }
 
@@ -139,6 +179,17 @@ function createDatabase({
         return { rows: [] };
       }
       if (sql === "COMMIT") return { rows: [] };
+      if (sql.includes("LEFT JOIN public.entregas e")) {
+        return {
+          rows: rows().map((row) => ({
+            ...row,
+            viaje_id: VIAJE_ID,
+            viaje_estado: viajeEstado,
+            vehiculo_id: vehiculoId,
+            patente: "AB172IK",
+          })),
+        };
+      }
       if (sql.includes("FROM public.viajes v")) {
         return {
           rows: [
@@ -454,6 +505,7 @@ test("envía un solo WhatsApp y asocia tres entregas al aviso", async () => {
   let sends = 0;
   const service = new WepStopActionsService({
     repository: new WepStopActionsRepository({ postgresPool: database.pool }),
+    ...etaDependencies(),
     async whatsappSender() {
       sends += 1;
       return { messageId: "wamid.stop.1", templateName: "wep_en_camino" };
@@ -480,14 +532,19 @@ test("envía un solo WhatsApp y asocia tres entregas al aviso", async () => {
   );
 });
 
-test("el reintento de aviso no ejecuta un segundo WhatsApp", async () => {
+test("el reintento de un aviso exitoso devuelve YA_NOTIFICADA sin otro WhatsApp", async () => {
   let sends = 0;
   const service = new WepStopActionsService({
     repository: {
-      async reserveStopNotice() {
-        throw new WepPwaEntregaNoticeConflictError(
-          "El aviso de la parada ya fue solicitado",
-        );
+      async getStopContext() {
+        return context(["CLIENTE_AVISADO"]);
+      },
+      async findSuccessfulStopNotice() {
+        return {
+          message_id: "wamid.stop.1",
+          enviado_at: "2026-09-21T12:00:00.000Z",
+          metadata: { etaMinutosEnviado: 25 },
+        };
       },
     },
     async whatsappSender() {
@@ -495,10 +552,9 @@ test("el reintento de aviso no ejecuta un segundo WhatsApp", async () => {
     },
   });
 
-  await assert.rejects(
-    () => service.notifyStop(VIAJE_ID, GRUPO_ID, VEHICULO_ID),
-    WepPwaEntregaNoticeConflictError,
-  );
+  const result = await service.notifyStop(VIAJE_ID, GRUPO_ID, VEHICULO_ID);
+  assert.equal(result.notificacion.resultado, "YA_NOTIFICADA");
+  assert.equal(result.notificacion.etaMinutos, 25);
   assert.equal(sends, 0);
 });
 
@@ -506,6 +562,12 @@ test("un fallo de WhatsApp registra ERROR y no cambia entregas", async () => {
   const calls = [];
   const service = new WepStopActionsService({
     repository: {
+      async getStopContext() {
+        return context(["EN_REPARTO"]);
+      },
+      async findSuccessfulStopNotice() {
+        return null;
+      },
       async reserveStopNotice() {
         return {
           notificationId: 40,
@@ -521,6 +583,7 @@ test("un fallo de WhatsApp registra ERROR y no cambia entregas", async () => {
         calls.push("confirm");
       },
     },
+    ...etaDependencies(),
     async whatsappSender() {
       throw new Error("timeout");
     },
@@ -533,6 +596,123 @@ test("un fallo de WhatsApp registra ERROR y no cambia entregas", async () => {
   assert.equal(calls.includes("confirm"), false);
   assert.equal(calls.length, 1);
 });
+
+test("un destino cacheado no vuelve a geocodificarse", async () => {
+  let geocodingCalls = 0;
+  const calls = [];
+  const service = new WepStopActionsService({
+    repository: {
+      async getStopContext() { return context(["EN_REPARTO"]); },
+      async findSuccessfulStopNotice() { return null; },
+      async reserveStopNotice() {
+        return { notificationId: 40, anchorId: 101, telefonoDestino: "5493450000000" };
+      },
+      async confirmStopNotice(payload) {
+        calls.push(payload);
+        return { parada: { estado: { codigo: "CLIENTE_AVISADO" } }, notificacion: {} };
+      },
+      async failStopNotice() {},
+    },
+    ...etaDependencies(),
+    geocoder: {
+      async geocodeDeliveryDestination() { geocodingCalls += 1; },
+    },
+    async whatsappSender(payload) {
+      calls.push(payload);
+      return { messageId: "wamid.stop.2", templateName: "wep_en_camino_test" };
+    },
+    templateName: "wep_en_camino_test",
+  });
+  await service.notifyStop(VIAJE_ID, GRUPO_ID, VEHICULO_ID);
+  assert.equal(geocodingCalls, 0);
+  assert.equal(calls[0].etaMinutes, 25);
+  assert.equal(calls[0].publicId, "abcdefghijklmnopqrstuv");
+  assert.deepEqual(calls[1].metadata, {
+    etaMinutosCalculado: 23,
+    etaMinutosEnviado: 25,
+    distanciaMetros: 12450,
+    fechaPosicionGestya: "2026-09-21T12:00:00.000Z",
+    precisionDestino: "DOMICILIO",
+  });
+});
+
+test("usa la plantilla de zona sin guardar coordenadas aproximadas", async () => {
+  const calls = [];
+  const stopContext = context(["EN_REPARTO"]);
+  stopContext.entregas[0].destino_latitud = null;
+  stopContext.entregas[0].destino_longitud = null;
+  const service = new WepStopActionsService({
+    repository: {
+      async getStopContext() { return stopContext; },
+      async findSuccessfulStopNotice() { return null; },
+      async saveStopDestinationCoordinates() { calls.push("saved"); },
+      async reserveStopNotice(_viajeId, _grupoId, _vehiculoId, templateName) {
+        calls.push(["reserve", templateName]);
+        return { notificationId: 40, anchorId: 101, telefonoDestino: "5493450000000" };
+      },
+      async confirmStopNotice(payload) {
+        calls.push(["confirm", payload]);
+        return { notificacion: { precisionDestino: payload.metadata.precisionDestino } };
+      },
+    },
+    ...etaDependencies(),
+    geocoder: {
+      canUsePersistentCoordinateCache() { return true; },
+      async geocodeDeliveryDestination() {
+        return { latitude: -31.4047734, longitude: -58.068884, approximateArea: true };
+      },
+    },
+    async whatsappSender(payload) {
+      calls.push(["send", payload]);
+      return { messageId: "wamid.zona.1", templateName: payload.templateName };
+    },
+    templateName: "wep_en_camino",
+    approximateAreaTemplateName: "wep_en_camino_zona",
+    logger: { log() {}, warn() {} },
+  });
+
+  const result = await service.notifyStop(VIAJE_ID, GRUPO_ID, VEHICULO_ID);
+  assert.equal(calls.includes("saved"), false);
+  assert.deepEqual(calls.find(([type]) => type === "reserve"), ["reserve", "wep_en_camino_zona"]);
+  assert.equal(calls.find(([type]) => type === "send")[1].templateName, "wep_en_camino_zona");
+  assert.equal(calls.find(([type]) => type === "confirm")[1].metadata.precisionDestino, "ZONA_APROXIMADA");
+  assert.equal(result.notificacion.precisionDestino, "ZONA_APROXIMADA");
+});
+
+for (const failure of ["gestya", "geocoding", "routing"]) {
+  test(`un fallo de ${failure} devuelve ETA no disponible sin reservar aviso`, async () => {
+    let reservations = 0;
+    const stopContext = context(["EN_REPARTO"]);
+    if (failure === "geocoding") {
+      stopContext.entregas[0].destino_latitud = null;
+      stopContext.entregas[0].destino_longitud = null;
+    }
+    const dependencies = etaDependencies();
+    const service = new WepStopActionsService({
+      repository: {
+        async getStopContext() { return stopContext; },
+        async findSuccessfulStopNotice() { return null; },
+        async saveStopDestinationCoordinates() {},
+        async reserveStopNotice() { reservations += 1; },
+      },
+      ...dependencies,
+      vehiclePositionService: failure === "gestya"
+        ? { async getCurrentPositionByPlate() { throw new Error("sin GPS"); } }
+        : dependencies.vehiclePositionService,
+      geocoder: failure === "geocoding"
+        ? { async geocodeDeliveryDestination() { throw new Error("sin geocode"); } }
+        : { async geocodeDeliveryDestination() { return { latitude: -31.2, longitude: -58.1 }; } },
+      routeCalculator: failure === "routing"
+        ? { async calculateRouteEta() { throw new Error("sin ruta"); } }
+        : dependencies.routeCalculator,
+    });
+    await assert.rejects(
+      () => service.notifyStop(VIAJE_ID, GRUPO_ID, VEHICULO_ID),
+      WepEtaUnavailableError,
+    );
+    assert.equal(reservations, 0);
+  });
+}
 
 test("rechaza una parada sin teléfono antes de crear la notificación", async () => {
   const database = createDatabase();
@@ -660,4 +840,23 @@ test("los endpoints mapean validación, autorización, inexistencia, conflicto y
     body: { motivo: "NO_EXISTE" },
   });
   assert.equal(invalidBody.status, 400);
+});
+
+test("el endpoint devuelve el contrato controlado cuando el ETA no está disponible", async () => {
+  const result = await postStopAction(
+    {
+      async notifyStop() {
+        throw new WepEtaUnavailableError(new Error("routing caído"));
+      },
+    },
+    "avisar",
+  );
+  assert.deepEqual(result, {
+    status: 503,
+    body: {
+      ok: false,
+      code: "ETA_NO_DISPONIBLE",
+      message: "No se pudo calcular el tiempo estimado de llegada.",
+    },
+  });
 });

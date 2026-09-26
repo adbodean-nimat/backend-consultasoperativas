@@ -131,9 +131,22 @@ async function putPwaOrden(pwaRepository, viajeId, body) {
   }
 }
 
-async function postPwaIniciar(pwaRepository, viajeId) {
+async function postPwaIniciar(
+  pwaRepository,
+  viajeId,
+  enRepartoNotificationsService,
+) {
   const app = express();
-  app.use("/api/wep", createWepRouter({ pwaRepository, wepAuth: testAuth }));
+  app.use(
+    "/api/wep",
+    createWepRouter({
+      pwaRepository,
+      wepAuth: testAuth,
+      ...(enRepartoNotificationsService
+        ? { enRepartoNotificationsService }
+        : {}),
+    }),
+  );
   const server = app.listen(0, "127.0.0.1");
   await new Promise((resolve) => server.once("listening", resolve));
 
@@ -842,6 +855,64 @@ test("el POST PWA inicia el viaje sin requerir body", async () => {
     },
     entregasActualizadas: 5,
   });
+});
+
+test("el POST PWA notifica sólo las entregas que realmente pasaron a EN_REPARTO", async () => {
+  let notificationInput;
+  const result = await postPwaIniciar(
+    {
+      async startPwaViaje() {
+        return {
+          viaje: { id: 10, estado: "EN_REPARTO", iniciadoAt: "ahora" },
+          entregasActualizadas: 2,
+          entregaIdsActualizadas: [101, 102],
+        };
+      },
+    },
+    "10",
+    {
+      async notifyTransitionedStops(input) {
+        notificationInput = input;
+      },
+    },
+  );
+
+  assert.equal(result.status, 200);
+  assert.deepEqual(notificationInput, {
+    viajeId: 10,
+    entregaIds: [101, 102],
+  });
+  assert.equal("notificaciones" in result.body, false);
+});
+
+test("un fallo de notificación no revierte ni rompe el inicio del viaje", async () => {
+  const originalConsoleError = console.error;
+  console.error = () => {};
+  try {
+    const result = await postPwaIniciar(
+      {
+        async startPwaViaje() {
+          return {
+            viaje: { id: 10, estado: "EN_REPARTO", iniciadoAt: "ahora" },
+            entregasActualizadas: 1,
+            entregaIdsActualizadas: [101],
+          };
+        },
+      },
+      "10",
+      {
+        async notifyTransitionedStops() {
+          throw new Error("Meta no disponible");
+        },
+      },
+    );
+
+    assert.equal(result.status, 200);
+    assert.equal(result.body.viaje.estado, "EN_REPARTO");
+    assert.equal(result.body.entregasActualizadas, 1);
+  } finally {
+    console.error = originalConsoleError;
+  }
 });
 
 test("el POST PWA rechaza un viajeId inválido sin consultar PostgreSQL", async () => {

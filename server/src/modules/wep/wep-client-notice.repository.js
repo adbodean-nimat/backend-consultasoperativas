@@ -1,4 +1,4 @@
-import { limpiarTelefonoWhatsapp } from "../../services/whatsapp.service.js";
+import { normalizeWepWhatsappPhone } from "./wep-phone.util.js";
 import wepPostgresPool from "./wep-postgres.js";
 
 const NOTICE_TYPE = "EN_CAMINO";
@@ -13,7 +13,7 @@ export class WepPwaEntregaNoticeConflictError extends Error {}
 
 export function normalizeAvailablePhone(entrega) {
   for (const value of [entrega.telefono, entrega.telefono_alternativo]) {
-    const normalized = limpiarTelefonoWhatsapp(value);
+    const normalized = normalizeWepWhatsappPhone(value);
     if (normalized) return normalized;
   }
 

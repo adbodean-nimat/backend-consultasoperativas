@@ -5,6 +5,10 @@ import wepLoginService, {
   WepLoginInvalidCredentialsError,
 } from "./wep-login.service.js";
 import wepLoginRateLimit from "./wep-login-rate-limit.middleware.js";
+import wepPublicTrackingRateLimit from "./wep-public-tracking-rate-limit.middleware.js";
+import wepTrackingService, {
+  WepTrackingStopNotFoundError,
+} from "./wep-tracking.service.js";
 import wepTokenService, {
   WepTokenNotFoundError,
   WepVehicleNotFoundError,
@@ -41,7 +45,23 @@ import {
   WepPwaNoDeliveryStateConflictError,
 } from "./wep-non-delivery.repository.js";
 import wepNonDeliveryService from "./wep-non-delivery.service.js";
-import wepStopActionsService from "./wep-stop-actions.service.js";
+import wepStopActionsService, {
+  ETA_UNAVAILABLE_CODE,
+  ETA_UNAVAILABLE_MESSAGE,
+  WepEtaUnavailableError,
+} from "./wep-stop-actions.service.js";
+import wepEnRepartoNotificationsService from "./wep-en-reparto-notifications.service.js";
+import wepProgrammedNotificationsService, {
+  WepProgrammedTemplateNotConfiguredError,
+} from "./wep-programmed-notifications.service.js";
+import wepProgrammedNotificationTestService, {
+  WepProgrammedTestScheduleError,
+  WepProgrammedTestWhatsappError,
+} from "./wep-programmed-notification-test.service.js";
+import {
+  WepProgrammedTestDeliveryNotFoundError,
+  WepProgrammedTestStopConflictError,
+} from "./wep-programmed-notifications.repository.js";
 import {
   WepPwaStopForbiddenError,
   WepPwaStopNotFoundError,
@@ -63,6 +83,8 @@ import {
   validatePwaViajeId,
   validatePwaViajesQuery,
   validatePositiveIntegerId,
+  validateProgrammedNotificationTestBody,
+  validateProgrammedNotificationsBody,
   validateWepLoginBody,
   validateWepPinBody,
   WepValidationError,
@@ -77,13 +99,126 @@ export function createWepRouter({
   deliveryConfirmationService = wepDeliveryConfirmationService,
   nonDeliveryService = wepNonDeliveryService,
   stopActionsService = wepStopActionsService,
+  enRepartoNotificationsService = wepEnRepartoNotificationsService,
+  programmedNotificationsService = wepProgrammedNotificationsService,
+  programmedNotificationTestService = wepProgrammedNotificationTestService,
   tokenService = wepTokenService,
   loginService = wepLoginService,
   loginRateLimit = wepLoginRateLimit,
+  publicTrackingRateLimit = wepPublicTrackingRateLimit,
+  trackingService = wepTrackingService,
   technicalAuth = verifyUserToken,
   wepAuth = requireWepVehicle,
 } = {}) {
   const router = express.Router();
+
+  router.get(
+    "/public/tracking/:publicId",
+    publicTrackingRateLimit,
+    async (request, response) => {
+      try {
+        const tracking = await trackingService.getPublicTracking(
+          request.params.publicId,
+        );
+        if (!tracking) {
+          return response.status(404).json({
+            ok: false,
+            message: "Seguimiento no disponible",
+          });
+        }
+        return response.status(200).json({ ok: true, tracking });
+      } catch (_error) {
+        console.error("[WEP TRACKING] Error consultando tracking público");
+        return response.status(500).json({
+          ok: false,
+          message: "No se pudo consultar el seguimiento",
+        });
+      }
+    },
+  );
+
+  router.post(
+    "/admin/notificaciones/programadas/procesar",
+    technicalAuth,
+    async (request, response) => {
+      try {
+        const input = validateProgrammedNotificationsBody(request.body);
+        const result = await programmedNotificationsService.processProgrammedDeliveryNotifications(
+          {
+            ...(input.fecha ? { fecha: input.fecha } : {}),
+            dryRun: input.dryRun,
+          },
+        );
+        return response.status(200).json(result);
+      } catch (error) {
+        if (error instanceof WepValidationError) {
+          return response.status(400).json({ ok: false, message: error.message });
+        }
+        if (error instanceof WepProgrammedTemplateNotConfiguredError) {
+          return response.status(409).json({ ok: false, message: error.message });
+        }
+
+        console.error(
+          "[WEP PROGRAMADA] Error procesando notificaciones programadas",
+        );
+        return response.status(500).json({
+          ok: false,
+          message: "No se pudieron procesar las notificaciones PROGRAMADA",
+        });
+      }
+    },
+  );
+
+  // Endpoint administrativo exclusivamente manual/de testing. Envía una sola
+  // parada al teléfono indicado y registra PROGRAMADA_TEST, nunca PROGRAMADA.
+  router.post(
+    "/admin/notificaciones/programadas/test",
+    technicalAuth,
+    async (request, response) => {
+      try {
+        const input = validateProgrammedNotificationTestBody(request.body);
+        const result = await programmedNotificationTestService.send(input);
+        return response.status(200).json(result);
+      } catch (error) {
+        if (error instanceof WepValidationError) {
+          return response.status(400).json({ ok: false, message: error.message });
+        }
+        if (
+          error instanceof WepProgrammedTestDeliveryNotFoundError ||
+          error instanceof WepTrackingStopNotFoundError
+        ) {
+          return response.status(404).json({
+            ok: false,
+            message: "No se encontró la entrega o su parada",
+          });
+        }
+        if (error instanceof WepProgrammedTestStopConflictError) {
+          return response.status(409).json({
+            ok: false,
+            message: "No se pudo resolver una única parada de forma segura",
+          });
+        }
+        if (error instanceof WepProgrammedTemplateNotConfiguredError) {
+          return response.status(409).json({ ok: false, message: error.message });
+        }
+        if (error instanceof WepProgrammedTestScheduleError) {
+          return response.status(422).json({ ok: false, message: error.message });
+        }
+        if (error instanceof WepProgrammedTestWhatsappError) {
+          return response.status(502).json({
+            ok: false,
+            message: "No se pudo enviar la notificación de prueba por WhatsApp",
+          });
+        }
+
+        console.error("[WEP PROGRAMADA TEST] Error interno", error);
+        return response.status(500).json({
+          ok: false,
+          message: "No se pudo procesar la notificación PROGRAMADA TEST",
+        });
+      }
+    },
+  );
 
   router.get(
     "/gestya/vehiculos/:patente/posicion",
@@ -719,6 +854,13 @@ export function createWepRouter({
         message: "No se pudo enviar el aviso por WhatsApp",
       });
     }
+    if (error instanceof WepEtaUnavailableError) {
+      return response.status(503).json({
+        ok: false,
+        code: ETA_UNAVAILABLE_CODE,
+        message: ETA_UNAVAILABLE_MESSAGE,
+      });
+    }
 
     console.error(internalMessage, error);
     return response.status(500).json({
@@ -741,6 +883,7 @@ export function createWepRouter({
         return response.status(200).json({
           ok: true,
           message: "Cliente avisado correctamente para la parada",
+          estado: result.parada.estado.codigo,
           parada: result.parada,
           notificacion: result.notificacion,
         });
@@ -884,6 +1027,19 @@ export function createWepRouter({
       console.log(
         `[WEP PWA] Entregas actualizadas: ${result.entregasActualizadas}`,
       );
+
+      if (result.entregaIdsActualizadas?.length > 0) {
+        try {
+          await enRepartoNotificationsService.notifyTransitionedStops({
+            viajeId,
+            entregaIds: result.entregaIdsActualizadas,
+          });
+        } catch (notificationError) {
+          console.error(
+            `[WEP EN_REPARTO] El viaje id=${viajeId} fue iniciado, pero no se pudieron procesar sus notificaciones: ${notificationError.message}`,
+          );
+        }
+      }
 
       return response.status(200).json({
         ok: true,

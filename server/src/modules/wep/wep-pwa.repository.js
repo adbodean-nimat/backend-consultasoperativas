@@ -384,6 +384,8 @@ export function groupPwaViajes(rows) {
         tipo: row.nota_pedido_tipo,
         numero: numberOrNull(row.nota_pedido_numero),
       },
+      observacionEntrega: row.observacion_entrega,
+      observaciones: row.observaciones,
       estado: {
         codigo: row.estado_codigo,
         nombre: row.estado_nombre,
@@ -641,6 +643,9 @@ export class WepPwaRepository {
           iniciadoAt: viajeActualizado.iniciado_at,
         },
         entregasActualizadas: entregasActualizadasResult.rows.length,
+        entregaIdsActualizadas: entregasActualizadasResult.rows.map(({ id }) =>
+          Number(id),
+        ),
       };
     } catch (error) {
       if (transactionStarted && client) {

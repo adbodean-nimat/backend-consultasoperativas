@@ -53,6 +53,7 @@ import {
   inicializarCronEnviosDesdeDB,
   recargarCronDesdeDB,
 } from "./src/cron/cron.envios.js";
+import cronNuevosProductosWeb from "./src/cron/cron.NuevosProductosWeb.js";
 
 // Solo una instancia en cluster
 if (process.env.NODE_APP_INSTANCE === "0") {
@@ -61,6 +62,7 @@ if (process.env.NODE_APP_INSTANCE === "0") {
     .then((estado) => console.log("Cron avisos deuda:", estado))
     .catch((error) => console.error("Error inicializando cron:", error));
 }
+cronNuevosProductosWeb.start();
 duplicateTransferScheduler
   .start()
   .catch((error) =>

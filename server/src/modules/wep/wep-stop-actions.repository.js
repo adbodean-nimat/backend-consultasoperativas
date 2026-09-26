@@ -26,7 +26,9 @@ const STOP_DELIVERIES_SELECT = `
     e.domicilio,
     e.localidad,
     e.telefono,
-    e.telefono_alternativo
+    e.telefono_alternativo,
+    e.destino_latitud,
+    e.destino_longitud
   FROM public.entregas e
   INNER JOIN public.entrega_estados ee
     ON ee.id = e.estado_id
@@ -162,8 +164,12 @@ export class WepStopActionsRepository {
          e.cliente_nombre,
          e.domicilio,
          e.localidad,
+         e.zona_codigo,
+         e.zona_nombre,
          e.telefono,
-         e.telefono_alternativo
+         e.telefono_alternativo,
+         e.destino_latitud,
+         e.destino_longitud
        FROM public.viajes v
        INNER JOIN public.vehiculos vh
          ON vh.id = v.vehiculo_id
@@ -191,6 +197,34 @@ export class WepStopActionsRepository {
       result.rows.filter((row) => row.entrega_id !== null),
     );
     return mapContext(viaje, grupoId, deliveries);
+  }
+
+  async findSuccessfulStopNotice(context) {
+    const ids = context.entregas.map((delivery) => Number(delivery.entrega_id));
+    const result = await this.postgresPool.query(
+      `SELECT id, message_id, enviado_at, metadata
+       FROM public.notificaciones
+       WHERE entrega_id = ANY($1::bigint[])
+         AND tipo = $2
+         AND estado = 'ENVIADO'
+       ORDER BY enviado_at DESC NULLS LAST, id DESC
+       LIMIT 1`,
+      [ids, NOTICE_TYPE],
+    );
+    return result.rows[0] || null;
+  }
+
+  async saveStopDestinationCoordinates(context, { latitude, longitude }) {
+    const ids = context.entregas.map((delivery) => Number(delivery.entrega_id));
+    await this.postgresPool.query(
+      `UPDATE public.entregas
+       SET destino_latitud = $1,
+           destino_longitud = $2,
+           updated_at = NOW()
+       WHERE id = ANY($3::bigint[])
+         AND viaje_id = $4`,
+      [latitude, longitude, ids, context.viaje.id],
+    );
   }
 
   async lockStop(client, viajeId, grupoId, vehiculoId) {
@@ -392,21 +426,40 @@ export class WepStopActionsRepository {
         Number(delivery.entrega_id),
       );
       const existingResult = await client.query(
-        `SELECT id
+        `SELECT id, estado
          FROM public.notificaciones
          WHERE entrega_id = ANY($1::bigint[])
            AND tipo = $2
+         ORDER BY id DESC
          LIMIT 1`,
         [allIds, NOTICE_TYPE],
       );
-      if (existingResult.rows.length > 0) {
+      const existing = existingResult.rows[0];
+      if (existing && existing.estado !== "ERROR") {
         throw new WepPwaEntregaNoticeConflictError(
           "El aviso de la parada ya fue solicitado",
         );
       }
 
       const anchorId = Number(destination.delivery.entrega_id);
-      const notificationResult = await client.query(
+      const notificationResult = existing
+        ? await client.query(
+          `UPDATE public.notificaciones
+           SET entrega_id = $1,
+               telefono_destino = $2,
+               template_name = $3,
+               estado = 'PENDIENTE',
+               message_id = NULL,
+               error_codigo = NULL,
+               error_detalle = NULL,
+               metadata = NULL,
+               enviado_at = NULL
+           WHERE id = $4
+             AND estado = 'ERROR'
+           RETURNING id`,
+          [anchorId, destination.phone, templateName, existing.id],
+        )
+        : await client.query(
         `INSERT INTO public.notificaciones
            (entrega_id, tipo, canal, telefono_destino, template_name,
             estado, created_at)
@@ -429,6 +482,9 @@ export class WepStopActionsRepository {
         anchorId,
         telefonoDestino: destination.phone,
         clienteNombre: destination.delivery.cliente_nombre,
+        clienteCodigo: destination.delivery.cliente_codigo,
+        domicilio: destination.delivery.domicilio,
+        localidad: destination.delivery.localidad,
       };
     } catch (error) {
       if (transactionStarted && client) {
@@ -448,6 +504,7 @@ export class WepStopActionsRepository {
     anchorId,
     messageId,
     templateName,
+    metadata,
   }) {
     let client;
     let transactionStarted = false;
@@ -483,13 +540,14 @@ export class WepStopActionsRepository {
              estado = 'ENVIADO',
              error_codigo = NULL,
              error_detalle = NULL,
+             metadata = $3,
              enviado_at = NOW()
-         WHERE id = $3
-           AND entrega_id = $4
-           AND tipo = $5
+         WHERE id = $4
+           AND entrega_id = $5
+           AND tipo = $6
            AND estado = 'PENDIENTE'
          RETURNING enviado_at`,
-        [templateName, messageId, notificationId, anchorId, NOTICE_TYPE],
+        [templateName, messageId, metadata, notificationId, anchorId, NOTICE_TYPE],
       );
       const sentAt = notificationResult.rows[0]?.enviado_at;
       if (!sentAt) {
@@ -541,6 +599,10 @@ export class WepStopActionsRepository {
           canal: "WHATSAPP",
           estado: "ENVIADO",
           enviadoAt: sentAt,
+          resultado: "ENVIADA",
+          etaMinutos: metadata.etaMinutosEnviado,
+          precisionDestino: metadata.precisionDestino ?? "DOMICILIO",
+          messageId,
         },
       };
     } catch (error) {

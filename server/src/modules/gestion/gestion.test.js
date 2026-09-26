@@ -149,6 +149,19 @@ test("PUT parcial conserva ausentes y convierte null del alias", () => {
   const validated = validateUpdateBody(body, "2026-07-16");
   assert.equal(validated.manuales.otrosPagosProyectados, null);
   assert.equal(Object.hasOwn(validated.manuales, "bancos"), false);
+  assert.equal(Object.hasOwn(validated, "estado"), false);
+});
+
+test("PUT con datos manuales completos finaliza un registro sincronizado", () => {
+  const manuales = validCreate().manuales;
+  const validated = validateUpdateBody({ manuales }, "2026-07-16");
+  assert.equal(validated.estado, "GUARDADO");
+
+  const explicitSync = validateUpdateBody(
+    { manuales, estado: "SINCRONIZADO" },
+    "2026-07-16",
+  );
+  assert.equal(explicitSync.estado, "SINCRONIZADO");
 });
 
 test("valida y limita paginación", () => {
