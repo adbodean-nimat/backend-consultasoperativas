@@ -342,8 +342,27 @@ test("normaliza duración y distancia de una ruta vial", async () => {
       origin: { lat: -31, lon: -58 },
       destination: { lat: -31.2, lon: -58.1 },
     }),
-    { durationSeconds: 1380, durationMinutes: 23, distanceMeters: 12450 },
+    { durationSeconds: 1380, durationMinutes: 23, distanceMeters: 12450, routeGeometry: null },
   );
+});
+
+test("decodifica la geometría vial como GeoJSON longitud-latitud", async () => {
+  const service = new RoutingService({
+    env: { WEP_ROUTING_PROVIDER: "openrouteservice", WEP_ROUTING_API_KEY: "test-key" },
+    httpClient: { async post() {
+      return { status: 200, data: { routes: [{
+        summary: { duration: 780, distance: 6200 },
+        geometry: "_p~iF~ps|U_ulLnnqC_mqNvxq`@",
+      }] } };
+    } },
+  });
+  const result = await service.calculateRouteEta({
+    origin: { lat: -31, lon: -58 }, destination: { lat: -31.2, lon: -58.1 },
+  });
+  assert.deepEqual(result.routeGeometry, {
+    type: "LineString",
+    coordinates: [[-120.2, 38.5], [-120.95, 40.7], [-126.453, 43.252]],
+  });
 });
 
 test("separa el ETA del publicId en los componentes de Meta", () => {

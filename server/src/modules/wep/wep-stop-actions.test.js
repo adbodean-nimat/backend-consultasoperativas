@@ -228,6 +228,7 @@ function createDatabase({
           : { rows: [] };
       }
       if (sql.startsWith("UPDATE public.entregas")) {
+        if (sql.includes("ruta_geojson")) return { rows: [{ id: params[5] }] };
         if (failUpdate) return { rows: [] };
         const ids = params.find(Array.isArray);
         const targetStateId = Number(params[0]);
@@ -530,6 +531,9 @@ test("envía un solo WhatsApp y asocia tres entregas al aviso", async () => {
     ).length,
     3,
   );
+  const savedRoute = database.queries.find(({ sql }) => sql.includes("SET ruta_geojson"));
+  assert.equal(savedRoute.params[5], 101);
+  assert.deepEqual(savedRoute.params.slice(1, 5), [12450, 1380, -31.2, -58.1]);
 });
 
 test("el reintento de un aviso exitoso devuelve YA_NOTIFICADA sin otro WhatsApp", async () => {

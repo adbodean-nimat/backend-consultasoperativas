@@ -25,6 +25,49 @@ function normalizePoint(point, label) {
   return { latitude, longitude };
 }
 
+function decodeRouteGeometry(encoded) {
+  if (encoded?.type === "LineString" && Array.isArray(encoded.coordinates)) {
+    const coordinates = encoded.coordinates;
+    if (coordinates.length >= 2 && coordinates.every((point) =>
+      Array.isArray(point) && point.length === 2 &&
+      Number.isFinite(point[0]) && Math.abs(point[0]) <= 180 &&
+      Number.isFinite(point[1]) && Math.abs(point[1]) <= 90)) {
+      return { type: "LineString", coordinates };
+    }
+    return null;
+  }
+  if (typeof encoded !== "string") return null;
+  const coordinates = [];
+  let latitude = 0;
+  let longitude = 0;
+  let index = 0;
+  try {
+    while (index < encoded.length) {
+      const deltas = [];
+      for (let axis = 0; axis < 2; axis += 1) {
+        let shift = 0;
+        let value = 0;
+        let chunk;
+        do {
+          if (index >= encoded.length || shift > 30) return null;
+          chunk = encoded.charCodeAt(index++) - 63;
+          if (chunk < 0 || chunk > 63) return null;
+          value |= (chunk & 31) << shift;
+          shift += 5;
+        } while (chunk >= 32);
+        deltas.push(value & 1 ? ~(value >> 1) : value >> 1);
+      }
+      latitude += deltas[0];
+      longitude += deltas[1];
+      const lat = latitude / 1e5;
+      const lon = longitude / 1e5;
+      if (lat < -90 || lat > 90 || lon < -180 || lon > 180) return null;
+      coordinates.push([lon, lat]);
+    }
+  } catch { return null; }
+  return coordinates.length >= 2 ? { type: "LineString", coordinates } : null;
+}
+
 export class RoutingService {
   constructor({ httpClient = axios, env = process.env } = {}) {
     this.httpClient = httpClient;
@@ -78,7 +121,8 @@ export class RoutingService {
           `El proveedor de rutas respondió HTTP ${response.status}`,
         );
       }
-      const summary = response.data?.routes?.[0]?.summary;
+      const providerRoute = response.data?.routes?.[0];
+      const summary = providerRoute?.summary;
       const durationSeconds = Number(summary?.duration);
       const distanceMeters = Number(summary?.distance);
       if (
@@ -93,6 +137,7 @@ export class RoutingService {
         durationSeconds,
         durationMinutes: durationSeconds / 60,
         distanceMeters,
+        routeGeometry: decodeRouteGeometry(providerRoute?.geometry),
       };
     } catch (error) {
       if (error instanceof WepRoutingError) throw error;

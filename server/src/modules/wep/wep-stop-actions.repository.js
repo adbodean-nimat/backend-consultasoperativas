@@ -227,6 +227,28 @@ export class WepStopActionsRepository {
     );
   }
 
+  async saveStopRoute({ viajeId, representativeId, destination, route }) {
+    await this.postgresPool.query(
+      `UPDATE public.entregas
+       SET ruta_geojson = $1::jsonb,
+           ruta_distancia_metros = $2,
+           ruta_duracion_segundos = $3,
+           ruta_generada_at = NOW(),
+           ruta_destino_latitud = $4,
+           ruta_destino_longitud = $5
+       WHERE id = $6 AND viaje_id = $7`,
+      [
+        route.routeGeometry ? JSON.stringify(route.routeGeometry) : null,
+        Math.round(route.distanceMeters),
+        Math.round(route.durationSeconds),
+        destination.latitude,
+        destination.longitude,
+        representativeId,
+        viajeId,
+      ],
+    );
+  }
+
   async lockStop(client, viajeId, grupoId, vehiculoId) {
     const viajeResult = await client.query(
       `SELECT

@@ -339,6 +339,16 @@ export class WepStopActionsService {
         precisionDestino: approximateArea ? "ZONA_APROXIMADA" : "DOMICILIO",
       },
     });
+    try {
+      await this.repository.saveStopRoute?.({
+        viajeId,
+        representativeId,
+        destination,
+        route,
+      });
+    } catch {
+      this.logger.warn?.(`${logPrefix} rutaVisualDisponible=no`);
+    }
     this.logger.log?.(
       `${logPrefix} etaEnviado=${etaSent} resultadoWhatsApp=ENVIADA`,
     );

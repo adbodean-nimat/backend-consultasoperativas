@@ -19,6 +19,36 @@ const PUBLIC_STATE_NAMES = {
 
 const LIVE_POSITION_STATES = new Set(["EN_REPARTO", "CLIENTE_AVISADO"]);
 
+function publicRoute(token, state) {
+  if (state !== "CLIENTE_AVISADO") return { disponible: false };
+  const raw = token.ruta_geojson;
+  const geometry = typeof raw === "string" ? (() => {
+    try { return JSON.parse(raw); } catch { return null; }
+  })() : raw;
+  const validGeometry = geometry?.type === "LineString" &&
+    Array.isArray(geometry.coordinates) && geometry.coordinates.length >= 2 &&
+    geometry.coordinates.every((point) =>
+      Array.isArray(point) && point.length === 2 &&
+      Number.isFinite(point[0]) && Math.abs(point[0]) <= 180 &&
+      Number.isFinite(point[1]) && Math.abs(point[1]) <= 90);
+  const lat = Number(token.ruta_destino_latitud);
+  const lon = Number(token.ruta_destino_longitud);
+  const hasDestination = token.ruta_destino_latitud != null &&
+    token.ruta_destino_longitud != null &&
+    Number.isFinite(lat) && Math.abs(lat) <= 90 &&
+    Number.isFinite(lon) && Math.abs(lon) <= 180;
+  return {
+    disponible: Boolean(validGeometry),
+    ...(validGeometry ? {
+      geometry: { type: "LineString", coordinates: geometry.coordinates },
+      distanciaMetros: token.ruta_distancia_metros,
+      duracionSegundos: token.ruta_duracion_segundos,
+      generadaAt: token.ruta_generada_at,
+    } : {}),
+    ...(hasDestination ? { destino: { latitud: lat, longitud: lon } } : {}),
+  };
+}
+
 function parseExpirationDays(value) {
   const parsed = Number(value ?? 2);
   return Number.isSafeInteger(parsed) && parsed >= 1 && parsed <= 30 ? parsed : 2;
@@ -99,7 +129,7 @@ export class WepTrackingService {
       clienteCodigo: String(clienteCodigo),
       domicilioNormalizado,
       localidadNormalizada,
-      entregaId: Number(deliveries[0].id),
+      entregaId: Math.min(...deliveries.map((delivery) => Number(delivery.id))),
       expiraAt: calculateTrackingExpiration(
         fechaEntrega,
         this.expirationDays,
@@ -173,6 +203,7 @@ export class WepTrackingService {
         enCurso: Boolean(token.iniciado_at && !token.finalizado_at),
       },
       vehiculo,
+      ruta: publicRoute(token, estado.codigo),
     };
   }
 }

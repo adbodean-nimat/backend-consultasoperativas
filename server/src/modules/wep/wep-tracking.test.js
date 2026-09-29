@@ -258,6 +258,40 @@ test("un fallo de GESTYA no impide devolver el tracking público", async () => {
   assert.deepEqual(tracking.vehiculo, { posicionDisponible: false });
 });
 
+test("publica sólo la ruta de la parada avisada y la oculta al entregarse", async () => {
+  const geometry = { type: "LineString", coordinates: [[-58, -31], [-58.1, -31.2]] };
+  let state = "CLIENTE_AVISADO";
+  const service = new WepTrackingService({
+    repository: {
+      async findPublicTracking() {
+        return {
+          token: {
+            id: 9, domicilio_normalizado: "SAN MARTÍN 123",
+            localidad_normalizada: "CONCORDIA", patente: "AB172IK",
+            ruta_geojson: geometry, ruta_distancia_metros: 6200,
+            ruta_duracion_segundos: 780, ruta_generada_at: "2026-09-29T12:00:00Z",
+            ruta_destino_latitud: -31.2, ruta_destino_longitud: -58.1,
+          },
+          deliveries: [delivery({ estado_codigo: state })],
+        };
+      },
+      async touchAccess() {},
+    },
+    vehiclePositionService: { async getCurrentPositionByPlate() {
+      return { latitude: -31, longitude: -58 };
+    } },
+    logger: silentLogger,
+  });
+  const notified = await service.getPublicTracking(PUBLIC_ID_ONE);
+  assert.deepEqual(notified.ruta.geometry, geometry);
+  assert.deepEqual(notified.ruta.destino, { latitud: -31.2, longitud: -58.1 });
+  assert.equal(notified.ruta.disponible, true);
+  state = "ENTREGADA";
+  const delivered = await service.getPublicTracking(PUBLIC_ID_ONE);
+  assert.deepEqual(delivered.ruta, { disponible: false });
+  assert.deepEqual(delivered.vehiculo, { posicionDisponible: false });
+});
+
 async function withTrackingServer(trackingService, callback) {
   const app = express();
   app.use(

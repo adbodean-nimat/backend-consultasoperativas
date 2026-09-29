@@ -18,4 +18,5 @@
 .prettierrc
 setting.json
 /database
+/database/*.sql
 /scripts

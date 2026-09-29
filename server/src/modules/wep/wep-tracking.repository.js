@@ -118,7 +118,10 @@ export class WepTrackingRepository {
       `SELECT t.id, t.viaje_id, t.cliente_codigo,
               t.domicilio_normalizado, t.localidad_normalizada,
               v.iniciado_at, v.finalizado_at, v.updated_at AS viaje_updated_at,
-              vh.patente
+              vh.patente,
+              te.ruta_geojson, te.ruta_distancia_metros,
+              te.ruta_duracion_segundos, te.ruta_generada_at,
+              te.ruta_destino_latitud, te.ruta_destino_longitud
        FROM public.tracking_tokens t
        INNER JOIN public.viajes v ON v.id = t.viaje_id
        LEFT JOIN public.entregas te ON te.id = t.entrega_id

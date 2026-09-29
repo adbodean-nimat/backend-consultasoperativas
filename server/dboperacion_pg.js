@@ -3877,10 +3877,10 @@ async function simulador_mediosdepagos() {
   return result.rows;
 }
 
-async function createArticuloNuevoWeb(cod_articulo, nombre_articulo) {
+async function createArticuloNuevoWeb(codigo_art, nombre_art) {
   const result = await pool.query(
-    "INSERT INTO gv_articulos_nuevos_web (codigo_articulo, nombre_articulo, activo, marcar_nuevo, actualizado_en) VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP) ON CONFLICT (codigo_articulo) DO NOTHING RETURNING *",
-    [cod_articulo, nombre_articulo, false, true],
+    "INSERT INTO articulos (publicado, codigo_art, nombre_art, marcar_nuevo) VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP) ON CONFLICT (codigo_art) DO NOTHING RETURNING *",
+    [false, codigo_art, nombre_art, true],
   );
   return result.rows;
 }
