@@ -14,11 +14,14 @@ const task = DETECT_NEW_PRODUCTS_ENABLED
       async () => {
         try {
           console.log(
-            "[detected-new-products-cron] Ejecutando proceso de detección de nuevos productos web...",
+            "Ejecutando proceso de detección de nuevos productos web...",
           );
           await detectNewProducts();
         } catch (error) {
-          console.error("❌ Error ejecutando cron de nuevos productos web:", error);
+          console.error(
+            "❌ Error ejecutando cron de nuevos productos web:",
+            error,
+          );
         }
       },
       {

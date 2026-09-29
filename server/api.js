@@ -61,8 +61,9 @@ if (process.env.NODE_APP_INSTANCE === "0") {
   inicializarCronEnviosDesdeDB()
     .then((estado) => console.log("Cron avisos deuda:", estado))
     .catch((error) => console.error("Error inicializando cron:", error));
+  cronNuevosProductosWeb.start();
 }
-cronNuevosProductosWeb.start();
+
 duplicateTransferScheduler
   .start()
   .catch((error) =>
@@ -71,6 +72,7 @@ duplicateTransferScheduler
       error?.message,
     ),
   );
+
 gestionScheduler
   .start()
   .catch((error) =>
@@ -79,6 +81,7 @@ gestionScheduler
       error?.message,
     ),
   );
+
 /* const accessLogStream = rfs.createStream('api.log', {
   interval: '',
   path: path.join(__dirname, 'logs')
