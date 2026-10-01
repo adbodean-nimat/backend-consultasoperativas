@@ -1,3 +1,4 @@
+import { resolveStopOrders } from "./wep-stop-orders.util.js";
 import { enviarTemplateEntregaEnCaminoConEta } from "../../services/whatsapp.service.js";
 import geocodingService from "./geocoding.service.js";
 import gestyaService from "./gestya.service.js";
@@ -183,6 +184,15 @@ export class WepStopActionsService {
       };
     }
     validateStopOperation(context, "avisar");
+    const { pedidoPrincipal, otrosPedidos } = resolveStopOrders(context.entregas);
+    if (!pedidoPrincipal) {
+      this.logger.warn?.(`${logPrefix} PEDIDO_NO_DISPONIBLE`);
+      return {
+        parada: contextSummary(context),
+        notificacion: { tipo: "EN_CAMINO", canal: "WHATSAPP",
+          resultado: "PEDIDO_NO_DISPONIBLE", errorCodigo: "PEDIDO_NO_DISPONIBLE" },
+      };
+    }
 
     let position;
     let destination;
@@ -308,6 +318,7 @@ export class WepStopActionsService {
         telefono: reservation.telefonoDestino,
         templateName: selectedTemplateName,
         etaMinutes: etaSent,
+        pedidoPrincipal,
         publicId: tracking.publicId,
       });
     } catch (error) {
@@ -332,6 +343,8 @@ export class WepStopActionsService {
       messageId: sent.messageId,
       templateName: sent.templateName || selectedTemplateName,
       metadata: {
+        pedidoPrincipal,
+        otrosPedidos,
         etaMinutosCalculado: etaCalculated,
         etaMinutosEnviado: etaSent,
         distanciaMetros: Math.round(route.distanceMeters),

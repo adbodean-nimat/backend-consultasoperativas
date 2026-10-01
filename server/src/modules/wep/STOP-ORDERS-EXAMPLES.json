@@ -1,0 +1,203 @@
+{
+  "origen": "Ejemplos generados con fixtures, sin datos de producción ni envíos Meta",
+  "publicId": "abcdefghijklmnopqrstuvwx12345678",
+  "trackingPublico": {
+    "pedido": {
+      "principal": "883524",
+      "otros": [
+        "883611"
+      ]
+    },
+    "estado": {
+      "codigo": "PROGRAMADA",
+      "nombre": "Entrega programada"
+    },
+    "fechaEntrega": "2026-09-30",
+    "horario": {
+      "desde": "07:30",
+      "hasta": "10:30"
+    },
+    "destino": {
+      "localidad": "CONCORDIA"
+    },
+    "ultimaActualizacion": "2026-09-30T10:00:00.000Z",
+    "viaje": {
+      "enCurso": false
+    },
+    "vehiculo": {
+      "posicionDisponible": false
+    },
+    "ruta": {
+      "disponible": false
+    }
+  },
+  "dryRun": {
+    "datos": {
+      "cliente": "Cliente prueba",
+      "pedido": {
+        "principal": "883524",
+        "otros": [
+          "883611"
+        ]
+      },
+      "fechaEntrega": "2026-09-30",
+      "horaDesde": "07:30",
+      "horaHasta": "10:30",
+      "trackingUrl": null
+    }
+  },
+  "meta": {
+    "PROGRAMADA": {
+      "messaging_product": "whatsapp",
+      "recipient_type": "individual",
+      "to": "5493450000000",
+      "type": "template",
+      "template": {
+        "name": "wep_programada_test",
+        "language": {
+          "code": "es_AR"
+        },
+        "components": [
+          {
+            "type": "body",
+            "parameters": [
+              {
+                "type": "text",
+                "text": "883524"
+              },
+              {
+                "type": "text",
+                "text": "07:30"
+              },
+              {
+                "type": "text",
+                "text": "10:30"
+              }
+            ]
+          },
+          {
+            "type": "button",
+            "sub_type": "url",
+            "index": "0",
+            "parameters": [
+              {
+                "type": "text",
+                "text": "abcdefghijklmnopqrstuvwx12345678"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "EN_REPARTO": {
+      "messaging_product": "whatsapp",
+      "recipient_type": "individual",
+      "to": "5493450000000",
+      "type": "template",
+      "template": {
+        "name": "wep_en_reparto_test",
+        "language": {
+          "code": "es_AR"
+        },
+        "components": [
+          {
+            "type": "body",
+            "parameters": [
+              {
+                "type": "text",
+                "text": "883524"
+              }
+            ]
+          },
+          {
+            "type": "button",
+            "sub_type": "url",
+            "index": "0",
+            "parameters": [
+              {
+                "type": "text",
+                "text": "abcdefghijklmnopqrstuvwx12345678"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "LLEGADA_ESTIMADA": {
+      "messaging_product": "whatsapp",
+      "recipient_type": "individual",
+      "to": "5493450000000",
+      "type": "template",
+      "template": {
+        "name": "wep_llegada_estimada_test",
+        "language": {
+          "code": "es_AR"
+        },
+        "components": [
+          {
+            "type": "body",
+            "parameters": [
+              {
+                "type": "text",
+                "text": "883524"
+              },
+              {
+                "type": "text",
+                "text": "25"
+              }
+            ]
+          },
+          {
+            "type": "button",
+            "sub_type": "url",
+            "index": "0",
+            "parameters": [
+              {
+                "type": "text",
+                "text": "abcdefghijklmnopqrstuvwx12345678"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "EN_CAMINO_ZONA": {
+      "messaging_product": "whatsapp",
+      "recipient_type": "individual",
+      "to": "5493450000000",
+      "type": "template",
+      "template": {
+        "name": "wep_en_camino_zona",
+        "language": {
+          "code": "es_AR"
+        },
+        "components": [
+          {
+            "type": "body",
+            "parameters": [
+              {
+                "type": "text",
+                "text": "883524"
+              },
+              {
+                "type": "text",
+                "text": "25"
+              }
+            ]
+          },
+          {
+            "type": "button",
+            "sub_type": "url",
+            "index": "0",
+            "parameters": [
+              {
+                "type": "text",
+                "text": "abcdefghijklmnopqrstuvwx12345678"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  }
+}

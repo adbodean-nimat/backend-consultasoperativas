@@ -7,6 +7,9 @@ export const WEP_WHATSAPP_PUBLIC_SEND_ERROR =
 export class WepPwaWhatsappError extends Error {}
 
 export function sanitizeProviderError(error) {
+  if (error?.code === "PEDIDO_NO_DISPONIBLE") {
+    return { code: error.code, detail: "La parada no tiene Nota de Pedido disponible" };
+  }
   const providerError = error?.meta?.error;
   const status = Number(error?.status) || null;
   const providerCode = providerError?.code;

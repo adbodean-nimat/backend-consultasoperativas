@@ -1,3 +1,4 @@
+import { requireStopOrder } from "./wep-stop-orders.util.js";
 import { enviarTemplateEntregaProgramada } from "../../services/whatsapp.service.js";
 import { sanitizeProviderError } from "./wep-client-notice.service.js";
 import wepProgrammedNotificationsRepository from "./wep-programmed-notifications.repository.js";
@@ -57,6 +58,13 @@ export class WepProgrammedNotificationTestService {
       horaDesde: formatProgrammedTime(baseDatos.horaDesde),
       horaHasta: formatProgrammedTime(baseDatos.horaHasta),
     };
+    try {
+      requireStopOrder(datos.pedido.principal);
+    } catch (error) {
+      this.logger.log(`[WEP PROGRAMADA TEST] PEDIDO_NO_DISPONIBLE grupoId=${stop.grupoId}`);
+      return { ok: true, test: true, grupoId: stop.grupoId, entregaRepresentativaId,
+        datos, whatsapp: { status: "OMITIDA", errorCodigo: error.code } };
+    }
     if (!datos.horaDesde || !datos.horaHasta) {
       throw new WepProgrammedTestScheduleError(
         "La parada no tiene un horario válido para la plantilla",

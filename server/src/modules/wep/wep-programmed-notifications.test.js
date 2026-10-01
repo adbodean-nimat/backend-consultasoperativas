@@ -105,8 +105,8 @@ test("dos órdenes de la misma parada producen un único candidato", () => {
   assert.equal(stops[0].horaDesde, "08:00:00");
   assert.equal(stops[0].horaHasta, "14:00:00");
   assert.deepEqual(buildProgrammedTemplateData(stops[0]).pedido, {
-    cantidad: 2,
-    notaPedido: null,
+    principal: "900",
+    otros: ["901"],
   });
 });
 

@@ -8,7 +8,7 @@ export class WepTrackingRepository {
   async findStopDeliveries({ viajeId, clienteCodigo }) {
     const result = await this.postgresPool.query(
       `SELECT e.id, e.domicilio, e.localidad, e.fecha_entrega::text,
-              e.hora_desde, e.hora_hasta, e.updated_at,
+              e.hora_desde, e.hora_hasta, e.updated_at, e.nota_pedido_numero,
               ee.codigo AS estado_codigo
        FROM public.entregas e
        INNER JOIN public.entrega_estados ee ON ee.id = e.estado_id

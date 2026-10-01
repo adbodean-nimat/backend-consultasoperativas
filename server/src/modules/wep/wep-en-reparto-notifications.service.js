@@ -1,3 +1,4 @@
+import { resolveStopOrders, requireStopOrder } from "./wep-stop-orders.util.js";
 import { enviarTemplateEntregaEnReparto } from "../../services/whatsapp.service.js";
 import { sanitizeProviderError } from "./wep-client-notice.service.js";
 import wepEnRepartoNotificationsRepository from "./wep-en-reparto-notifications.repository.js";
@@ -62,6 +63,8 @@ export class WepEnRepartoNotificationsService {
           continue;
         }
 
+        const { pedidoPrincipal } = resolveStopOrders(stop.entregas);
+        requireStopOrder(pedidoPrincipal);
         const tracking = await this.trackingService.getOrCreateTrackingForStop({
           viajeId: stop.viajeId,
           clienteCodigo: stop.cliente.codigo,
@@ -76,6 +79,7 @@ export class WepEnRepartoNotificationsService {
           templateName: this.templateName,
           templateLanguage: this.templateLanguage,
           publicId: tracking.publicId,
+          pedidoPrincipal,
         });
         await this.repository.confirmSent({
           notificationId: reservation.notificationId,

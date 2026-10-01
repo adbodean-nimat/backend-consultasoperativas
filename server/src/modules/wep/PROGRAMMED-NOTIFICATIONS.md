@@ -36,8 +36,9 @@ fila que choque con la restricción única. Si Meta vuelve a fallar se guarda
 
 El teléfono se busca en todas las entregas ordenadas, con prioridad `telefono` y
 después `telefono_alternativo`, mediante el helper WEP existente. La Nota de
-Pedido sólo se expone como única cuando todas las órdenes comparten la misma;
-si hay varias, el DTO informa la cantidad y deja `notaPedido: null`.
+Pedido se resuelve con `resolveStopOrders` sobre todas las entregas hijas: se
+eliminan vacíos y duplicados, se ordena por número ascendente y se expone
+`pedido: { principal, otros }`, con números en string sin prefijo `#`.
 
 ## Plantilla y transición
 
@@ -50,7 +51,7 @@ Sin nombre de plantilla, el modo real responde `409` con “Plantilla PROGRAMADA
 no configurada” antes de consultar, insertar o enviar. El dry-run funciona sin
 plantilla y nunca envía ni escribe. El DTO interno contiene `cliente`, `pedido`,
 `fechaEntrega`, `horaDesde`, `horaHasta` y `trackingUrl`. En modo real se crea o
-reutiliza el `public_id` de la parada y se envían `horaDesde`/`horaHasta` al BODY
+reutiliza el `public_id` de la parada y se envían `pedido.principal`/`horaDesde`/`horaHasta` al BODY
 y solamente `public_id` al botón URL dinámico. En dry-run `trackingUrl` permanece
 en `null` y no se escribe ningún registro.
 
@@ -66,8 +67,9 @@ No se agregó cron, no se modificó ERP ni se implementó el frontend público.
 
 `GET /api/wep/public/tracking/:publicId` no requiere login, tiene rate limit en
 memoria por IP y responde únicamente estado agregado de la parada, fecha, franja
-horaria, localidad, última actualización y si el viaje está en curso. No expone
-cliente, teléfono, email, domicilio, patente, pedidos, otras paradas ni IDs de DB.
+horaria, localidad, última actualización y si el viaje está en curso. Incluye
+`pedido: { principal, otros }`. No expone cliente, teléfono, email, domicilio,
+patente, división/tipo de NP, órdenes de preparación, otras paradas ni IDs de DB.
 
 Los links nuevos usan un `public_id` persistente de 24 bytes aleatorios (192 bits)
 en base64url. Es un identificador público no adivinable, no una contraseña que
@@ -110,8 +112,95 @@ POST /api/wep/admin/notificaciones/programadas/test
 }
 ```
 
-La plantilla recibe `horaDesde` y `horaHasta` como `HH:mm`. El parámetro del
+La plantilla recibe `pedido.principal`, `horaDesde` y `horaHasta` como `HH:mm`. El parámetro del
 botón recibe únicamente el `publicId`; Meta agrega la parte fija
 `https://wep.nimat.com.ar/s/`. El resultado esperado es un WhatsApp con la
 franja correcta y el botón **Seguir mi entrega**, cuyo tracking público abre sin
 login. El registro TEST queda separado y no bloquea un futuro PROGRAMADA real.
+
+## NP en WhatsApp y tracking público
+
+La secuencia operativa puede editarse: el principal se elige por NP numérica
+ascendente y no por posición de entrega. El helper compara con BigInt y conserva
+los strings originales, incluyendo ceros a la izquierda si los hubiera. El
+orden es determinista para el mismo conjunto de NP; no se persiste otra selección.
+La agrupación, estados y ancla de notificaciones permanecen iguales.
+
+El DTO de PROGRAMADA/dryRun reemplaza cantidad/notaPedido por principal/otros.
+No se encontraron consumidores de esas propiedades anteriores en los dos
+frontends locales. No se conserva ese formato ni se eliminan propiedades del
+modelo de entregas usado por la PWA. Horas normalizadas HH:mm y trackingUrl null
+para dryRun. Tracking agrega pedido al contrato existente, sin datos internos.
+
+Configurar los nombres aprobados de Meta en las variables existentes:
+
+```env
+WEP_WHATSAPP_TEMPLATE_PROGRAMADA=wep_programada_test
+WEP_WHATSAPP_TEMPLATE_PROGRAMADA_TEST=wep_programada_test
+WEP_WHATSAPP_TEMPLATE_EN_REPARTO=wep_en_reparto_test
+WEP_WHATSAPP_TEMPLATE_EN_CAMINO=wep_llegada_estimada_test
+WEP_WHATSAPP_TEMPLATE_EN_CAMINO_ZONA=wep_en_camino_zona
+```
+
+Se mantiene EN_CAMINO como tipo interno y nombre de variable de configuración.
+Las plantillas configuradas (incluida la variante de zona, si se usa) deben
+admitir el contrato BODY pedido/ETA. No se modifican archivos de entorno ni
+plantillas remotas. Encabezados/pies y texto estático permanecen definidos en Meta.
+El botón URL siempre recibe únicamente publicId en su variable independiente.
+
+### Plantilla `wep_en_camino_zona`
+
+El flujo existente de destino aproximado por zona selecciona esta plantilla
+mediante `WEP_WHATSAPP_TEMPLATE_EN_CAMINO_ZONA`. Reutiliza el resolver de pedidos
+y el builder de ETA: BODY {{1}} = pedidoPrincipal (sin #), BODY {{2}} = minutos
+amigables estimados por zona; botón URL {{1}} = publicId. No se modifica el
+cálculo de ETA ni la regla de selección de destino aproximado.
+
+Cuerpo estático configurado en Meta:
+
+> ¡Hola!👋
+>
+> Tu pedido #{{1}} está en camino.
+>
+> Estimamos llegar a la zona de tu domicilio en aproximadamente {{2}} minutos.
+>
+> Podés seguir el estado de tu entrega desde el botón.
+>
+> ¡Gracias por elegir NIMAT! 💚
+
+Sin pedido principal se aplica PEDIDO_NO_DISPONIBLE y no se envía esta plantilla.
+El payload completo de ejemplo está en `meta.EN_CAMINO_ZONA` de
+`STOP-ORDERS-EXAMPLES.json`.
+
+Sin NP: tracking devuelve principal null y otros []; PROGRAMADA real/dryRun
+omite el envío, registra PEDIDO_NO_DISPONIBLE en resultado/log y cuenta un error;
+PROGRAMADA_TEST devuelve whatsapp.status OMITIDA y el código, sin reservar;
+EN_REPARTO marca la reserva ERROR con error_codigo PEDIDO_NO_DISPONIBLE;
+EN_CAMINO devuelve resultado/código PEDIDO_NO_DISPONIBLE sin reservar ni cambiar
+estado. Los builders rechazan una NP ausente como última defensa antes de Meta.
+La metadata existente del aviso EN_CAMINO guarda pedidoPrincipal/otrosPedidos.
+No se agregan columnas.
+
+Validación: node --test src/modules/wep/*.test.js. Los ejemplos en
+STOP-ORDERS-EXAMPLES.json se generan con los services/builders y fixtures de
+prueba, sin consultar PostgreSQL ni enviar mensajes reales a Meta.
+
+## Archivos de este cambio
+
+- `src/modules/wep/PROGRAMMED-NOTIFICATIONS.md`
+- `src/modules/wep/wep-client-notice.service.js`
+- `src/modules/wep/wep-en-reparto-notifications.service.js`
+- `src/modules/wep/wep-en-reparto-notifications.test.js`
+- `src/modules/wep/wep-eta.test.js`
+- `src/modules/wep/wep-programmed-notification-test.service.js`
+- `src/modules/wep/wep-programmed-notifications.service.js`
+- `src/modules/wep/wep-programmed-notifications.test.js`
+- `src/modules/wep/wep-stop-actions.repository.js`
+- `src/modules/wep/wep-stop-actions.service.js`
+- `src/modules/wep/wep-stop-actions.test.js`
+- `src/modules/wep/wep-tracking.repository.js`
+- `src/modules/wep/wep-tracking.service.js`
+- `src/services/whatsapp.service.js`
+- `src/modules/wep/STOP-ORDERS-EXAMPLES.json`
+- `src/modules/wep/wep-stop-orders.test.js`
+- `src/modules/wep/wep-stop-orders.util.js`

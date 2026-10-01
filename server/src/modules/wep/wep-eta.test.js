@@ -372,9 +372,11 @@ test("separa el ETA del publicId en los componentes de Meta", () => {
     templateName: "wep_en_camino_test",
     templateLanguage: "es_AR",
     etaMinutes: 25,
+    pedidoPrincipal: "883524",
     publicId,
   });
-  assert.equal(payload.template.components[0].parameters[0].text, "25");
+  assert.equal(payload.template.components[0].parameters[0].text, "883524");
+  assert.equal(payload.template.components[0].parameters[1].text, "25");
   assert.equal(payload.template.components[1].parameters[0].text, publicId);
   assert.equal(payload.template.components[1].parameters[0].text.includes("http"), false);
 });

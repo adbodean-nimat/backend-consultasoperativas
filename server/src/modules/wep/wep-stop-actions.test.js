@@ -19,6 +19,7 @@ import {
   WepStopActionsService,
 } from "./wep-stop-actions.service.js";
 import { createStopGroupId } from "./wep-stop.util.js";
+import { resolveStopOrders } from "./wep-stop-orders.util.js";
 import { createWepRouter } from "./wep.routes.js";
 import {
   validatePwaStopGroupId,
@@ -80,6 +81,24 @@ const STATE_IDS = {
   CANCELADA: 7,
 };
 
+test("getStopContext incluye la NP almacenada para calcular ETA y avisar", async () => {
+  const repository = new WepStopActionsRepository({
+    postgresPool: {
+      async query(sql, params) {
+        assert.deepEqual(params, [VIAJE_ID]);
+        assert.match(sql, /e\.nota_pedido_numero\s*,/);
+        return { rows: [{
+          ...delivery(803, "EN_REPARTO", { nota_pedido_numero: "885532" }),
+          viaje_estado: "EN_REPARTO",
+          patente: "TEST",
+        }] };
+      },
+    },
+  });
+  const context = await repository.getStopContext(VIAJE_ID, GRUPO_ID, VEHICULO_ID);
+  assert.equal(resolveStopOrders(context.entregas).pedidoPrincipal, "885532");
+});
+
 function delivery(id, state = "EN_REPARTO", overrides = {}) {
   return {
     entrega_id: id,
@@ -90,6 +109,7 @@ function delivery(id, state = "EN_REPARTO", overrides = {}) {
     vehiculo_id: VEHICULO_ID,
     cliente_codigo: STOP_FIELDS.clienteCodigo,
     cliente_nombre: "Cliente ejemplo",
+    nota_pedido_numero: 883524,
     domicilio: STOP_FIELDS.domicilio,
     localidad: STOP_FIELDS.localidad,
     telefono: "+54 9 345 000-0000",
@@ -632,6 +652,8 @@ test("un destino cacheado no vuelve a geocodificarse", async () => {
   assert.equal(calls[0].etaMinutes, 25);
   assert.equal(calls[0].publicId, "abcdefghijklmnopqrstuv");
   assert.deepEqual(calls[1].metadata, {
+    pedidoPrincipal: "883524",
+    otrosPedidos: [],
     etaMinutosCalculado: 23,
     etaMinutosEnviado: 25,
     distanciaMetros: 12450,
@@ -679,6 +701,10 @@ test("usa la plantilla de zona sin guardar coordenadas aproximadas", async () =>
   assert.equal(calls.includes("saved"), false);
   assert.deepEqual(calls.find(([type]) => type === "reserve"), ["reserve", "wep_en_camino_zona"]);
   assert.equal(calls.find(([type]) => type === "send")[1].templateName, "wep_en_camino_zona");
+  assert.equal(calls.find(([type]) => type === "send")[1].pedidoPrincipal, "883524");
+  assert.equal(calls.find(([type]) => type === "send")[1].etaMinutes, 25);
+  assert.equal(calls.find(([type]) => type === "send")[1].publicId, "abcdefghijklmnopqrstuv");
+  assert.equal(calls.find(([type]) => type === "confirm")[1].metadata.pedidoPrincipal, "883524");
   assert.equal(calls.find(([type]) => type === "confirm")[1].metadata.precisionDestino, "ZONA_APROXIMADA");
   assert.equal(result.notificacion.precisionDestino, "ZONA_APROXIMADA");
 });

@@ -1,3 +1,4 @@
+import { resolveStopOrders, requireStopOrder } from "./wep-stop-orders.util.js";
 import { enviarTemplateEntregaProgramada } from "../../services/whatsapp.service.js";
 import { sanitizeProviderError } from "./wep-client-notice.service.js";
 import wepProgrammedNotificationsRepository, {
@@ -21,41 +22,14 @@ export function getBusinessDate(now = new Date()) {
   return `${values.year}-${values.month}-${values.day}`;
 }
 
-function normalizeOrderPart(value) {
-  return value === null || value === undefined || value === ""
-    ? null
-    : String(value);
-}
-
 export function buildProgrammedTemplateData(stop, tracking = null) {
-  const uniqueOrders = new Map();
-  const eligibleIds = new Set(
-    stop.eligibleDeliveryRows?.map((row) => Number(row.entrega_id)) || [],
-  );
-  const deliveries =
-    eligibleIds.size > 0
-      ? stop.entregas.filter((entrega) => eligibleIds.has(entrega.id))
-      : stop.entregas;
-  for (const entrega of deliveries) {
-    const order = {
-      division: normalizeOrderPart(entrega.notaPedido.division),
-      tipo: normalizeOrderPart(entrega.notaPedido.tipo),
-      numero: normalizeOrderPart(entrega.notaPedido.numero),
-    };
-    const key = JSON.stringify(order);
-    if (order.division || order.tipo || order.numero) uniqueOrders.set(key, order);
-  }
-  const orders = [...uniqueOrders.values()];
-
+  const { pedidoPrincipal, otrosPedidos } = resolveStopOrders(stop.entregas);
   return {
     cliente: stop.cliente.nombre,
-    pedido: {
-      cantidad: orders.length,
-      notaPedido: orders.length === 1 ? orders[0] : null,
-    },
+    pedido: { principal: pedidoPrincipal, otros: otrosPedidos },
     fechaEntrega: stop.fechaEntrega,
-    horaDesde: stop.horaDesde,
-    horaHasta: stop.horaHasta,
+    horaDesde: formatProgrammedTime(stop.horaDesde),
+    horaHasta: formatProgrammedTime(stop.horaHasta),
     trackingUrl: tracking?.url ?? null,
   };
 }
@@ -140,6 +114,14 @@ export class WepProgrammedNotificationsService {
         continue;
       }
 
+      if (!resolveStopOrders(stop.entregas).pedidoPrincipal) {
+        summary.errores += 1;
+        resultados.push(publicStopResult(stop, "PEDIDO_NO_DISPONIBLE", {
+          errorCodigo: "PEDIDO_NO_DISPONIBLE",
+        }));
+        this.logger.log(`[WEP PROGRAMADA] PEDIDO_NO_DISPONIBLE grupoId=${stop.grupoId}`);
+        continue;
+      }
       summary.listasParaEnviar += 1;
       if (dryRun) {
         resultados.push(publicStopResult(stop, "LISTA_PARA_ENVIAR"));
@@ -154,6 +136,7 @@ export class WepProgrammedNotificationsService {
           grupoId: stop.grupoId,
           templateName: this.templateName,
         });
+        requireStopOrder(resolveStopOrders(reservation.stop.entregas).pedidoPrincipal);
         const tracking = await this.trackingService.getOrCreateTrackingForStop({
           viajeId: reservation.stop.viajeId,
           clienteCodigo: reservation.stop.cliente.codigo,

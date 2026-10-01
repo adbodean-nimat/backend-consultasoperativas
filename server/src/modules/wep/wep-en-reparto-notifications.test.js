@@ -75,17 +75,19 @@ test("agrupa por la parada existente y genera un solo envío para varias órdene
   assert.equal(stops[0].telefonoDestino, "5493450000000");
 });
 
-test("el payload usa sólo publicId en el botón y no agrega parámetros BODY", () => {
+test("el payload separa pedido BODY y publicId del botón", () => {
   const payload = buildEnRepartoTemplatePayload({
     telefono: "+54 9 345 000-0000",
     templateName: "wep_en_reparto_test",
     templateLanguage: "es_AR",
+    pedidoPrincipal: "883524",
     publicId,
   });
 
   assert.equal(payload.to, "5493450000000");
   assert.equal(payload.template.name, "wep_en_reparto_test");
   assert.deepEqual(payload.template.components, [
+    { type: "body", parameters: [{ type: "text", text: "883524" }] },
     {
       type: "button",
       sub_type: "url",
@@ -94,7 +96,7 @@ test("el payload usa sólo publicId en el botón y no agrega parámetros BODY", 
     },
   ]);
   assert.equal(JSON.stringify(payload).includes("https://wep.nimat.com.ar"), false);
-  assert.equal(payload.template.components.some(({ type }) => type === "body"), false);
+  assert.equal(payload.template.components.some(({ type }) => type === "body"), true);
 });
 
 test("obtiene tracking y confirma ENVIADO con el messageId de Meta", async () => {

@@ -2,6 +2,7 @@ import { randomBytes } from "node:crypto";
 import gestyaService from "./gestya.service.js";
 import { deriveStopState, normalizeStopText } from "./wep-stop.util.js";
 import wepTrackingRepository from "./wep-tracking.repository.js";
+import { resolveStopOrders } from "./wep-stop-orders.util.js";
 
 export const PUBLIC_ID_PATTERN = /^[A-Za-z0-9_-]{22,64}$/;
 export const DEFAULT_TRACKING_URL = "https://wep.nimat.com.ar/s";
@@ -187,7 +188,9 @@ export class WepTrackingService {
       }
     }
 
+    const { pedidoPrincipal, otrosPedidos } = resolveStopOrders(deliveries);
     return {
+      pedido: { principal: pedidoPrincipal, otros: otrosPedidos },
       estado: {
         codigo: estado.codigo,
         nombre: PUBLIC_STATE_NAMES[estado.codigo] || estado.nombre,
