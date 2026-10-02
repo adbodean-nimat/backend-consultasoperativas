@@ -3879,7 +3879,12 @@ async function simulador_mediosdepagos() {
 
 async function createArticuloNuevoWeb(codigo_art, nombre_art) {
   const result = await pool.query(
-    "INSERT INTO articulos (publicado, codigo_art, nombre_art, marcar_nuevo) VALUES ($1, $2, $3, $4) ON CONFLICT (codigo_art) DO NOTHING RETURNING *",
+    `INSERT INTO public.articulos (publicado, codigo_art, nombre_art, marcar_nuevo)
+     SELECT $1, $2, $3, $4
+     WHERE NOT EXISTS (
+       SELECT 1 FROM public.articulos WHERE codigo_art = $2
+     )
+     RETURNING *`,
     [false, codigo_art, nombre_art, true],
   );
   return result.rows;

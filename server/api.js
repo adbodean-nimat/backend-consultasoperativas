@@ -34,6 +34,7 @@ import { logEnviadoOk, logErrorEnvio } from "./whatsapp_logger.js";
 import { initJobs, startJobs, stopJobs } from "./jobs.js";
 import { importarMasivoFinanzas } from "./controllers/importController.js";
 import gestionRouter from "./src/modules/gestion/gestion.routes.js";
+import gdcRouter from "./src/modules/gdc/gdc.routes.js";
 import gestionScheduler from "./src/modules/gestion/gestion-scheduler.js";
 import { verifyUserToken } from "./auth.middleware.js";
 import { authorizeAdLogin } from "./src/modules/gestion/gestion-auth.service.js";
@@ -335,6 +336,7 @@ router.use((request, response, next) => {
 });
 
 router.use("/gestion", gestionRouter);
+router.use("/gdc", gdcRouter);
 router.use("/admin/duplicate-transfers", duplicateTransferRouter);
 
 router.route("/healthprinter").get((_, res) => {
