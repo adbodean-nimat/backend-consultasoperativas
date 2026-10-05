@@ -275,6 +275,36 @@ test("modificación parcial bloquea fila, valida pareja completa y audita actor"
   assert.match(update.text, /updated_by = \$2/); assert.deepEqual(update.values, ["Nueva", "gabriel", "0027"]); assert.equal(h.calls.at(-1).text, "COMMIT");
   await assert.rejects(repo.update(RESOURCES.familias, "0027", { codigo_ref_1050: null }, "gabriel"), { code: "VALIDATION_ERROR" }); assert.equal(h.calls.at(-1).text, "ROLLBACK");
 });
+test("DELETE PostgreSQL bloquea fila y elimina por código parametrizado", async () => {
+  for (const [resource, definition] of Object.entries(RESOURCES)) {
+    if (resource === "general") continue;
+    const c = config(); const h = pgHarness(c); const row = c[resource][0]; const key = row[definition.key];
+    const removed = await new GdcConfigRepository(h.pool).delete(definition, key);
+    assert.equal(removed, row); assert.equal(h.calls[0].text, "BEGIN"); assert.match(h.calls[1].text, /FOR UPDATE/);
+    assert.equal(h.calls[2].text, `DELETE FROM public.${definition.table} WHERE ${definition.key} = $1 RETURNING *`);
+    assert.deepEqual(h.calls[2].values, [key]); assert.equal(h.calls[3].text, "COMMIT"); assert.equal(h.released(), true);
+    assert.ok(h.calls.every((call) => !call.text.startsWith("UPDATE")));
+  }
+});
+test("DELETE inexistente hace rollback, devuelve 404 y no ejecuta borrado", async () => {
+  const c = config(); c.familias = []; const h = pgHarness(c);
+  await assert.rejects(new GdcConfigRepository(h.pool).delete(RESOURCES.familias, "0027"), { status: 404, code: "GDC_ROW_NOT_FOUND" });
+  assert.equal(h.calls.at(-1).text, "ROLLBACK"); assert.equal(h.calls.length, 3); assert.equal(h.released(), true);
+});
+test("DELETE fallido revierte la transacción y libera la conexión", async () => {
+  const h = pgHarness(); const originalQuery = h.client.query;
+  h.client.query = async (text, values) => {
+    if (text.startsWith("DELETE")) throw Object.assign(new Error("Fallo PG"), { code: "08006" });
+    return originalQuery(text, values);
+  };
+  await assert.rejects(new GdcConfigRepository(h.pool).delete(RESOURCES.familias, "0027"), { code: "08006" });
+  assert.equal(h.calls.at(-1).text, "ROLLBACK"); assert.ok(!h.calls.some((call) => call.text === "COMMIT")); assert.equal(h.released(), true);
+});
+test("repositorio tampoco permite borrar la configuración general", async () => {
+  const h = pgHarness();
+  await assert.rejects(new GdcConfigRepository(h.pool).delete(RESOURCES.general, 1), { status: 405, code: "GDC_METHOD_NOT_ALLOWED" });
+  assert.equal(h.calls.length, 0);
+});
 test("crear configura solamente PostgreSQL con valores enlazados y auditoría", async () => {
   const h = pgHarness(); const row = longFamily(); delete row.clasificador_5;
   await new GdcConfigRepository(h.pool).create(RESOURCES.familias, "0027", row, "javier");
@@ -284,6 +314,7 @@ test("migraciones PG10 idempotentes sin recrear tablas ni sobrescribir datos", (
   const text = readFileSync(new URL("../../../database/20261002_gdc_configuracion.sql", import.meta.url), "utf8");
   assert.equal((text.match(/CREATE TABLE IF NOT EXISTS/g) ?? []).length, 6); assert.match(text, /EXECUTE PROCEDURE/); assert.match(text, /ON CONFLICT \(clasificador_5\) DO NOTHING/);
   assert.doesNotMatch(text, /DROP TABLE|TRUNCATE|DELETE FROM|GENERATED|EXECUTE FUNCTION/);
-  const permissions = readFileSync(new URL("../../../database/20261002_gdc_permissions.sql", import.meta.url), "utf8");
-  assert.match(permissions, /gdc\.configurar/); assert.doesNotMatch(permissions, /INSERT INTO public\.gf_usuario_roles/);
+  const routes = readFileSync(new URL("gdc.routes.js", import.meta.url), "utf8");
+  assert.match(routes, /authenticate = verifyUserToken/);
+  assert.doesNotMatch(routes, /requirePermission|permission\(/);
 });

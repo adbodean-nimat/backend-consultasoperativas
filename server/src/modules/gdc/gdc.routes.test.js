@@ -2,7 +2,6 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import express from "express";
 import jwt from "jsonwebtoken";
-import { requirePermission } from "../../../auth.middleware.js";
 import { createGdcRouter } from "./gdc.routes.js";
 import { createGdcController } from "./gdc.controller.js";
 import { GdcError } from "./gdc.errors.js";
@@ -27,34 +26,45 @@ const repository = {
     rows.set(key, row); calls.push({ operation: "update", key, changes, actor });
     return { ...row, updated_by: actor };
   },
+  async delete(definition, key) {
+    if (!rows.has(key)) throw new GdcError("Registro inexistente", { status: 404, code: "GDC_ROW_NOT_FOUND" });
+    const row = rows.get(key);
+    rows.delete(key);
+    calls.push({ operation: "delete", definition, key });
+    return row;
+  },
 };
 let failingService = false;
 const service = { async get(query) { if (failingService) throw new Error("password=secret SELECT sensitive"); calls.push({ operation: "get", query }); return { parameters: { months: 12 }, periods: [], families: [], warnings: [] }; } };
-const lookup = async (_pool, name) => ({ id: 1, sam_account_name: name, activo: name !== "disabled", roles: [], permissions: name === "admin" ? ["gdc.consultar", "gdc.configurar"] : name === "reader" ? ["gdc.consultar"] : [] });
 test.before(async () => {
   previousSecret = process.env.JWT_SECRET; process.env.JWT_SECRET = "gdc-test-only";
   const app = express(); app.use(express.json());
-  app.use("/api/gdc", createGdcRouter({ controller: createGdcController(service, repository), permission: (p) => requirePermission(p, { lookup }), logger: { error: (...args) => logs.push(args) } }));
+  app.use("/api/gdc", createGdcRouter({ controller: createGdcController(service, repository), logger: { error: (...args) => logs.push(args) } }));
   server = app.listen(0, "127.0.0.1"); await new Promise((resolve) => server.once("listening", resolve)); baseUrl = `http://127.0.0.1:${server.address().port}/api/gdc/revestidos-laf`;
 });
 test.after(async () => { await new Promise((resolve) => server.close(resolve)); if (previousSecret === undefined) delete process.env.JWT_SECRET; else process.env.JWT_SECRET = previousSecret; });
 const send = (path = "", { name = "admin", method = "GET", body, authorization = `Bearer ${token(name)}` } = {}) => fetch(`${baseUrl}${path}`, { method, headers: { "content-type": "application/json", ...(authorization ? { authorization } : {}) }, ...(body !== undefined ? { body: JSON.stringify(body) } : {}) });
 test("HTTP sin token o token inválido rechaza antes de consultar motores", async () => {
   const before = calls.length;
-  for (const authorization of [null, "Bearer invalid"]) assert.equal((await send("", { authorization })).status, 401);
+  for (const [authorization, status] of [[null, 401], ["Bearer", 401], ["Bearer invalid", 400], [`Bearer ${jwt.sign({ username: "test" }, "gdc-test-only", { expiresIn: -1 })}`, 400]]) assert.equal((await send("", { authorization })).status, status);
   assert.equal(calls.length, before);
 });
-test("HTTP JWT y permisos actuales habilitan lectura; usuario desactivado se rechaza", async () => {
+test("HTTP JWT válido habilita lectura sin consultar permisos de Finanzas", async () => {
   const response = await send("?months=12&rotationDays=120", { name: "reader" }); assert.equal(response.status, 200); assert.equal((await response.json()).parameters.months, 12);
-  assert.equal((await send("", { name: "disabled" })).status, 403); assert.equal((await send("", { name: "without-access" })).status, 403);
+  assert.equal((await send("", { name: "without-access" })).status, 200);
 });
-test("HTTP configuración requiere permiso administrativo incluso para listar", async () => {
-  assert.equal((await send("/configuracion/familias", { name: "reader" })).status, 403);
+test("HTTP configuración requiere solamente token para listar y modificar", async () => {
+  assert.equal((await send("/configuracion/familias", { name: "reader" })).status, 200);
+  for (const method of ["GET", "POST", "PUT", "PATCH", "DELETE"]) {
+    const path = ["PUT", "PATCH", "DELETE"].includes(method) ? "/configuracion/familias/0027" : "/configuracion/familias";
+    assert.equal((await send(path, { method, authorization: null, ...(method === "GET" || method === "DELETE" ? {} : { body: {} }) })).status, 401);
+  }
   const response = await send("/configuracion/familias"); assert.equal(response.status, 200); assert.equal((await response.json()).ok, true);
 });
-test("HTTP crea familia con ceros y auditoría del usuario autenticado", async () => {
-  const response = await send("/configuracion/familias", { method: "POST", body: bodyFamily() }); assert.equal(response.status, 201);
-  const { row } = await response.json(); assert.equal(row.clasificador_5, "0027"); assert.equal(row.codigo_ref_13m, "91201300"); assert.equal(row.updated_by, "admin");
+test("HTTP token histórico sin permisos crea familia y conserva auditoría", async () => {
+  const historicalToken = jwt.sign({ user: { sAMAccountName: "compras" } }, "gdc-test-only", { expiresIn: "1h" });
+  const response = await send("/configuracion/familias", { method: "POST", body: bodyFamily(), authorization: `Bearer ${historicalToken}` }); assert.equal(response.status, 201);
+  const { row } = await response.json(); assert.equal(row.clasificador_5, "0027"); assert.equal(row.codigo_ref_13m, "91201300"); assert.equal(row.updated_by, "compras");
 });
 test("HTTP conflicto de código no filtra SQL", async () => {
   const response = await send("/configuracion/familias", { method: "POST", body: bodyFamily() }); assert.equal(response.status, 409); assert.equal((await response.json()).code, "GDC_DUPLICATE_CODE");
@@ -69,9 +79,36 @@ test("HTTP PUT/PATCH permite cambios parciales y protege pareja de referencias",
   assert.equal((await send("/configuracion/familias/0027", { method: "PUT", body: { codigo_ref_1050: null } })).status, 400);
   assert.equal((await send("/configuracion/familias/0027", { method: "PUT", body: { clasificador_5: "0028", nombre: "Otra" } })).status, 400);
 });
-test("HTTP DELETE desactiva y conserva fila; inexistente devuelve 404", async () => {
-  const response = await send("/configuracion/familias/0027", { method: "DELETE" }); assert.equal(response.status, 200); assert.equal((await response.json()).row.activo, false); assert.equal(rows.has("0027"), true);
-  assert.deepEqual(calls.at(-1).changes, { activo: false }); assert.equal((await send("/configuracion/familias/9999", { method: "DELETE" })).status, 404);
+test("HTTP DELETE elimina físicamente; repetir el borrado devuelve 404", async () => {
+  const response = await send("/configuracion/familias/0027", { method: "DELETE" });
+  assert.equal(response.status, 200); assert.equal((await response.json()).row.clasificador_5, "0027"); assert.equal(rows.has("0027"), false);
+  assert.equal(calls.at(-1).operation, "delete"); assert.equal(calls.at(-1).key, "0027");
+  const listed = await send("/configuracion/familias"); assert.equal((await listed.json()).rows.length, 0);
+  assert.equal((await send("/configuracion/familias/0027", { method: "DELETE" })).status, 404);
+});
+test("HTTP DELETE disponible para los cinco catálogos con claves válidas", async () => {
+  const resources = [
+    ["familias", "clasificador_5", "0030"], ["tipos-articulo-chapa", "codigo", "011"],
+    ["depositos-excluidos", "codigo_deposito", 973], ["comprobantes-consumo-ventas", "codigo_comprobante", "RVP"],
+    ["tipos-np", "codigo_tipo_np", "NPT"],
+  ];
+  for (const [resource, field, key] of resources) {
+    rows.set(key, { [field]: key, activo: true });
+    const response = await send(`/configuracion/${resource}/${key}`, { method: "DELETE" });
+    assert.equal(response.status, 200); assert.equal((await response.json()).row[field], key);
+    assert.equal(rows.has(key), false); assert.equal(calls.at(-1).key, key);
+  }
+  const before = calls.length;
+  for (const path of ["familias/27", "depositos-excluidos/0", "tipos-articulo-chapa/11"]) {
+    assert.equal((await send(`/configuracion/${path}`, { method: "DELETE" })).status, 400);
+  }
+  assert.equal((await send("/configuracion/__proto__/0027", { method: "DELETE" })).status, 404);
+  assert.equal(calls.length, before);
+});
+test("HTTP permite recrear el código eliminado físicamente", async () => {
+  const response = await send("/configuracion/familias", { method: "POST", body: bodyFamily() });
+  assert.equal(response.status, 201); assert.equal((await response.json()).row.clasificador_5, "0027");
+  assert.equal((await send("/configuracion/familias/0027", { method: "DELETE" })).status, 200);
 });
 test("HTTP seis recursos administrativos y general singleton", async () => {
   for (const path of ["familias", "tipos-articulo-chapa", "depositos-excluidos", "comprobantes-consumo-ventas", "tipos-np", "general"]) assert.equal((await send(`/configuracion/${path}`)).status, 200);

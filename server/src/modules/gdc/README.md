@@ -7,11 +7,10 @@ solamente configuración: no se persisten stock, consumos, pedidos ni respuestas
 ## API y autorización
 
 `GET /api/gdc/revestidos-laf?months=12&rotationDays=120` requiere JWT corporativo
-válido y permiso efectivo `gdc.consultar`. Admite el JWT del login existente `/login`;
-la identidad debe contener `username` o `user.sAMAccountName`. Se comprueba en cada
-solicitud que el usuario PostgreSQL está activo y conserva el permiso.
+válido mediante `verifyUserToken`, igual que `/api`. Admite el JWT del login
+existente `/login`; no consulta roles, permisos ni usuarios de Gestión Financiera.
 
-Administración bajo `/api/gdc/revestidos-laf/configuracion`, con `gdc.configurar`:
+Administración bajo `/api/gdc/revestidos-laf/configuracion`, también solo con token:
 
 | Recurso | Clave del registro | Operaciones |
 | --- | --- | --- |
@@ -23,8 +22,12 @@ Administración bajo `/api/gdc/revestidos-laf/configuracion`, con `gdc.configura
 | `general` | singleton `id=1` | GET y PUT `/general` |
 
 GET administrativos incluyen registros inactivos y responden `{ok,total,rows}`;
-mutaciones responden `{ok,row}`. DELETE desactiva (`activo=false`), conserva la fila
-y permite reactivarla con PUT/PATCH. No hay borrado físico.
+mutaciones responden `{ok,row}`. DELETE elimina físicamente la fila PostgreSQL y
+devuelve el registro eliminado. Si no existe (incluido un segundo DELETE), responde
+404. Se puede volver a crear el mismo código mediante POST. Si se desea conservar
+una fila inactiva, se puede seguir enviando `activo=false` mediante PUT/PATCH.
+El borrado está disponible para los cinco catálogos; `general` no se elimina porque
+el módulo necesita sus valores predeterminados (DELETE devuelve 405).
 
 Los cuerpos usan los nombres de columnas PostgreSQL. PUT/PATCH de familias es
 parcial y valida el registro completo bajo bloqueo de fila, por lo que cambiar un
@@ -80,15 +83,15 @@ Migraciones manuales, solamente PostgreSQL, compatibles con versiones 10 y 18:
    conserva las filas existentes mediante `ON CONFLICT DO NOTHING`. Mantiene los
    triggers con `EXECUTE PROCEDURE`, compatible con PostgreSQL 10. No se ejecuta al
    iniciar ni desde un endpoint.
-2. `database/20261002_gdc_permissions.sql`: requiere las tablas `gf_*` existentes
-   del sistema de autorización. Registra `gdc.consultar`, `gdc.configurar`,
-   `LECTOR_GDC` y `ADMIN_GDC` idempotentemente. No asigna roles a ningún usuario.
 
-Un administrador del sistema existente puede habilitar usuarios y asignar esos
-roles desde sus endpoints de usuarios/roles. Mantener sus roles anteriores cuando
-corresponda: el endpoint de asignación reemplaza la lista completa de roles. No se
-otorgan permisos financieros por pertenecer a GDC. El login específico de Finanzas
-continúa requiriendo `gestion.ingresar`; para usuarios solo GDC se usa `/login`.
+La migración contiene la carga inicial mediante `ON CONFLICT DO NOTHING`: si se
+vuelve a ejecutar, puede reinsertar registros iniciales borrados físicamente. No
+usarla como tarea de mantenimiento de los catálogos.
+
+No se requiere migración de permisos ni asignación de roles para GDC. Las lecturas
+y modificaciones de configuración requieren el token existente. La auditoría usa
+`username` o `user.sAMAccountName` del JWT. El middleware conserva el contrato global:
+token ausente devuelve 401 y token inválido o vencido devuelve 400.
 
 ## Consultas y diferencias con referencias
 
@@ -141,7 +144,7 @@ cada familia. Si falla un bloque requerido, se responde el error estándar
 
 `npm run test:gdc` ejecuta unitarias y HTTP locales con ambos motores mockeados:
 fechas, límites, ceros iniciales, referencias, familias vacías, factores, reglas SQL
-de cancelación/filtros/signos, aislamiento, pool, timeout/cancelación, permisos,
+de cancelación/filtros/signos, aislamiento, pool, timeout/cancelación, tokens,
 auditoría, errores y migraciones. Nunca consulta ni escribe en el ERP productivo.
 `npm run lint` y `npm run build` incluyen la sintaxis de todos los archivos GDC.
 Este proyecto JavaScript no tiene compilador ni verificación estática de tipos;
@@ -167,16 +170,15 @@ financieros de producción/testing, y la prueba de Rotación que captura un frag
 de `api.js` incluyendo otro endpoint con `error.message` (reproducido sobre HEAD).
 Los archivos de esos procedimientos no se modificaron en esta entrega.
 
-Confirmaciones de Gabriel/Javier antes de puesta en producción: usuarios y roles
-de Compras; proveedor NULL o filtro histórico 1335; permisos efectivos del login
+Confirmaciones de Gabriel/Javier antes de puesta en producción: proveedor NULL o
+filtro histórico 1335; permisos efectivos del login
 de Plataforma y certificado TLS; confirmar con resultados de ERP que se desea
 mantener el criterio histórico de signo en Producción y la exclusión 8 solo en SDPP.
 
 ## Archivos entregados
 
 Modificados: `api.js`, `package.json`, `.env.example`, `.gitignore`.
-Nuevos SQL manuales: `database/20261002_gdc_configuracion.sql` y
-`database/20261002_gdc_permissions.sql`.
+Nuevo SQL manual: `database/20261002_gdc_configuracion.sql`.
 
 Nuevo módulo `src/modules/gdc/`:
 
@@ -186,7 +188,7 @@ Nuevo módulo `src/modules/gdc/`:
   `gdc-purchase-order.service.js`, `gdc-data.service.js`: bloques funcionales.
 - `gdc.service.js`: orquestador y consolidación.
 - `gdc.controller.js`, `gdc.routes.js`, `gdc.validator.js`, `gdc.errors.js`: HTTP,
-  permisos, validación y errores propios de Compras.
+  autenticación por token, validación y errores propios de Compras.
 - `gdc.mapper.js`, `gdc.dto.js`: mapas, conversiones y contrato.
 - `gdc.test.js`, `gdc.routes.test.js`, `check-syntax.js`: pruebas y sintaxis.
 - `README.md`: operación, decisiones y entrega.
