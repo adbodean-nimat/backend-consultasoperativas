@@ -6,6 +6,12 @@ import wepLoginService, {
 } from "./wep-login.service.js";
 import wepLoginRateLimit from "./wep-login-rate-limit.middleware.js";
 import wepPublicTrackingRateLimit from "./wep-public-tracking-rate-limit.middleware.js";
+import wepTrackingLookupRateLimit from "./wep-tracking-lookup-rate-limit.middleware.js";
+import trackingLookupService, {
+  auditTrackingLookup,
+  LOOKUP_NOT_FOUND_MESSAGE,
+  validateTrackingLookupBody,
+} from "./wep-tracking-lookup.service.js";
 import wepTrackingService, {
   WepTrackingStopNotFoundError,
 } from "./wep-tracking.service.js";
@@ -106,11 +112,31 @@ export function createWepRouter({
   loginService = wepLoginService,
   loginRateLimit = wepLoginRateLimit,
   publicTrackingRateLimit = wepPublicTrackingRateLimit,
+  lookupRateLimit = wepTrackingLookupRateLimit,
+  lookupService = trackingLookupService,
+  lookupLogger = console,
   trackingService = wepTrackingService,
   technicalAuth = verifyUserToken,
   wepAuth = requireWepVehicle,
 } = {}) {
   const router = express.Router();
+
+  router.post("/public/tracking/lookup", lookupRateLimit, async (request, response) => {
+    try {
+      const input = validateTrackingLookupBody(request.body);
+      const result = await lookupService.lookup(input);
+      auditTrackingLookup(request, result ? "OK" : "NOT_FOUND", lookupLogger);
+      if (!result) return response.status(404).json({ ok: false, message: LOOKUP_NOT_FOUND_MESSAGE });
+      return response.json({ ok: true, publicId: result.publicId });
+    } catch (error) {
+      if (error instanceof WepValidationError) {
+        auditTrackingLookup(request, "INVALID_REQUEST", lookupLogger);
+        return response.status(400).json({ ok: false, message: error.message });
+      }
+      auditTrackingLookup(request, "ERROR", lookupLogger);
+      return response.status(500).json({ ok: false, message: "No pudimos consultar tu entrega en este momento." });
+    }
+  });
 
   router.get(
     "/public/tracking/:publicId",
