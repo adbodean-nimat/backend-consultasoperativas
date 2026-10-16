@@ -104,9 +104,9 @@ test("valida paginación y parámetros desconocidos", () => {
   assert.throws(() => validateReviewQuery({ sql: "select 1" }), /válidos/i);
 });
 
-function authorize(user) {
+function authorize(user, auth = undefined) {
   let error = null; let passed = false;
-  requireReviewPermission({ user }, null, (value) => { error = value || null; passed = !value; });
+  requireReviewPermission({ user, auth }, null, (value) => { error = value || null; passed = !value; });
   return { error, passed };
 }
 
@@ -115,15 +115,19 @@ test("endpoint review rechaza usuarios generales", () => {
   assert.equal(result.passed, false); assert.equal(result.error?.status, 403);
 });
 
-test("endpoint review admite permiso explícito, Finanzas y administradores configurados", () => {
+test("endpoint review admite permiso explícito, Finanzas, Cuentas Corrientes y administradores configurados", () => {
   const old = process.env.DUPLICATE_TRANSFER_ADMIN_GROUPS;
+  const oldReview = process.env.DUPLICATE_TRANSFER_REVIEW_GROUPS;
   process.env.DUPLICATE_TRANSFER_ADMIN_GROUPS = "Sistemas";
+  delete process.env.DUPLICATE_TRANSFER_REVIEW_GROUPS;
   try {
-    assert.equal(authorize({ permissions: ["duplicate-transfers:review"] }).passed, true);
+    assert.equal(authorize({}, { permissions: ["duplicate-transfers:review"] }).passed, true);
     assert.equal(authorize({ memberOf: ["CN=Administracion y Finanzas,OU=Grupos,DC=nimit,DC=com"] }).passed, true);
+    assert.equal(authorize({ memberOf: ["CN=Cuentas Corrientes,OU=Grupos,DC=nimit,DC=com"] }).passed, true);
     assert.equal(authorize({ memberOf: ["CN=Sistemas,OU=Grupos,DC=nimit,DC=com"] }).passed, true);
   } finally {
     if (old === undefined) delete process.env.DUPLICATE_TRANSFER_ADMIN_GROUPS; else process.env.DUPLICATE_TRANSFER_ADMIN_GROUPS = old;
+    if (oldReview === undefined) delete process.env.DUPLICATE_TRANSFER_REVIEW_GROUPS; else process.env.DUPLICATE_TRANSFER_REVIEW_GROUPS = oldReview;
   }
 });
 

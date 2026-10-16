@@ -128,9 +128,10 @@ function belongsToAny(req, groups) {
 }
 
 export function requireReviewPermission(req, _res, next) {
-  const permissions = Array.isArray(req.user?.permissions) ? req.user.permissions : req.user?.permissions ? [req.user.permissions] : [];
+  const rawPermissions = req.auth?.permissions ?? req.user?.permissions;
+  const permissions = Array.isArray(rawPermissions) ? rawPermissions : rawPermissions ? [rawPermissions] : [];
   const hasPermission = permissions.some((value) => String(value).toLowerCase() === "duplicate-transfers:review");
-  const reviewGroups = String(process.env.DUPLICATE_TRANSFER_REVIEW_GROUPS || "Gerencia,Administracion y Finanzas").split(",").map((value) => value.trim().toLowerCase()).filter(Boolean);
+  const reviewGroups = String(process.env.DUPLICATE_TRANSFER_REVIEW_GROUPS || "Gerencia,Administracion y Finanzas,Cuentas Corrientes").split(",").map((value) => value.trim().toLowerCase()).filter(Boolean);
   const adminGroups = String(process.env.DUPLICATE_TRANSFER_ADMIN_GROUPS || "").split(",").map((value) => value.trim().toLowerCase()).filter(Boolean);
   if (!hasPermission && !belongsToAny(req, [...reviewGroups, ...adminGroups])) return next(new DuplicateTransferError("Permiso de consulta requerido", { status: 403, code: "REVIEW_PERMISSION_REQUIRED" }));
   return next();

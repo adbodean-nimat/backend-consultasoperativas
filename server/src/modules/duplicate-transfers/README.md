@@ -40,7 +40,7 @@ WHATSAPP_PHONE_NUMBER_ID=
 WHATSAPP_GRAPH_API_VERSION=
 WHATSAPP_API_BASE_URL=https://graph.facebook.com
 DUPLICATE_TRANSFER_ADMIN_GROUPS=Gerencia,Sistemas,Administracion y Finanzas
-DUPLICATE_TRANSFER_REVIEW_GROUPS=Gerencia,Administracion y Finanzas
+DUPLICATE_TRANSFER_REVIEW_GROUPS=Gerencia,Administracion y Finanzas,Cuentas Corrientes
 ```
 
 Ambas variables contienen nombres de grupos LDAP (CN) separados por comas. Las rutas operativas usan `DUPLICATE_TRANSFER_ADMIN_GROUPS`. La consulta de revisión admite esos administradores, los grupos de `DUPLICATE_TRANSFER_REVIEW_GROUPS` o el permiso JWT `duplicate-transfers:review`; no comprueba nombres de personas. Los cuatro valores de WhatsApp sólo se exigen al intentar un envío real.
