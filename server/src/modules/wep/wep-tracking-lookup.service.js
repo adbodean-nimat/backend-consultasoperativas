@@ -17,13 +17,10 @@ export function validateTrackingLookupBody(body) {
   return { pedido, telefonoUltimos4: body.telefonoUltimos4 };
 }
 
-export function auditTrackingLookup(request, resultado, logger = console) {
-  const value = request.body?.pedido;
-  // Nunca incluir valores arbitrarios del body ni los dígitos del teléfono.
-  const pedido = typeof value === "string" || Number.isSafeInteger(value) ? String(value).trim() : "";
+export function auditTrackingLookup(_request, resultado, logger = console) {
+  // Auditar el resultado sin registrar pedido, teléfono, token ni valores del body.
   logger.info("[WEP TRACKING LOOKUP]", {
     timestamp: new Date().toISOString(),
-    pedido: /^\d{1,20}$/.test(pedido) ? pedido : null,
     resultado,
   });
 }

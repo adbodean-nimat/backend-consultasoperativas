@@ -109,7 +109,10 @@ test("POST público: éxito, 400, 404 uniforme, 500 y auditoría sin datos sensi
     response = await post({ pedido: "500", telefonoUltimos4: "3569" });
     assert.equal(response.status, 500);
     assert.deepEqual(await response.json(), { ok: false, message: "No pudimos consultar tu entrega en este momento." });
-    assert.doesNotMatch(JSON.stringify(logs), new RegExp(`3569|${publicId}|secreto|telefono`));
+    assert.doesNotMatch(JSON.stringify(logs), new RegExp(`883524|999999|3569|${publicId}|secreto|telefono|pedido`));
+    for (const [, entry] of logs) {
+      assert.deepEqual(Object.keys(entry).sort(), ["resultado", "timestamp"]);
+    }
   });
 });
 
@@ -134,6 +137,7 @@ test("sexto intento bloqueado por IP; no evade con X-Forwarded-For; ventana se r
     assert.equal(blocked.headers.get("retry-after"), "600");
     assert.equal(calls, 5);
     assert.equal(logs.at(-1)[1].resultado, "RATE_LIMITED");
+    assert.doesNotMatch(JSON.stringify(logs), /883524|3569|telefono|pedido/);
     time = 600_001;
     assert.equal((await post(body)).status, 404);
   }, { now: () => time });
