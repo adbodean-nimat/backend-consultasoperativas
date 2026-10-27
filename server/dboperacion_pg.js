@@ -1737,11 +1737,11 @@ const UpdateActualizacionWebNow = (request, response) => {
 
 async function UpdateActualizacionWebNow2(id) {
   try {
-    const response = await pool.query(
+    const idem = parseInt(id);
+    await pool.query(
       "UPDATE public.actualizacion_web SET actualizacion_fecha = now() WHERE id = $1;",
-      id,
+      [idem],
     );
-    return response.rows;
   } catch (error) {
     console.error("Error:", error);
     throw error;
