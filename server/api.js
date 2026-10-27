@@ -495,7 +495,8 @@ router.route("/np-pendientes-entrega-contenedores").get((request, response) => {
 });
 
 router.route("/listapyr").get((request, response) => {
-  Db.getLPPYRStock().then((data) => {
+  const perfilcomercial = request.query.perfilcomercial;
+  Db.getLPPYRStock(perfilcomercial).then((data) => {
     response.json(data[0]);
   });
 });
@@ -645,7 +646,7 @@ router.route("/stocarts").get((request, response) => {
 
 router.route("/stockartsall").get((request, response) => {
   Db.getStocArtsAll().then((data) => {
-    response.json(data[0]);
+    response.json(data);
   });
 });
 
@@ -2142,15 +2143,15 @@ router.route("/rotaciongeneralproductos/compradores").get(async (req, res) => {
 
 router.route("/rotaciongeneralproductos").get(async (req, res) => {
   try {
-    const inicio = performance.now();
+    //const inicio = performance.now();
     const filtros = validarFiltrosRotacionGeneralProductos(req.query);
     const allRows = await Db.getRotacionGeneralProductos();
     const rows = filtrarRotacionGeneralProductos(allRows, filtros);
 
-    console.log({
+    /* console.log({
       endpointMs: Math.round(performance.now() - inicio),
       filas: rows.length,
-    });
+    }); */
 
     return res.status(200).json({
       ok: true,

@@ -80,6 +80,13 @@ const getListadePrecioBUI = (request, response) => {
   );
 };
 
+async function getListadePrecioBUI2() {
+  const response = await pool.query(
+    "SELECT * FROM lista_de_precios_breve_uso_interno ORDER BY nro_orden_art ASC",
+  );
+  return response.rows;
+}
+
 const getListadePrecioBUIById = (request, response) => {
   const id = parseInt(request.params.id);
 
@@ -350,6 +357,16 @@ const getNPaConsiderar = (request, response) => {
   );
 };
 
+async function getNPaConsiderar_2() {
+  try {
+    const response = await pool.query("SELECT * FROM np_a_considerar");
+    return response.rows;
+  } catch (error) {
+    console.error("Error al obtener los datos de np_a_considerar:", error);
+    throw error;
+  }
+}
+
 const getNPaConsiderarByCod = (request, response) => {
   const id = parseInt(request.params.id);
 
@@ -423,6 +440,19 @@ const getDeposANoConsiderar = (request, response) => {
     },
   );
 };
+
+async function getDeposANoConsiderar_2() {
+  try {
+    const response = await pool.query("SELECT * FROM depos_a_no_considerar");
+    return response.rows;
+  } catch (error) {
+    console.error(
+      "Error al obtener los datos de depos_a_no_considerar:",
+      error,
+    );
+    throw error;
+  }
+}
 
 const getDeposANoConsiderarByCod = (request, response) => {
   const id = parseInt(request.params.id);
@@ -498,6 +528,13 @@ const getConstSecoArmadoConfig1 = (request, response) => {
   );
 };
 
+async function getConstSecoArmadoConfig1_2() {
+  const response = await pool.query(
+    "SELECT * FROM const_seco_armado_config_1 ORDER BY id ASC",
+  );
+  return response.rows;
+}
+
 const getConstSecoArmadoConfig1ById = (request, response) => {
   const id = parseInt(request.params.id);
 
@@ -571,6 +608,13 @@ const getConstSecoArmadoConfig2 = (request, response) => {
     },
   );
 };
+
+async function getConstSecoArmadoConfig2_2() {
+  const response = await pool.query(
+    "SELECT * FROM const_seco_armado_config_2 ORDER BY id ASC",
+  );
+  return response.rows;
+}
 
 const getConstSecoArmadoConfig2ByCod = (request, response) => {
   const id = parseInt(request.params.id);
@@ -679,6 +723,13 @@ const getConstSecoNombresConfig = (request, response) => {
   );
 };
 
+async function getConstSecoNombresConfig_2() {
+  const response = await pool.query(
+    "SELECT * FROM const_seco_nombres_configuraciones ORDER BY id ASC",
+  );
+  return response.rows;
+}
+
 const getConstSecoNombresConfigByCod = (request, response) => {
   const id = parseInt(request.params.id);
 
@@ -750,6 +801,13 @@ const getSetsVentas = (request, response) => {
   });
 };
 
+async function getSetsVentas_2() {
+  const response = await pool.query(
+    "SELECT * FROM public.sets_de_ventas ORDER BY id ASC",
+  );
+  return response.rows;
+}
+
 const getSetsVentasByCod = (request, response) => {
   const id = parseInt(request.params.id);
 
@@ -820,6 +878,13 @@ const getFamiliaArt = (request, response) => {
     response.status(200).json(results.rows);
   });
 };
+
+async function getFamiliaArt_2() {
+  const response = await pool.query(
+    "SELECT * FROM public.familias_de_articulos ORDER BY nro_orden_de_la_fami ASC",
+  );
+  return response.rows;
+}
 
 const getFamiliaArtById = (request, response) => {
   const id = parseInt(request.params.id);
@@ -895,6 +960,13 @@ const getVincularArtFamilia = (request, response) => {
   );
 };
 
+async function getVincularArtFamilia_2() {
+  const response = await pool.query(
+    "SELECT * FROM public.vincular_articulos_a_familia",
+  );
+  return response.rows;
+}
+
 const getVincularArtFamiliaByCod = (request, response) => {
   const id = parseInt(request.params.id);
 
@@ -969,6 +1041,13 @@ const getProductosDistribucion = (request, response) => {
   );
 };
 
+async function getProductosDistribucion_2() {
+  const response = await pool.query(
+    "SELECT * FROM public.productos_para_distribucion",
+  );
+  return response.rows;
+}
+
 const getProductosDistribucionByCod = (request, response) => {
   const id = parseInt(request.params.id);
 
@@ -1041,6 +1120,16 @@ const getRubrosVtas = (request, response) => {
     response.status(200).json(results.rows);
   });
 };
+
+async function getRubrosVtas_2() {
+  try {
+    const response = await pool.query("SELECT * FROM public.rubros_ventas");
+    return response.rows;
+  } catch (error) {
+    console.error("Error al obtener los rubros de ventas:", error);
+    throw error;
+  }
+}
 
 const getRubrosVtasByCod = (request, response) => {
   const id = parseInt(request.params.id);
@@ -1115,6 +1204,13 @@ const getFamiliaDist = (request, response) => {
     },
   );
 };
+
+async function getFamiliaDist_2() {
+  const response = await pool.query(
+    "SELECT * FROM public.familias_distribuciones",
+  );
+  return response.rows;
+}
 
 const updateFamiliaDist = (request, response) => {
   const id = parseInt(request.params.id);
@@ -1344,6 +1440,18 @@ const getDespositoNoAConsiderarParaStockFisico = (request, response) => {
     },
   );
 };
+
+async function getDespositoNoAConsiderarParaStockFisico2() {
+  try {
+    const response = await pool.query(
+      "SELECT * FROM public.depos_a_no_considerar_para_stock_fisico",
+    );
+    return response.rows;
+  } catch (error) {
+    console.error("Error de cargar deposito a no considerar para stock fisico");
+    throw error;
+  }
+}
 
 const updateDespositoNoAConsiderarParaStockFisico = (request, response) => {
   const id = parseInt(request.params.id);
@@ -1602,6 +1710,16 @@ const getActualizacionWeb = (request, response) => {
   });
 };
 
+async function getActualizacionWeb2() {
+  try {
+    const response = await pool.query("SELECT * FROM public.actualizacion_web");
+    return response.rows;
+  } catch (error) {
+    console.error(error);
+    throw error;
+  }
+}
+
 const UpdateActualizacionWebNow = (request, response) => {
   const id = parseInt(request.params.id);
 
@@ -1616,6 +1734,19 @@ const UpdateActualizacionWebNow = (request, response) => {
     },
   );
 };
+
+async function UpdateActualizacionWebNow2(id) {
+  try {
+    const response = await pool.query(
+      "UPDATE public.actualizacion_web SET actualizacion_fecha = now() WHERE id = $1;",
+      id,
+    );
+    return response.rows;
+  } catch (error) {
+    console.error("Error:", error);
+    throw error;
+  }
+}
 
 const UpdateActualizacionWebCron = (request, response) => {
   const id = parseInt(request.params.id);
@@ -1718,6 +1849,18 @@ const getComprobantesAOmitir = (request, response) => {
   );
 };
 
+async function getComprobantesAOmitir2() {
+  try {
+    const response = await pool.query(
+      "SELECT * FROM public.comprobantes_a_omitir",
+    );
+    return response.rows;
+  } catch (error) {
+    console.error("Error de cargar Comprobantes a omitir");
+    throw error;
+  }
+}
+
 const updateComprobantesAOmitir = (request, response) => {
   const id = parseInt(request.params.id);
   const { cod_comprobante, nombre_comprobante } = request.body;
@@ -1773,6 +1916,16 @@ const getRemitosVtas = (request, response) => {
     response.status(200).json(results.rows);
   });
 };
+
+async function getRemitosVtas2() {
+  try {
+    const response = await pool.query("SELECT * FROM public.remitos_de_ventas");
+    return response.rows;
+  } catch (error) {
+    console.error("Error de cargar Remitos p/ Ventas");
+    throw error;
+  }
+}
 
 const updateRemitosVtas = (request, response) => {
   const id = parseInt(request.params.id);
@@ -1833,6 +1986,18 @@ const getCalesCementosPlasticor = (request, response) => {
   );
 };
 
+async function getCalesCementosPlasticor2() {
+  try {
+    const response = await pool.query(
+      "SELECT * FROM public.cales_cementos_plasticor",
+    );
+    return response.rows;
+  } catch (error) {
+    console.error("Error de cargar Cales, Cementos y Plasticor");
+    throw error;
+  }
+}
+
 const updateCalesCementosPlasticor = (request, response) => {
   const id = parseInt(request.params.id);
   const { cod_articulos, nombre_articulos } = request.body;
@@ -1892,6 +2057,18 @@ const getClientesCtaCte = (request, response) => {
   );
 };
 
+async function getClientesCtaCte2() {
+  try {
+    const response = await pool.query(
+      "SELECT * FROM public.filtro_clientes_plataforma",
+    );
+    return response.rows;
+  } catch (error) {
+    console.error("Error de cargar Clientes Cta Cte");
+    throw error;
+  }
+}
+
 const updateClientesCtaCte = (request, response) => {
   const id = parseInt(request.params.id);
   const { tipo_de_cliente, perfil_crediticio } = request.body;
@@ -1950,6 +2127,18 @@ const getAcindarClasifClientes = (request, response) => {
     },
   );
 };
+
+async function getAcindarClasifClientes2() {
+  try {
+    const response = await pool.query(
+      "SELECT * FROM public.acindar_clasif_clientes",
+    );
+    return response.rows;
+  } catch (error) {
+    console.error("Error al obtener los clasif clientes:", error);
+    throw error;
+  }
+}
 
 const createClasifClientes = (request, response) => {
   const {
@@ -2016,6 +2205,18 @@ const getAcindarComprobantes = (request, response) => {
     response.status(200).json(results.rows);
   });
 };
+
+async function getAcindarComprobantes2() {
+  try {
+    const response = await pool.query(
+      "SELECT * FROM public.acindar_comprobantes",
+    );
+    return response.rows;
+  } catch (error) {
+    console.error("Error al obtener los comprobantes:", error);
+    throw error;
+  }
+}
 
 const createAcindarComprobantes = (request, response) => {
   const {
@@ -2092,6 +2293,18 @@ const getAcindarEquivalCodFactorCant = (request, response) => {
   );
 };
 
+async function getAcindarEquivalCodFactorCant2() {
+  try {
+    const response = await pool.query(
+      "SELECT * FROM public.acindar_equivalcod_factorcant",
+    );
+    return response.rows;
+  } catch (error) {
+    console.error("Error al obtener los equivalentes:", error);
+    throw error;
+  }
+}
+
 const createAcindarEquivalCodFactorCant = (request, response) => {
   const { codigo_ptf, codigo_acindar, factor_cant } = request.body;
 
@@ -2150,6 +2363,18 @@ const getFiltroAcindarPTF = (request, response) => {
     },
   );
 };
+
+async function getFiltroAcindarPTF2() {
+  try {
+    const response = await pool.query(
+      "SELECT * FROM public.acindar_filtro_plataforma",
+    );
+    return response.rows;
+  } catch (error) {
+    console.error("Error al obtener los filtros:", error);
+    throw error;
+  }
+}
 
 const updateFiltroAcindarPTF = (request, response) => {
   const id = parseInt(request.params.id);
@@ -2210,6 +2435,21 @@ const getArtsClasif5AlConsultar = (request, response) => {
   );
 };
 
+async function getArtsClasif5AlConsultar2() {
+  try {
+    const { rows } = await pool.query(
+      "SELECT * FROM public.clasif_arts_5_al_consultar",
+    );
+    return rows;
+  } catch (error) {
+    console.error(
+      "Error al obtener los datos de clasif_arts_5_al_consultar:",
+      error,
+    );
+    throw error;
+  }
+}
+
 const updateArtsClasif5AlConsultar = (request, response) => {
   const id = parseInt(request.params.id);
   const { arts_clasif_5, descripcion, whatsapp } = request.body;
@@ -2269,6 +2509,18 @@ const getArtsClasif5StockManual = (request, response) => {
   );
 };
 
+async function getArtsClasif5StockManual2() {
+  try {
+    const response = await pool.query(
+      "SELECT * FROM public.clasif_arts_5_stock_manual",
+    );
+    return response.rows;
+  } catch (error) {
+    console.error("Error de cargar Arts. Clasif. 5 Stock Mnanaul");
+    throw error;
+  }
+}
+
 const updateArtsClasif5StockManual = (request, response) => {
   const id = parseInt(request.params.id);
   const { arts_clasif_5, stock_manual } = request.body;
@@ -2327,6 +2579,18 @@ const gdc_modosdestockminimo = (request, response) => {
   );
 };
 
+async function gdc_modosdestockminimo2() {
+  try {
+    const response = await pool.query(
+      "SELECT * FROM public.gdc_modosdestockminimo",
+    );
+    return response.rows;
+  } catch (error) {
+    console.log("Error de cargar Modos de Stock Minimo");
+    throw error;
+  }
+}
+
 const gdc_modosdestockminimocreate = (request, response) => {
   const { Cod_modo_stock, Nombre_modo_stock } = request.body;
 
@@ -2384,6 +2648,18 @@ const gdc_clasif8artquesecompran = (request, response) => {
   );
 };
 
+async function gdc_clasif8artquesecompran2() {
+  try {
+    const response = await pool.query(
+      "SELECT * FROM public.gdc_clasif8artquesecompran",
+    );
+    return response.rows;
+  } catch (error) {
+    consoler.error("Error de cargar Clasif. 8");
+    throw error;
+  }
+}
+
 const gdc_clasif8artquesecompranUpdate = (request, response) => {
   const { id, Cod_clasif8, Nombre_clasif8, Observacion } = request.body;
 
@@ -2424,6 +2700,17 @@ const gdc_deposanoconsiderarparastock = (request, response) => {
     },
   );
 };
+
+async function gdc_deposanoconsiderarparastock2() {
+  try {
+    const response = await pool.query(
+      "SELECT * FROM public.gdc_deposanoconsiderarparastock",
+    );
+    return response.rows;
+  } catch (error) {
+    console.error("Error de cargar Depos. a no considerar para Stock");
+  }
+}
 
 const gdc_deposanoconsiderarparastockUpdate = (request, response) => {
   const { id, Cod_Depos, Nombre_Depos } = request.body;
@@ -2468,6 +2755,20 @@ const gdc_npstockcompromvtasespecialespendentregaaclientes = (
     },
   );
 };
+
+async function gdc_npstockcompromvtasespecialespendentregaaclientes2() {
+  try {
+    const response = await pool.query(
+      'SELECT * FROM public."gdc_npstockcomprom-vtasespeciales-pendentregaaclientes"',
+    );
+    return response.rows;
+  } catch (error) {
+    console.log(
+      "Error de cargar NP Stock Comprom. Vtas Esp. Pend. Entr Clientes",
+    );
+    throw error;
+  }
+}
 
 const gdc_npstockcompromvtasespecialespendentregaaclientesUpdate = (
   request,
@@ -2516,6 +2817,18 @@ const gdc_chapastiposqueladefinen = (request, response) => {
   );
 };
 
+async function gdc_chapastiposqueladefinen2() {
+  try {
+    const response = await pool.query(
+      "SELECT * FROM public.gdc_chapastiposqueladefinen",
+    );
+    return response.rows;
+  } catch (error) {
+    console.error("Error de cargar Chapas Tipos que la definen");
+    throw error;
+  }
+}
+
 const gdc_chapastiposqueladefinenUpdate = (request, response) => {
   const { id, Cod_tipo, Nombre_tipo } = request.body;
 
@@ -2553,6 +2866,18 @@ const gdc_remitosdeventas = (request, response) => {
     response.status(200).json(results.rows);
   });
 };
+
+async function gdc_remitosdeventas2() {
+  try {
+    const response = await pool.query(
+      "SELECT * FROM public.gdc_remitosdeventas",
+    );
+    return response.rows;
+  } catch (error) {
+    console.error("Error de cargar Remitos de Ventas");
+    throw error;
+  }
+}
 
 const gdc_remitosdeventasUpdate = (request, response) => {
   const { id, Cod_Comp, Nombre_Comp } = request.body;
@@ -2973,6 +3298,16 @@ const gdc_npaconsiderar = (request, response) => {
   );
 };
 
+async function gdc_npaconsiderar2() {
+  try {
+    const response = await pool.query("SELECT * FROM gdc_npaconsiderar");
+    return response.rows;
+  } catch (error) {
+    console.error("Error de cargar NP a considerar");
+    throw error;
+  }
+}
+
 const gdc_npaconsiderarCreate = (request, response) => {
   const { cod_comp, nomb_comp } = request.body;
 
@@ -3030,6 +3365,18 @@ const gdc_deposanoconsiderarpstockfisico = (request, response) => {
   );
 };
 
+async function gdc_deposanoconsiderarpstockfisico2() {
+  try {
+    const response = await pool.query(
+      "SELECT * FROM gdc_deposanoconsiderarpstockfisico",
+    );
+    return response.rows;
+  } catch (error) {
+    console.error("Error de cargar Depos. a no considerar");
+    throw error;
+  }
+}
+
 const gdc_deposanoconsiderarpstockfisicoCreate = (request, response) => {
   const { Cod_Depos, Nombre_Depos } = request.body;
 
@@ -3086,6 +3433,16 @@ const gdc_articuloscontrol = (request, response) => {
   );
 };
 
+async function gdc_articuloscontrol2() {
+  try {
+    const response = await pool.query("SELECT * FROM gdc_articulos_control");
+    return response.rows;
+  } catch (error) {
+    console.error("Error de cargar Art. Control");
+    throw error;
+  }
+}
+
 const gdc_articuloscontrolCreate = (request, response) => {
   const { cod_art, nomb_art } = request.body;
 
@@ -3140,6 +3497,16 @@ const gdc_tiposremitosvtas = (request, response) => {
     },
   );
 };
+
+async function gdc_tiposremitosvtas2() {
+  try {
+    const respose = await pool.query("SELECT * FROM gdc_tiposremitosvtas");
+    return respose.rows;
+  } catch (error) {
+    console.error("Error de cargar Tipos Remitos Vtas");
+    throw error;
+  }
+}
 
 const gdc_tiposremitosvtasCreate = (request, response) => {
   const { cod_comp, nombre_comp } = request.body;
@@ -3197,6 +3564,16 @@ const gdc_tiposcompstock = (request, response) => {
   );
 };
 
+async function gdc_tiposcompstock2() {
+  try {
+    const response = await pool.query("SELECT * FROM gdc_tiposcompstock");
+    return response.rows;
+  } catch (error) {
+    console.error("Error de cargar Tipos Comp. Stock");
+    throw error;
+  }
+}
+
 const gdc_tiposcompstockCreate = (request, response) => {
   const { cod_comp, nombre_comp } = request.body;
 
@@ -3252,6 +3629,16 @@ const gde_comprobantestock = (request, response) => {
     },
   );
 };
+
+async function gde_comprobantestock2() {
+  try {
+    const response = await pool.query("SELECT * FROM gde_comprobantestock");
+    return response.rows;
+  } catch (error) {
+    console.error("Error de cargar Comprobanes Stock");
+    throw error;
+  }
+}
 
 const gde_comprobantestockCreate = (request, response) => {
   const { cod_comp, nombre_comp } = request.body;
@@ -3309,6 +3696,16 @@ const gde_deposanoconsiderar = (request, response) => {
   );
 };
 
+async function gde_deposanoconsiderar2() {
+  try {
+    const response = await pool.query("SELECT * FROM gde_deposanoconsiderar");
+    return response.rows;
+  } catch (error) {
+    console.error("Error de cargar Depos a no considerar");
+    throw error;
+  }
+}
+
 const gde_deposanoconsiderarCreate = (request, response) => {
   const { cod_depos, nombre_depos } = request.body;
 
@@ -3365,6 +3762,16 @@ const gde_npaconsiderar = (request, response) => {
   );
 };
 
+async function gde_npaconsiderar2() {
+  try {
+    const response = await pool.query("SELECT * FROM gde_npaconsiderar");
+    return response.rows;
+  } catch (error) {
+    console.error("Error de cargar NP a Considerar");
+    throw error;
+  }
+}
+
 const gde_npaconsiderarCreate = (request, response) => {
   const { cod_comp, nombre_comp } = request.body;
 
@@ -3420,6 +3827,18 @@ const gde_recepcionproveedoraconsiderar = (request, response) => {
     },
   );
 };
+
+async function gde_recepcionproveedoraconsiderar2() {
+  try {
+    const response = await pool.query(
+      "SELECT * FROM gde_recepcionproveedoraconsiderar",
+    );
+    return response.rows;
+  } catch (error) {
+    console.error("Error de cargar Recepción Proveedor a considerar");
+    throw error;
+  }
+}
 
 const gde_recepcionproveedoraconsiderarCreate = (request, response) => {
   const { cod_comp, nombre_comp } = request.body;
@@ -3907,11 +4326,13 @@ async function createArticuloNuevoWeb(codigo_art, nombre_art) {
 
 export default {
   getDeposANoConsiderar,
+  getDeposANoConsiderar_2,
   getDeposANoConsiderarByCod,
   createDepos,
   updateDepos,
   deleteDepos,
   getNPaConsiderar,
+  getNPaConsiderar_2,
   getNPaConsiderarByCod,
   createNP,
   updateNP,
@@ -3927,6 +4348,7 @@ export default {
   updateMovContenedores,
   deleteMovContenedores,
   getListadePrecioBUI,
+  getListadePrecioBUI2,
   getListadePrecioBUIById,
   createListadePrecioBUI,
   updateListadePrecioBUI,
@@ -3951,32 +4373,41 @@ export default {
   createConstSecoNombresConfig,
   updateConstSecoNombresConfig,
   deleteConstSecoNombresConfig,
+  getConstSecoArmadoConfig1_2,
+  getConstSecoArmadoConfig2_2,
+  getConstSecoNombresConfig_2,
   getSetsVentas,
+  getSetsVentas_2,
   getSetsVentasByCod,
   createSetsVentas,
   updateSetsVentas,
   deleteSetsVentas,
   getFamiliaArt,
+  getFamiliaArt_2,
   getFamiliaArtById,
   createFamiliaArt,
   updateFamiliaArt,
   deleteFamiliaArt,
   getVincularArtFamilia,
+  getVincularArtFamilia_2,
   getVincularArtFamiliaByCod,
   updateVincularArtFamilia,
   createVincularArtFamilia,
   deleteVincularArtFamilia,
   getProductosDistribucion,
+  getProductosDistribucion_2,
   getProductosDistribucionByCod,
   updateProductosDistribucion,
   createProductosDistribucion,
   deleteProductosDistribucion,
   getRubrosVtas,
+  getRubrosVtas_2,
   getRubrosVtasByCod,
   updateRubrosVtas,
   createRubrosVtas,
   deleteRubrosVtas,
   getFamiliaDist,
+  getFamiliaDist_2,
   updateFamiliaDist,
   createFamiliaDist,
   deleteFamiliaDist,
@@ -3991,6 +4422,7 @@ export default {
   createCartelManual,
   deleteCartelManual,
   getDespositoNoAConsiderarParaStockFisico,
+  getDespositoNoAConsiderarParaStockFisico2,
   updateDespositoNoAConsiderarParaStockFisico,
   createDespositoNoAConsiderarParaStockFisico,
   deleteDespositoNoAConsiderarParaStockFisico,
@@ -4003,69 +4435,87 @@ export default {
   createArticulosWeb,
   deleteArticulosWeb,
   getActualizacionWeb,
+  getActualizacionWeb2,
   UpdateActualizacionWeb,
   CreateActualizacionWeb,
   deleteActualizacionWeb,
   UpdateActualizacionWebNow,
+  UpdateActualizacionWebNow2,
   UpdateActualizacionWebCron,
   UpdateActualizacionWebChecked,
   getComprobantesAOmitir,
+  getComprobantesAOmitir2,
   updateComprobantesAOmitir,
   createComprobantesAOmitir,
   deleteComprobantesAOmitir,
   getRemitosVtas,
+  getRemitosVtas2,
   updateRemitosVtas,
   createRemitosVtas,
   deleteRemitosVtas,
   getCalesCementosPlasticor,
+  getCalesCementosPlasticor2,
   updateCalesCementosPlasticor,
   createCalesCementosPlasticor,
   deleteCalesCementosPlasticor,
   getClientesCtaCte,
+  getClientesCtaCte2,
   updateClientesCtaCte,
   createClientesCtaCte,
   deleteClientesCtaCte,
   getAcindarClasifClientes,
+  getAcindarClasifClientes2,
   updateClasifClientes,
   createClasifClientes,
   deleteClasifClientes,
   getAcindarComprobantes,
+  getAcindarComprobantes2,
   updateAcindarComprobantes,
   createAcindarComprobantes,
   deleteAcindarComprobantes,
   getAcindarEquivalCodFactorCant,
+  getAcindarEquivalCodFactorCant2,
   updateAcindarEquivalCodFactorCant,
   createAcindarEquivalCodFactorCant,
   deleteAcindarEquivalCodFactorCant,
   getFiltroAcindarPTF,
+  getFiltroAcindarPTF2,
   updateFiltroAcindarPTF,
   createFiltroAcindarPTF,
   deleteFiltroAcindarPTF,
   getArtsClasif5StockManual,
+  getArtsClasif5StockManual2,
   updateArtsClasif5StockManual,
   createArtsClasif5StockManual,
   deleteArtsClasif5StockManual,
   getArtsClasif5AlConsultar,
+  getArtsClasif5AlConsultar2,
   updateArtsClasif5AlConsultar,
   createArtsClasif5AlConsultar,
   deleteArtsClasif5AlConsultar,
   gdc_modosdestockminimo,
+  gdc_modosdestockminimo2,
   gdc_modosdestockminimodelete,
   gdc_modosdestockminimocreate,
   gdc_modosdestockminimoupdate,
   gdc_clasif8artquesecompran,
+  gdc_clasif8artquesecompran2,
   gdc_clasif8artquesecompranUpdate,
   gdc_clasif8artquesecompranDelete,
   gdc_deposanoconsiderarparastock,
+  gdc_deposanoconsiderarparastock2,
   gdc_deposanoconsiderarparastockUpdate,
   gdc_deposanoconsiderarparastockDelete,
   gdc_npstockcompromvtasespecialespendentregaaclientes,
+  gdc_npstockcompromvtasespecialespendentregaaclientes2,
   gdc_npstockcompromvtasespecialespendentregaaclientesUpdate,
   gdc_npstockcompromvtasespecialespendentregaaclientesDelete,
   gdc_chapastiposqueladefinen,
+  gdc_chapastiposqueladefinen2,
   gdc_chapastiposqueladefinenUpdate,
   gdc_chapastiposqueladefinenDelete,
   gdc_remitosdeventas,
+  gdc_remitosdeventas2,
   gdc_remitosdeventasUpdate,
   gdc_remitosdeventasDelete,
   getArticulosWeb2,
@@ -4084,38 +4534,47 @@ export default {
   updateRegistroFinanciero,
   deleteRegistroFinanciero,
   gdc_npaconsiderar,
+  gdc_npaconsiderar2,
   gdc_npaconsiderarCreate,
   gdc_npaconsiderarUpdate,
   gdc_npaconsiderarDelete,
   gdc_deposanoconsiderarpstockfisico,
+  gdc_deposanoconsiderarpstockfisico2,
   gdc_deposanoconsiderarpstockfisicoCreate,
   gdc_deposanoconsiderarpstockfisicoUpdate,
   gdc_deposanoconsiderarpstockfisicoDelete,
   gdc_articuloscontrol,
+  gdc_articuloscontrol2,
   gdc_articuloscontrolCreate,
   gdc_articuloscontrolUpdate,
   gdc_articuloscontrolDelete,
   gdc_tiposremitosvtas,
+  gdc_tiposremitosvtas2,
   gdc_tiposremitosvtasCreate,
   gdc_tiposremitosvtasUpdate,
   gdc_tiposremitosvtasDelete,
   gdc_tiposcompstock,
+  gdc_tiposcompstock2,
   gdc_tiposcompstockCreate,
   gdc_tiposcompstockUpdate,
   gdc_tiposcompstockDelete,
   gde_comprobantestock,
+  gde_comprobantestock2,
   gde_comprobantestockCreate,
   gde_comprobantestockUpdate,
   gde_comprobantestockDelete,
   gde_deposanoconsiderar,
+  gde_deposanoconsiderar2,
   gde_deposanoconsiderarCreate,
   gde_deposanoconsiderarUpdate,
   gde_deposanoconsiderarDelete,
   gde_npaconsiderar,
+  gde_npaconsiderar2,
   gde_npaconsiderarCreate,
   gde_npaconsiderarUpdate,
   gde_npaconsiderarDelete,
   gde_recepcionproveedoraconsiderar,
+  gde_recepcionproveedoraconsiderar2,
   gde_recepcionproveedoraconsiderarCreate,
   gde_recepcionproveedoraconsiderarUpdate,
   gde_recepcionproveedoraconsiderarDelete,
