@@ -1,6 +1,7 @@
 import wepRepository from "./wep.repository.js";
 import wepPostgresPool from "./wep-postgres.js";
 import { normalizePlate } from "./plate.util.js";
+import wepSyncTrackingService from "./wep-sync-tracking.service.js";
 
 const ALLOWED_VEHICLE_ERP_CODES = new Set(["101", "102", "103"]);
 
@@ -266,10 +267,11 @@ function normalizeSqlTime(value) {
 }
 
 export class WepSyncService {
-  constructor({ sourceRepository, postgresPool, logger } = {}) {
+  constructor({ sourceRepository, postgresPool, logger, syncTrackingService } = {}) {
     this.sourceRepository = sourceRepository || wepRepository;
     this.postgresPool = postgresPool || wepPostgresPool;
     this.logger = logger || console;
+    this.syncTrackingService = syncTrackingService || wepSyncTrackingService;
   }
 
   async synchronize(filters) {
@@ -280,6 +282,18 @@ export class WepSyncService {
     let client;
     let transactionStarted = false;
     try {
+      client = await this.postgresPool.connect();
+      await client.query("BEGIN");
+      transactionStarted = true;
+      // Compartido por cron y endpoint manual, incluso entre procesos/servidores.
+      const lock = await client.query(
+        "SELECT pg_try_advisory_xact_lock(73021, 1) AS acquired",
+      );
+      if (lock.rows[0]?.acquired !== true) {
+        await client.query("ROLLBACK");
+        transactionStarted = false;
+        return { ok: true, skipped: "SYNC_IN_PROGRESS", message: "Ya hay una sincronización en curso" };
+      }
       const rows = await this.sourceRepository.getEntregasProgramadas(filters);
       this.logger.info?.(`[WEP SYNC] Filas ERP recibidas: ${rows.length}`);
 
@@ -296,10 +310,6 @@ export class WepSyncService {
           `[WEP SYNC] Códigos ERP ignorados: ${ignoredVehicleCodes.join(", ")}`,
         );
       }
-      client = await this.postgresPool.connect();
-      await client.query("BEGIN");
-      transactionStarted = true;
-
       const vehicles = new Map();
       for (const item of prepared) {
         if (!item.codigoErpPermitido) continue;
@@ -452,6 +462,9 @@ export class WepSyncService {
         else updated += 1;
       }
 
+      const tracking = await this.syncTrackingService.ensureForTrips(
+        client, [...tripIds.values()],
+      );
       await client.query("COMMIT");
       transactionStarted = false;
 
@@ -475,6 +488,7 @@ export class WepSyncService {
         sourceRows: rows.length,
         vehiculos: { procesados: vehicles.size },
         viajes: { procesados: trips.size },
+        tracking,
         entregas: {
           procesadas: processed,
           insertadas: inserted,

@@ -171,6 +171,7 @@ async function getWebNimat() {
         }
       }
     }
+    console.log("Resultados art.:", results.length);
     return results;
   } catch (error) {
     console.error(error);
@@ -325,6 +326,7 @@ async function getWebNimatCombo() {
         }
       }
     }
+    console.log("Resultados combos:", results.length);
     return results;
   } catch (error) {
     console.error(error);
@@ -345,6 +347,7 @@ async function jsontosheet() {
         console.error("Error fetching combo data:", error);
         throw error;
       });
+
     const route = `${process.env.URL_DROPBOX}`;
     const routePath = path.normalize(route);
     const filePath = path.join(route, "/Importar_AgileWorks_M2.xlsx");

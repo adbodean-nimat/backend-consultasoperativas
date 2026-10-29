@@ -1,8 +1,10 @@
 import wepPostgresPool from "./wep-postgres.js";
 
 export class WepTrackingRepository {
-  constructor({ postgresPool } = {}) {
+  constructor({ postgresPool, transactionClient } = {}) {
     this.postgresPool = postgresPool || wepPostgresPool;
+    // El llamador conserva la propiedad de BEGIN/COMMIT/ROLLBACK/release.
+    this.transactionClient = transactionClient;
   }
 
   async findStopDeliveries({ viajeId, clienteCodigo }) {
@@ -29,7 +31,7 @@ export class WepTrackingRepository {
     entregaId,
     expiraAt,
   }) {
-    const client = await this.postgresPool.connect();
+    const client = this.transactionClient || await this.postgresPool.connect();
     let transactionStarted = false;
     const stopLockKey = JSON.stringify([
       String(viajeId),
@@ -39,8 +41,10 @@ export class WepTrackingRepository {
     ]);
 
     try {
-      await client.query("BEGIN");
-      transactionStarted = true;
+      if (!this.transactionClient) {
+        await client.query("BEGIN");
+        transactionStarted = true;
+      }
       await client.query(
         "SELECT pg_advisory_xact_lock(hashtext($1::text))",
         [stopLockKey],
@@ -102,14 +106,14 @@ export class WepTrackingRepository {
         row = inserted.rows[0];
       }
 
-      await client.query("COMMIT");
+      if (transactionStarted) await client.query("COMMIT");
       transactionStarted = false;
       return row;
     } catch (error) {
       if (transactionStarted) await client.query("ROLLBACK").catch(() => {});
       throw error;
     } finally {
-      client.release();
+      if (!this.transactionClient) client.release();
     }
   }
 

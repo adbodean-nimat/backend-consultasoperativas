@@ -43,6 +43,9 @@ import duplicateTransferRouter from "./src/modules/duplicate-transfers/duplicate
 import duplicateTransferScheduler from "./src/modules/duplicate-transfers/duplicate-transfer-scheduler.js";
 import chatbotCatalogRouter from "./src/modules/chatbot-catalog/chatbot-catalog.routes.js";
 import wepRouter from "./src/modules/wep/wep.routes.js";
+import wepAdminRouter from "./src/modules/wep/wep-admin.routes.js";
+import wepSyncScheduler from "./src/modules/wep/wep-sync-scheduler.js";
+import wepProgrammedScheduler from "./src/modules/wep/wep-programmed-scheduler.js";
 // import { sincronizarCompleto } from "./sync-productos-cateogorias.js";
 import { sincronizarCompletoV2 } from "./sync-productos-categorias.v2.js";
 // import { syncOpenAI } from "./sync-openai.js";
@@ -63,6 +66,21 @@ if (process.env.NODE_APP_INSTANCE === "0") {
     .then((estado) => console.log("Cron avisos deuda:", estado))
     .catch((error) => console.error("Error inicializando cron:", error));
   cronNuevosProductosWeb.start();
+}
+
+try {
+  wepSyncScheduler.start();
+} catch (error) {
+  console.error(
+    "Error inicializando sincronización automática WEP:",
+    error?.message,
+  );
+}
+
+try {
+  wepProgrammedScheduler.start();
+} catch (error) {
+  console.error("Error inicializando avisos automáticos WEP:", error?.message);
 }
 
 duplicateTransferScheduler
@@ -202,6 +220,7 @@ app.post("/api/gestion/login", function (req, res, next) {
 
 // WEP usa tokens opacos propios en /auth y /pwa. Sus rutas técnicas conservan
 // internamente el JWT corporativo que antes aplicaba el middleware global.
+app.use("/api/wep/control", wepAdminRouter);
 app.use("/api/wep", wepRouter);
 app.use("/api", verifyUserToken, router);
 app.post("/login", function (req, res, next) {

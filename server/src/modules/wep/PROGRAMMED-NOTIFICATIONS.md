@@ -61,7 +61,8 @@ Sólo después debe desactivarse manualmente el envío ERP. Mientras ERP y WEP e
 activos existe riesgo de doble aviso entre sistemas; la idempotencia de WEP no
 puede detectar envíos que el ERP no registra en `dbWep`.
 
-No se agregó cron, no se modificó ERP ni se implementó el frontend público.
+El envío automático es opcional y está documentado en `PROGRAMMED-MIGRATION.md`.
+La tarea 73 del ERP no se modifica desde WEP.
 
 ## Tracking público
 

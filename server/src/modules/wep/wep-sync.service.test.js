@@ -38,12 +38,13 @@ function createLogger() {
   return { info() {}, warn() {}, error() {} };
 }
 
-function createDatabase({ failDelivery = false, vehicleInserted = false } = {}) {
+function createDatabase({ failDelivery = false, vehicleInserted = false, acquired = true } = {}) {
   const queries = [];
   let deliveryCalls = 0;
   const client = {
     async query(sql, params) {
       queries.push({ sql, params });
+      if (sql.includes("pg_try_advisory_xact_lock")) return { rows: [{ acquired }] };
       if (sql.includes("public.vehiculos")) {
         return { rows: [{ id: 10, insertado: vehicleInserted }] };
       }
@@ -74,6 +75,9 @@ function createService(database, rows = [sourceRow]) {
     sourceRepository: { getEntregasProgramadas: async () => rows },
     postgresPool: database.pool,
     logger: createLogger(),
+    // Estas pruebas aíslan el contrato ERP/UPSERT. El tracking se prueba integrado
+    // en wep-sync-tracking.test.js con el mismo cliente transaccional.
+    syncTrackingService: { async ensureForTrips() { return { disponibles: 0 }; } },
   });
 }
 
@@ -83,6 +87,26 @@ const filters = {
   vehiculo: null,
   vuelta: null,
 };
+
+test("lock ocupado omite ERP y libera la transacción", async () => {
+  const database = createDatabase({ acquired: false });
+  const service = new WepSyncService({
+    postgresPool: database.pool, logger: createLogger(),
+    sourceRepository: { getEntregasProgramadas() { assert.fail("no debe consultar ERP"); } },
+  });
+  assert.equal((await service.synchronize(filters)).skipped, "SYNC_IN_PROGRESS");
+  assert.deepEqual(database.queries.slice(-2).map(({ sql }) => sql), ["ROLLBACK", "RELEASE"]);
+});
+
+test("fallo ERP revierte y libera el lock para el próximo intento", async () => {
+  const database = createDatabase();
+  const service = new WepSyncService({
+    postgresPool: database.pool, logger: createLogger(),
+    sourceRepository: { async getEntregasProgramadas() { throw new Error("ERP caído"); } },
+  });
+  await assert.rejects(service.synchronize(filters), /ERP caído/);
+  assert.deepEqual(database.queries.slice(-2).map(({ sql }) => sql), ["ROLLBACK", "RELEASE"]);
+});
 
 test("sincroniza por codigo_erp y la segunda ejecución actualiza sin duplicar", async () => {
   const database = createDatabase();
@@ -104,7 +128,7 @@ test("sincroniza por codigo_erp y la segunda ejecución actualiza sin duplicar",
     actualizadas: 1,
   });
 
-  const firstTransaction = database.queries.slice(0, 7).map(({ sql }) => sql);
+  const firstTransaction = database.queries.slice(0, 8).filter(({ sql }) => !sql.includes("pg_try_advisory_xact_lock")).map(({ sql }) => sql);
   assert.equal(firstTransaction[0], "BEGIN");
   assert.match(firstTransaction[1], /public\.vehiculos/);
   assert.match(firstTransaction[2], /public\.viajes/);
