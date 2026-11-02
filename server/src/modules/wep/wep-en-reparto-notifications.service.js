@@ -1,3 +1,4 @@
+import wepSettings from "./wep-settings.service.js";
 import { resolveStopOrders, requireStopOrder } from "./wep-stop-orders.util.js";
 import { enviarTemplateEntregaEnReparto } from "../../services/whatsapp.service.js";
 import { sanitizeProviderError } from "./wep-client-notice.service.js";
@@ -25,6 +26,11 @@ export class WepEnRepartoNotificationsService {
   }
 
   async notifyTransitionedStops({ viajeId, entregaIds }) {
+    const runtime = wepSettings.enabled() ? await wepSettings.runtime() : null;
+    const template = runtime?.config.meta.templates.enReparto;
+    const templateName = template?.name ?? this.templateName;
+    const templateLanguage = template?.language ?? this.templateLanguage;
+    if (runtime && (runtime.config.meta.paused || !template.enabled)) return { enviadas: 0, yaNotificadas: 0, sinTelefono: 0, errores: 0, skipped: "WEP_WHATSAPP_PAUSED" };
     const summary = {
       enviadas: 0,
       yaNotificadas: 0,
@@ -43,7 +49,7 @@ export class WepEnRepartoNotificationsService {
       try {
         reservation = await this.repository.reserveStop({
           stop,
-          templateName: this.templateName,
+          templateName: templateName,
         });
         if (
           reservation.result === "YA_NOTIFICADA" ||
@@ -76,15 +82,15 @@ export class WepEnRepartoNotificationsService {
         );
         const sent = await this.whatsappSender({
           telefono: stop.telefonoDestino,
-          templateName: this.templateName,
-          templateLanguage: this.templateLanguage,
+          templateName: templateName,
+          templateLanguage: templateLanguage,
           publicId: tracking.publicId,
           pedidoPrincipal,
         });
         await this.repository.confirmSent({
           notificationId: reservation.notificationId,
           messageId: sent.messageId,
-          templateName: sent.templateName || this.templateName,
+          templateName: sent.templateName || templateName,
         });
         summary.enviadas += 1;
         this.logger.log(`[WEP EN_REPARTO] ENVIADA grupoId=${stop.grupoId}`);

@@ -69,6 +69,8 @@ test("configura el PIN usando bcrypt con coste 12 y nunca persiste el PIN plano"
       },
     },
     repository: {
+      async runInTransaction(callback) { return callback(this); },
+      async revokeActiveVehicleTokens(id) { calls.push(["revoke", id]); },
       async findVehicleById(id) {
         calls.push(["find", id]);
         return VEHICLE;
@@ -85,6 +87,7 @@ test("configura el PIN usando bcrypt con coste 12 y nunca persiste el PIN plano"
     ["find", 3],
     ["hash", "123456", 12],
     ["update", 3, "hash-bcrypt"],
+    ["revoke", 3],
   ]);
   assert.notEqual(calls[2][2], "123456");
 });

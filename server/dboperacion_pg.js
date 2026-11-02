@@ -4298,8 +4298,8 @@ async function simulador_mediosdepagos() {
 
 async function createArticuloNuevoWeb(codigo_art, nombre_art) {
   const result = await pool.query(
-    `INSERT INTO public.articulos (publicado, codigo_art, nombre_art, marcar_nuevo, mostrar_inicio, outlet, orden_art, bloq_vtas, min_para_web, stock, categorias1, categorias2, categorias3, categorias4)
-     SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14
+    `INSERT INTO public.articulos (publicado, codigo_art, nombre_art, marcar_nuevo, mostrar_inicio, outlet, orden_art, bloq_vtas, min_para_web, stock, categorias1, categorias2, categorias3, categorias4, copete, descripcion)
+     SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16
      WHERE NOT EXISTS (
        SELECT 1 FROM public.articulos WHERE codigo_art = $2
      )
@@ -4316,6 +4316,8 @@ async function createArticuloNuevoWeb(codigo_art, nombre_art) {
       0,
       0,
       "999999",
+      "",
+      "",
       "",
       "",
       "",

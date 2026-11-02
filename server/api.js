@@ -46,6 +46,7 @@ import wepRouter from "./src/modules/wep/wep.routes.js";
 import wepAdminRouter from "./src/modules/wep/wep-admin.routes.js";
 import wepSyncScheduler from "./src/modules/wep/wep-sync-scheduler.js";
 import wepProgrammedScheduler from "./src/modules/wep/wep-programmed-scheduler.js";
+import wepSettingsRuntime from "./src/modules/wep/wep-settings-runtime.js";
 // import { sincronizarCompleto } from "./sync-productos-cateogorias.js";
 import { sincronizarCompletoV2 } from "./sync-productos-categorias.v2.js";
 // import { syncOpenAI } from "./sync-openai.js";
@@ -69,7 +70,7 @@ if (process.env.NODE_APP_INSTANCE === "0") {
 }
 
 try {
-  wepSyncScheduler.start();
+  if (process.env.WEP_SETTINGS_ENABLED !== "true") wepSyncScheduler.start();
 } catch (error) {
   console.error(
     "Error inicializando sincronización automática WEP:",
@@ -78,10 +79,12 @@ try {
 }
 
 try {
-  wepProgrammedScheduler.start();
+  if (process.env.WEP_SETTINGS_ENABLED !== "true") wepProgrammedScheduler.start();
 } catch (error) {
   console.error("Error inicializando avisos automáticos WEP:", error?.message);
 }
+
+wepSettingsRuntime.start();
 
 duplicateTransferScheduler
   .start()

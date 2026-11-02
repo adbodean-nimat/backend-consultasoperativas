@@ -7,6 +7,7 @@ function fixture(env = { WEP_SYNC_ENABLED: "true" }, synchronize = async () => (
   const calls = [];
   const task = { start() { calls.push("start"); }, stop() { calls.push("stop"); }, destroy() { calls.push("destroy"); } };
   const scheduler = new WepSyncScheduler({ env, logger, service: { synchronize },
+    monitor: { async start() { return null; }, async finish() {} }, settings: { enabled: () => false },
     now: () => new Date("2026-10-28T02:30:00Z"),
     scheduler: { createTask(expression, callback, options) { calls.push({ expression, callback, options }); return task; } },
   });

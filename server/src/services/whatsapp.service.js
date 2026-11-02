@@ -1,3 +1,4 @@
+import wepSettings from "../modules/wep/wep-settings.service.js";
 import { requireStopOrder } from "../modules/wep/wep-stop-orders.util.js";
 import fs from "fs";
 import path from "path";
@@ -9,13 +10,6 @@ const {
   WABA_PHONE_NUMBER_ID,
   WHATSAPP_TEMPLATE_NAME,
   WHATSAPP_TEMPLATE_LANG,
-  WEP_WHATSAPP_TEMPLATE_NAME,
-  WEP_WHATSAPP_TEMPLATE_LANG,
-  WEP_WHATSAPP_TEMPLATE_PROGRAMADA,
-  WEP_WHATSAPP_TEMPLATE_PROGRAMADA_LANG,
-  WEP_WHATSAPP_TEMPLATE_EN_REPARTO,
-  WEP_WHATSAPP_TEMPLATE_EN_CAMINO,
-  WEP_WHATSAPP_TEMPLATE_EN_CAMINO_LANG,
   WABA_VERSION,
 } = process.env;
 
@@ -217,58 +211,34 @@ async function enviarTemplateDeudaConPdf({
   };
 }
 
-async function enviarTemplateEntregaEnCamino({ telefono, nombreCliente }) {
-  validarConfigWhatsapp(
-    WEP_WHATSAPP_TEMPLATE_NAME,
-    "WEP_WHATSAPP_TEMPLATE_NAME",
-  );
-
-  const telefonoLimpio = limpiarTelefonoWhatsapp(telefono);
-  if (!telefonoLimpio) {
-    throw new Error("Teléfono WhatsApp vacío o inválido");
+async function sendWepPayload(type, options, buildPayload) {
+  const config = await wepSettings.whatsapp(type, options);
+  const body = buildPayload({ ...options, templateName: config.templateName, templateLanguage: config.templateLanguage });
+  const url = `https://graph.facebook.com/${config.apiVersion}/${config.phoneNumberId}/messages`;
+  // Axios incluye Authorization y datos del destinatario: no propagar su error original.
+  let response;
+  try {
+    response = await axios.post(url, body, { headers: { Authorization: `Bearer ${config.token}`, "Content-Type": "application/json" }, timeout: 60000 });
+  } catch (cause) {
+    const error = new Error("No se pudo enviar el aviso de WEP a Meta");
+    error.status = Number(cause.response?.status) || null;
+    error.meta = { error: { code: Number(cause.response?.data?.error?.code) || null, message: "No se pudo enviar el aviso de WEP a Meta" } };
+    throw error;
   }
-
-  const url = `https://graph.facebook.com/${WABA_VERSION}/${WABA_PHONE_NUMBER_ID}/messages`;
-  const body = {
-    messaging_product: "whatsapp",
-    recipient_type: "individual",
-    to: telefonoLimpio,
-    type: "template",
-    template: {
-      name: WEP_WHATSAPP_TEMPLATE_NAME,
-      language: {
-        code: WEP_WHATSAPP_TEMPLATE_LANG || "es_AR",
-      },
-      components: [
-        {
-          type: "body",
-          parameters: [
-            {
-              type: "text",
-              text: String(nombreCliente || "cliente"),
-            },
-          ],
-        },
-      ],
-    },
-  };
-
-  const response = await postMetaWhatsapp(url, body, {
-    headers: {
-      Authorization: `Bearer ${WHATSAPP_TOKEN}`,
-      "Content-Type": "application/json",
-    },
-    timeout: 60000,
-  });
   const messageId = response.data?.messages?.[0]?.id;
-  if (!messageId) {
-    throw new Error("Meta no devolvió un identificador de mensaje");
-  }
+  if (!messageId) throw new Error("Meta no devolvió un identificador de mensaje");
+  return { messageId, templateName: config.templateName };
+}
 
-  return {
-    messageId,
-    templateName: WEP_WHATSAPP_TEMPLATE_NAME,
-  };
+async function enviarTemplateEntregaEnCamino(options) {
+  return sendWepPayload("legacy", options, ({ telefono, nombreCliente, templateName, templateLanguage }) => {
+    const to = limpiarTelefonoWhatsapp(telefono);
+    if (!to) throw new Error("Teléfono WhatsApp vacío o inválido");
+    return { messaging_product: "whatsapp", recipient_type: "individual", to, type: "template",
+      template: { name: templateName, language: { code: templateLanguage }, components: [
+        { type: "body", parameters: [{ type: "text", text: String(nombreCliente || "cliente") }] },
+      ] } };
+  });
 }
 
 // Llegada estimada: BODY pedido/ETA; botón URL publicId independiente.
@@ -318,40 +288,8 @@ function buildEnCaminoEtaTemplatePayload({
   };
 }
 
-async function enviarTemplateEntregaEnCaminoConEta({
-  telefono,
-  templateName = WEP_WHATSAPP_TEMPLATE_EN_CAMINO,
-  templateLanguage =
-    WEP_WHATSAPP_TEMPLATE_EN_CAMINO_LANG || WEP_WHATSAPP_TEMPLATE_LANG || "es_AR",
-  etaMinutes,
-  pedidoPrincipal,
-  publicId,
-}) {
-  validarConfigWhatsapp(
-    templateName,
-    "WEP_WHATSAPP_TEMPLATE_EN_CAMINO",
-  );
-  const body = buildEnCaminoEtaTemplatePayload({
-    telefono,
-    templateName,
-    templateLanguage,
-    etaMinutes,
-    pedidoPrincipal,
-    publicId,
-  });
-  const url = `https://graph.facebook.com/${WABA_VERSION}/${WABA_PHONE_NUMBER_ID}/messages`;
-  const response = await postMetaWhatsapp(url, body, {
-    headers: {
-      Authorization: `Bearer ${WHATSAPP_TOKEN}`,
-      "Content-Type": "application/json",
-    },
-    timeout: 60000,
-  });
-  const messageId = response.data?.messages?.[0]?.id;
-  if (!messageId) {
-    throw new Error("Meta no devolvió un identificador de mensaje");
-  }
-  return { messageId, templateName };
+async function enviarTemplateEntregaEnCaminoConEta(options) {
+  return sendWepPayload(options.approximateArea ? "enCaminoZona" : "enCamino", options, buildEnCaminoEtaTemplatePayload);
 }
 
 // Contrato de wep_programada_test: tres variables BODY (pedido/franja) y el
@@ -399,35 +337,8 @@ function buildProgrammedTemplatePayload({
   };
 }
 
-async function enviarTemplateEntregaProgramada({
-  telefono,
-  templateName = WEP_WHATSAPP_TEMPLATE_PROGRAMADA,
-  templateLanguage = WEP_WHATSAPP_TEMPLATE_PROGRAMADA_LANG || "es_AR",
-  datos,
-  publicId,
-}) {
-  validarConfigWhatsapp(
-    templateName,
-    "WEP_WHATSAPP_TEMPLATE_PROGRAMADA",
-  );
-
-  const body = buildProgrammedTemplatePayload({
-    telefono, templateName, templateLanguage, datos, publicId,
-  });
-  const url = `https://graph.facebook.com/${WABA_VERSION}/${WABA_PHONE_NUMBER_ID}/messages`;
-  const response = await postMetaWhatsapp(url, body, {
-    headers: {
-      Authorization: `Bearer ${WHATSAPP_TOKEN}`,
-      "Content-Type": "application/json",
-    },
-    timeout: 60000,
-  });
-  const messageId = response.data?.messages?.[0]?.id;
-  if (!messageId) {
-    throw new Error("Meta no devolvió un identificador de mensaje");
-  }
-
-  return { messageId, templateName };
+async function enviarTemplateEntregaProgramada(options) {
+  return sendWepPayload(options.test ? "programmedTest" : "programmed", options, buildProgrammedTemplatePayload);
 }
 
 // wep_en_reparto_test: BODY pedido; botón URL publicId independiente.
@@ -470,41 +381,8 @@ function buildEnRepartoTemplatePayload({
   };
 }
 
-async function enviarTemplateEntregaEnReparto({
-  telefono,
-  templateName = WEP_WHATSAPP_TEMPLATE_EN_REPARTO,
-  templateLanguage =
-    WEP_WHATSAPP_TEMPLATE_PROGRAMADA_LANG || WEP_WHATSAPP_TEMPLATE_LANG || "es_AR",
-  pedidoPrincipal,
-  publicId,
-}) {
-  validarConfigWhatsapp(
-    templateName,
-    "WEP_WHATSAPP_TEMPLATE_EN_REPARTO",
-  );
-
-  const url = `https://graph.facebook.com/${WABA_VERSION}/${WABA_PHONE_NUMBER_ID}/messages`;
-  const body = buildEnRepartoTemplatePayload({
-    telefono,
-    templateName,
-    templateLanguage,
-    pedidoPrincipal,
-    publicId,
-  });
-
-  const response = await postMetaWhatsapp(url, body, {
-    headers: {
-      Authorization: `Bearer ${WHATSAPP_TOKEN}`,
-      "Content-Type": "application/json",
-    },
-    timeout: 60000,
-  });
-  const messageId = response.data?.messages?.[0]?.id;
-  if (!messageId) {
-    throw new Error("Meta no devolvió un identificador de mensaje");
-  }
-
-  return { messageId, templateName };
+async function enviarTemplateEntregaEnReparto(options) {
+  return sendWepPayload("enReparto", options, buildEnRepartoTemplatePayload);
 }
 
 export {

@@ -1,6 +1,7 @@
 import cron from "node-cron";
 import wepSyncService from "./wep-sync.service.js";
 import wepMonitorRepository from "./wep-monitor.repository.js";
+import settingsService from "./wep-settings.service.js";
 
 const TIMEZONE = "America/Argentina/Buenos_Aires";
 
@@ -37,8 +38,8 @@ export function wepSyncWindow(now, config) {
 }
 
 export class WepSyncScheduler {
-  constructor({ service = wepSyncService, env = process.env, scheduler = cron, logger = console, now = () => new Date(), monitor = wepMonitorRepository } = {}) {
-    Object.assign(this, { service, env, scheduler, logger, now, monitor });
+  constructor({ service = wepSyncService, env = process.env, scheduler = cron, logger = console, now = () => new Date(), monitor = wepMonitorRepository, settings = settingsService } = {}) {
+    Object.assign(this, { service, env, scheduler, logger, now, monitor, settings });
     this.task = null;
     this.running = false;
   }
@@ -48,6 +49,11 @@ export class WepSyncScheduler {
     this.running = true;
     const runId = await this.monitor.start("SYNC");
     try {
+      if (this.settings.enabled()) {
+        const { config } = await this.settings.runtime();
+        if (!config.sync.enabled || config.sync.blocked) { await this.monitor.finish(runId, "OMITIDA"); return; }
+        this.config = { ...this.config, daysBack: config.sync.daysBack, daysAhead: config.sync.daysAhead };
+      }
       const result = await this.service.synchronize(wepSyncWindow(this.now(), this.config));
       this.logger.info?.("[WEP AUTO SYNC] Resultado", {
         skipped: result.skipped || null,

@@ -19,6 +19,37 @@ test("valida fecha real, filtros y datos de usuario sin truncar contraseñas bcr
   assert.throws(() => validateAdminUser({ username: "abc", displayName: "A", role: "TIC", password: "é".repeat(37) }));
   assert.throws(() => validateAdminUser({ username: "abc", displayName: "A", role: "ADMIN", password: "secure-password" }));
   assert.equal(publicAdminUser(row).password_hash, undefined);
+  for (const input of [{ dias: "0" }, { dias: "365" }, { dias: ["7"] }, { agrupar: "cliente" }]) assert.throws(() => validateDashboardQuery(input));
+  assert.equal(validateDashboardQuery({ dias: "30", agrupar: "parada" }).dias, 30);
+});
+
+test("agrupa y pagina paradas completas antes del límite, conservando todos los pedidos", async () => {
+  const queries = [];
+  const orders = Array.from({ length: 51 }, (_, index) => ({ id: index + 1, pedido: String(index + 1), estado: index ? "PROGRAMADA" : "ENTREGADA" }));
+  const repository = new WepAdminDashboardRepository({ postgresPool: { async query(sql, params) {
+    queries.push({ sql, params });
+    if (sql.includes("COUNT(*)::int AS total")) return { rows: [{ total: 151, paradas: 51 }] };
+    if (sql.includes("SELECT group_key, orders FROM grouped")) return { rows: [{ group_key: ["10", "C1", "CALLE 100", "CONCORDIA"], orders }] };
+    if (sql.includes("generate_series")) return { rows: [{ fecha: "2026-10-29", paradas: 1, completadas: 0, pedidos: 51, pedidos_entregados: 1 }] };
+    return { rows: [] };
+  } } });
+  const result = await repository.dashboard(validateDashboardQuery({ fecha: "2026-10-29", agrupar: "parada", dias: "7", page: "2", vehiculo: "2", q: "pedido", estado: "PROGRAMADA" }));
+  assert.equal(result.grouping, "parada");
+  assert.equal(result.totalGroups, 51);
+  assert.equal(result.groups.length, 1);
+  assert.equal(result.groups[0].orders.length, 51);
+  assert.equal(result.deliveries.length, 51);
+  assert.match(result.groups[0].id, /^stop_[a-f0-9]{12}$/);
+  const detail = queries.find(query => query.sql.includes("SELECT group_key, orders FROM grouped"));
+  assert.ok(detail.sql.indexOf("GROUP BY group_key") < detail.sql.indexOf("LIMIT 50"));
+  assert.equal(detail.params[4], 50);
+  assert.match(detail.sql, /e.orden_preparacion_numero::text AS op_numero/);
+  assert.match(detail.sql, /e.nota_pedido_division AS pedido_division/);
+  const trend = queries.find(query => query.sql.includes("generate_series"));
+  assert.deepEqual(trend.params, ["2026-10-29", 2, 7]);
+  assert.match(trend.sql, /LEFT JOIN stops ON stops.fecha = days.fecha/);
+  assert.match(trend.sql, /stops.pedidos = stops.pedidos_entregados/);
+  assert.equal(result.trend[0].completadas, 0);
 });
 
 test("login emite sesión acotada y verifica revocación/rol en base en cada solicitud", async () => {
@@ -107,6 +138,7 @@ test("el scheduler guarda simulación o errores de avisos para que otra instanci
     const recorded = [];
     const scheduler = new WepProgrammedScheduler({
       env: { WEP_PROGRAMMED_ENABLED: "true", WEP_PROGRAMMED_DRY_RUN: "true" },
+      settings: { enabled: () => false },
       now: () => new Date("2026-10-29T12:00:00Z"), logger: { info() {}, error() {} },
       scheduler: { createTask() { return { start() {} }; } },
       monitor: { async start(job) { recorded.push(job); return 12; }, async finish(...args) { recorded.push(args); } },

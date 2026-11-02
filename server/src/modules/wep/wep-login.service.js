@@ -33,7 +33,11 @@ export class WepLoginService {
     }
 
     const pinHash = await this.passwordHasher.hash(pin, BCRYPT_ROUNDS);
-    return this.repository.updateVehiclePin(vehiculoId, pinHash);
+    return this.repository.runInTransaction(async transaction => {
+      const updated = await transaction.updateVehiclePin(vehiculoId, pinHash);
+      await transaction.revokeActiveVehicleTokens(vehiculoId);
+      return updated;
+    });
   }
 
   async login(vehiculoId, pin) {

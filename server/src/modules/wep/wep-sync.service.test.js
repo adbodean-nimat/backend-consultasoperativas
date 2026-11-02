@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { WepSyncService } from "./wep-sync.service.js";
+import { defaultWepSettings } from "./wep-settings.service.js";
 
 const sourceRow = {
   DivisionOrdenPreparacion: "01",
@@ -332,4 +333,16 @@ test("ignora por completo códigos ERP distintos de 101, 102 y 103", async () =>
     database.queries.some(({ params }) => params?.includes("114")),
     false,
   );
+});
+
+
+test("usa códigos ERP configurados y permite importación manual con cron pausado", async () => {
+  const database = createDatabase();
+  const service = createService(database, [sourceRow, { ...sourceRow, CodigoVehiculo: "999", NumeroOrdenPreparacion: 777, PatenteVehiculo: "ZZ123AA" }]);
+  const config = defaultWepSettings({}); config.sync.enabled = false; config.sync.vehicleCodes = ["999"];
+  service.settings = { async runtime() { return { config }; } };
+  const result = await service.synchronize(filters);
+  assert.equal(result.entregas.procesadas, 1);
+  const vehicles = database.queries.filter(q => q.sql.includes("public.vehiculos"));
+  assert.equal(vehicles.length, 1); assert.equal(vehicles[0].params[0], "999");
 });

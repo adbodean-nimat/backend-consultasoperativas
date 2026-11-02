@@ -171,7 +171,7 @@ async function getWebNimat() {
         }
       }
     }
-    console.log("Resultados art.:", results.length);
+    //console.log("Resultados art.:", results.length);
     return results;
   } catch (error) {
     console.error(error);
@@ -326,7 +326,7 @@ async function getWebNimatCombo() {
         }
       }
     }
-    console.log("Resultados combos:", results.length);
+    // console.log("Resultados combos:", results.length);
     return results;
   } catch (error) {
     console.error(error);

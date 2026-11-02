@@ -2,9 +2,10 @@ import express from "express";
 import authService, { WepAdminError } from "./wep-admin-auth.js";
 import dashboardRepository, { validateDashboardQuery } from "./wep-admin-dashboard.repository.js";
 import { createWepLoginRateLimit } from "./wep-login-rate-limit.middleware.js";
+import settingsService from "./wep-settings.service.js";
 
 export function createWepAdminRouter({ auth = authService, repository = dashboardRepository,
-  loginRateLimit = createWepLoginRateLimit() } = {}) {
+  loginRateLimit = createWepLoginRateLimit(), settings = settingsService } = {}) {
   const router = express.Router();
   router.use((_req, res, next) => { res.set("Cache-Control", "no-store"); next(); });
   const handle = fn => async (req, res, next) => { try { await fn(req, res); } catch (error) { next(error); } };
@@ -21,6 +22,14 @@ export function createWepAdminRouter({ auth = authService, repository = dashboar
   router.get("/dashboard", handle(async (req, res) => res.json({ ok: true, ...await repository.dashboard(validateDashboardQuery(req.query)) })));
   router.get("/technical", tic, handle(async (req, res) => res.json({ ok: true, ...await repository.technical(validateDashboardQuery(req.query).fecha) })));
   router.get("/users", tic, handle(async (_req, res) => res.json({ ok: true, users: await auth.listUsers() })));
+  router.get("/settings", tic, handle(async (_req, res) => res.json({ ok: true, ...await settings.read() })));
+  router.put("/settings", tic, handle(async (req, res) => res.json({ ok: true, ...await settings.save(req.body, req.wepAdmin) })));
+  router.get("/settings/history", tic, handle(async (_req, res) => res.json({ ok: true, history: await settings.history() })));
+  router.get("/vehicles", tic, handle(async (_req, res) => res.json({ ok: true, vehicles: await settings.vehicles() })));
+  router.patch("/vehicles/:id", tic, handle(async (req, res) => {
+    if (!/^[1-9]\d{0,12}$/.test(req.params.id)) throw new WepAdminError("Camión inválido.");
+    res.json(await settings.saveVehicle(Number(req.params.id), req.body, req.wepAdmin));
+  }));
   router.post("/users", tic, handle(async (req, res) => res.status(201).json({ ok: true, user: await auth.saveUser(req.body) })));
   router.patch("/users/:id", tic, handle(async (req, res) => {
     if (!/^[1-9]\d{0,8}$/.test(req.params.id)) throw new WepAdminError("Usuario inválido.");

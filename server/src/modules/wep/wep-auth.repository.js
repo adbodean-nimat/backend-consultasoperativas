@@ -30,6 +30,7 @@ export class WepAuthRepository {
        INNER JOIN public.vehiculos v
          ON v.id = vt.vehiculo_id
        WHERE vt.token_hash = $1
+         AND v.activo = TRUE AND v.es_externo = FALSE AND v.wep_login_activo = TRUE
        LIMIT 1`,
       [tokenHash],
     );

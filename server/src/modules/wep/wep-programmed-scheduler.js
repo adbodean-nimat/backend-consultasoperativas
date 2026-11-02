@@ -1,6 +1,7 @@
 import cron from "node-cron";
 import wepSyncService from "./wep-sync.service.js";
 import wepMonitorRepository from "./wep-monitor.repository.js";
+import settingsService from "./wep-settings.service.js";
 import wepProgrammedNotificationsService, { getBusinessDate, WEP_BUSINESS_TIME_ZONE } from "./wep-programmed-notifications.service.js";
 
 function boolean(env, key, fallback) {
@@ -31,8 +32,8 @@ export function buildWepProgrammedSchedule(env = process.env) {
 export class WepProgrammedScheduler {
   constructor({ env = process.env, syncService = wepSyncService,
     notificationsService = wepProgrammedNotificationsService,
-    scheduler = cron, logger = console, now = () => new Date(), monitor = wepMonitorRepository } = {}) {
-    Object.assign(this, { env, syncService, notificationsService, scheduler, logger, now, monitor });
+    scheduler = cron, logger = console, now = () => new Date(), monitor = wepMonitorRepository, settings = settingsService } = {}) {
+    Object.assign(this, { env, syncService, notificationsService, scheduler, logger, now, monitor, settings });
     this.task = null;
     this.running = false;
   }
@@ -49,6 +50,16 @@ export class WepProgrammedScheduler {
     this.running = true;
     const runId = await this.monitor.start("PROGRAMADA");
     try {
+      if (this.settings.enabled()) {
+        const { config } = await this.settings.runtime();
+        const p = config.programmed;
+        const businessDay = new Date(`${getBusinessDate(now)}T12:00:00Z`).getUTCDay();
+        const minute = value => Number(value.slice(0, 2)) * 60 + Number(value.slice(3));
+        if (!p.enabled || config.sync.blocked || !p.weekdays.includes(businessDay) || current < minute(p.start) || current >= minute(p.end)) {
+          await this.monitor.finish(runId, "OMITIDA"); return;
+        }
+        this.config = { ...this.config, dryRun: p.dryRun };
+      }
       const fecha = getBusinessDate(now);
       const sync = await this.syncService.synchronize({ fechaDesde: fecha, fechaHasta: fecha, vehiculo: null, vuelta: null });
       // Una importación omitida o fallida no habilita el envío sobre datos anteriores.
@@ -56,9 +67,14 @@ export class WepProgrammedScheduler {
         await this.monitor.finish(runId, "OMITIDA");
         return;
       }
+      if (this.settings.enabled()) {
+        const { config } = await this.settings.runtime();
+        if (!config.programmed.enabled || config.sync.blocked) { await this.monitor.finish(runId, "OMITIDA"); return; }
+        this.config = { ...this.config, dryRun: config.programmed.dryRun };
+      }
       const result = await this.notificationsService.processProgrammedDeliveryNotifications({ fecha, dryRun: this.config.dryRun });
       this.logger.info?.("[WEP AUTO PROGRAMADA] Resultado", { fecha, dryRun: this.config.dryRun, resumen: result.resumen });
-      await this.monitor.finish(runId, result.resumen?.errores > 0 ? "ERROR" : this.config.dryRun ? "SIMULACION" : "OK", result.resumen);
+      await this.monitor.finish(runId, result.skipped ? "OMITIDA" : result.resumen?.errores > 0 ? "ERROR" : this.config.dryRun ? "SIMULACION" : "OK", result.resumen);
     } catch {
       // No exponer respuestas de Meta, credenciales ni datos de clientes.
       this.logger.error?.("[WEP AUTO PROGRAMADA] Falló la ejecución; revisar sincronización y notificaciones WEP");

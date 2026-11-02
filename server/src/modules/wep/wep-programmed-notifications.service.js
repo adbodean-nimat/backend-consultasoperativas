@@ -1,3 +1,4 @@
+import wepSettings from "./wep-settings.service.js";
 import { resolveStopOrders, requireStopOrder } from "./wep-stop-orders.util.js";
 import { enviarTemplateEntregaProgramada } from "../../services/whatsapp.service.js";
 import { sanitizeProviderError } from "./wep-client-notice.service.js";
@@ -78,7 +79,12 @@ export class WepProgrammedNotificationsService {
     fecha = getBusinessDate(),
     dryRun = true,
   } = {}) {
-    if (!dryRun && !this.templateName) {
+    const runtime = wepSettings.enabled() ? await wepSettings.runtime() : null;
+    const template = runtime?.config.meta.templates.programmed;
+    const templateName = template?.name ?? this.templateName;
+    const templateLanguage = template?.language ?? this.templateLanguage;
+    if (!dryRun && runtime && (runtime.config.meta.paused || !template.enabled)) return { ok: true, fecha, dryRun, skipped: "WEP_WHATSAPP_PAUSED", resumen: { paradasEncontradas: 0, listasParaEnviar: 0, enviadas: 0, yaNotificadas: 0, sinTelefono: 0, errores: 0 }, resultados: [] };
+    if (!dryRun && !templateName) {
       throw new WepProgrammedTemplateNotConfiguredError(
         "Plantilla PROGRAMADA no configurada",
       );
@@ -134,7 +140,7 @@ export class WepProgrammedNotificationsService {
           fecha,
           viajeId: stop.viajeId,
           grupoId: stop.grupoId,
-          templateName: this.templateName,
+          templateName: templateName,
         });
         requireStopOrder(resolveStopOrders(reservation.stop.entregas).pedidoPrincipal);
         const tracking = await this.trackingService.getOrCreateTrackingForStop({
@@ -149,15 +155,15 @@ export class WepProgrammedNotificationsService {
         );
         const sent = await this.whatsappSender({
           telefono: reservation.telefonoDestino,
-          templateName: this.templateName,
-          templateLanguage: this.templateLanguage,
+          templateName: templateName,
+          templateLanguage: templateLanguage,
           datos,
           publicId: tracking.publicId,
         });
         await this.repository.confirmSent({
           notificationId: reservation.notificationId,
           messageId: sent.messageId,
-          templateName: sent.templateName || this.templateName,
+          templateName: sent.templateName || templateName,
         });
         summary.enviadas += 1;
         resultados.push(
@@ -204,7 +210,7 @@ export class WepProgrammedNotificationsService {
       ok: true,
       fecha,
       dryRun,
-      plantillaConfigurada: Boolean(this.templateName),
+      plantillaConfigurada: Boolean(templateName),
       resumen: summary,
       resultados,
     };

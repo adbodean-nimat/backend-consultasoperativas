@@ -1,5 +1,9 @@
 # Centro de control WEP
 
+La edición de parámetros y accesos se documenta en [SETTINGS.md](SETTINGS.md).
+Con ese módulo habilitado, TIC también dispone de Configuración y Camiones y
+accesos; las restricciones de solo lectura siguientes describen el tablero base.
+
 Frontend: `/administracion/login` y `/administracion`. API:
 `/api/wep/control`. Usa cuentas propias en PostgreSQL WEP, sin Active Directory
 ni PIN del vehículo. No hay registro público ni usuarios/contraseñas iniciales.
@@ -52,8 +56,31 @@ La migración no activa envíos de WhatsApp ni desactiva la tarea 73.
 - Hora de Argentina en filtros y marcas temporales; actualización cada minuto
   mientras la pestaña está visible. Puede pausarse o actualizarse manualmente.
 - Indicadores y tabla filtrados por fecha de entrega, vehículo, estado y búsqueda
-  literal por cliente/pedido/localidad. Paginación de 50 órdenes en el servidor.
-- Entregas = órdenes; los avisos = registros de notificación, no clientes únicos.
+  literal por cliente/pedido/localidad. La PWA solicita `agrupar=parada`: paginación
+  de 50 paradas completas en el servidor. Los pedidos de una parada no se cortan
+  entre páginas. Sin ese parámetro se mantiene la respuesta por órdenes anterior.
+- Una parada agrupa por viaje, código de cliente, domicilio y localidad
+  normalizados, igual que la aplicación de choferes. Distintos destinos o viajes
+  del mismo cliente siguen separados. `groups[].orders` conserva los pedidos que
+  coinciden con los filtros, con su estado, franja y aviso propio. `totalGroups`
+  indica el total filtrado; `summary.total` sigue contando registros de entrega/OP.
+- Cada registro de entrega corresponde a una orden de preparación (OP), no a
+  una nota de pedido única. Varias OP pueden referenciar el mismo pedido. El
+  detalle visual agrupa por división, tipo y número de nota de pedido dentro de
+  cada parada. Presenta una sola franja, estado y aviso por pedido, sin exponer
+  las OP. Estados mixtos se resumen como entrega parcial o con incidencias;
+  horarios diferentes requieren confirmar la franja. Se toma el aviso más
+  reciente y no se deja que un registro sin aviso anule otro existente; errores
+  sin fecha se priorizan para no ocultarlos. Los campos
+  `pedido_division`, `pedido_tipo`, `op_division`, `op_tipo` y `op_numero` permiten
+  distinguir los documentos sin descartar registros. Los agregados históricos
+  `total`, `entregadas` y `trend[].pedidos` cuentan registros/OP.
+- Con `agrupar=parada`, `trend` devuelve 7, 14 o 30 días (`dias`, por defecto 14),
+  hasta `fecha`, con días vacíos en cero. Aplica vehículo; no aplica estado ni
+  búsqueda. Cuenta paradas y pedidos por **fecha programada**, con su estado
+  actual. Una parada cuenta como completada sólo si todos sus pedidos están
+  ENTREGADA; no representa la cantidad de confirmaciones ocurridas ese día.
+- Los avisos = registros de notificación, no clientes únicos.
   La tabla muestra el último aviso anclado a cada orden; un aviso de parada puede
   estar registrado en otra orden de la misma parada. PROGRAMADA_TEST se excluye
   de la vista operativa y se incluye en los errores técnicos.

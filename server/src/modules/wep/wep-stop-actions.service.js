@@ -1,5 +1,6 @@
 import { resolveStopOrders } from "./wep-stop-orders.util.js";
 import { enviarTemplateEntregaEnCaminoConEta } from "../../services/whatsapp.service.js";
+import wepSettings from "./wep-settings.service.js";
 import geocodingService from "./geocoding.service.js";
 import gestyaService from "./gestya.service.js";
 import routingService from "./routing.service.js";
@@ -256,7 +257,8 @@ export class WepStopActionsService {
           throw new Error("El geocodificador devolvió coordenadas inválidas");
         }
         approximateArea = destination.approximateArea === true;
-        if (approximateArea && !this.approximateAreaTemplateName) {
+        const areaTemplate = wepSettings.enabled() ? (await wepSettings.runtime()).config.meta.templates.enCaminoZona.name : this.approximateAreaTemplateName;
+        if (approximateArea && !areaTemplate) {
           throw new Error("Falta WEP_WHATSAPP_TEMPLATE_EN_CAMINO_ZONA");
         }
         if (allowPersistentCoordinateCache && !approximateArea) {
@@ -317,6 +319,7 @@ export class WepStopActionsService {
       sent = await this.whatsappSender({
         telefono: reservation.telefonoDestino,
         templateName: selectedTemplateName,
+        approximateArea,
         etaMinutes: etaSent,
         pedidoPrincipal,
         publicId: tracking.publicId,

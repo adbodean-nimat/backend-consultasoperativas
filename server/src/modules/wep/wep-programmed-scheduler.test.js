@@ -7,6 +7,7 @@ function fixture({ env = {}, synchronize = async () => ({ ok: true }), process =
   let instant = new Date(now);
   const task = { start() {}, stop() {}, destroy() {} };
   const scheduler = new WepProgrammedScheduler({
+    monitor: { async start() { return null; }, async finish() {} }, settings: { enabled: () => false },
     env: { WEP_PROGRAMMED_ENABLED: "true", ...env },
     now: () => instant, logger: { info() {}, error() { events.push("error"); } },
     scheduler: { createTask(expression, callback, options) { events.push({ expression, callback, options }); return task; } },
@@ -88,4 +89,17 @@ test("omite solapamientos y vuelve a ejecutar después de un fallo", async () =>
   await f.scheduler.execute();
   assert.equal(calls, 2);
   assert.equal(f.scheduler.running, false);
+});
+
+
+test("la configuración compartida restringe días y vuelve a comprobar el bloqueo tras importar", async () => {
+  const config = { sync: { blocked: false }, programmed: { enabled: true, weekdays: [5], start: "06:00", end: "21:00", dryRun: true } };
+  let imports = 0, sends = 0;
+  const f = fixture({ synchronize: async () => { imports++; config.sync.blocked = true; return { ok: true }; }, process: async () => { sends++; return {}; } });
+  f.scheduler.settings = { enabled: () => true, async runtime() { return { config }; } };
+  f.scheduler.start();
+  await f.scheduler.execute(); assert.equal(imports, 0); // jueves, no viernes
+  config.programmed.weekdays = [4];
+  await f.scheduler.execute(); assert.equal(imports, 1); assert.equal(sends, 0);
+  f.scheduler.stop();
 });

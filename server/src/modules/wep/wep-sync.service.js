@@ -2,6 +2,7 @@ import wepRepository from "./wep.repository.js";
 import wepPostgresPool from "./wep-postgres.js";
 import { normalizePlate } from "./plate.util.js";
 import wepSyncTrackingService from "./wep-sync-tracking.service.js";
+import settingsService from "./wep-settings.service.js";
 
 const ALLOWED_VEHICLE_ERP_CODES = new Set(["101", "102", "103"]);
 
@@ -172,7 +173,7 @@ function entityKey(parts) {
   return JSON.stringify(parts);
 }
 
-function prepareRows(rows) {
+function prepareRows(rows, allowedVehicleCodes = ALLOWED_VEHICLE_ERP_CODES) {
   const quality = {
     codigoVehiculoVacio: 0,
     codigoVehiculoNoPermitido: 0,
@@ -198,7 +199,7 @@ function prepareRows(rows) {
     const orderType = textOrNull(row.TipoOrdenPreparacion);
     const orderNumber = textOrNull(row.NumeroOrdenPreparacion);
     const exclusionReasons = [];
-    const codigoErpPermitido = ALLOWED_VEHICLE_ERP_CODES.has(codigoErp);
+    const codigoErpPermitido = allowedVehicleCodes.has(codigoErp);
 
     if (!codigoErp) {
       quality.codigoVehiculoVacio += 1;
@@ -267,7 +268,8 @@ function normalizeSqlTime(value) {
 }
 
 export class WepSyncService {
-  constructor({ sourceRepository, postgresPool, logger, syncTrackingService } = {}) {
+  constructor({ sourceRepository, postgresPool, logger, syncTrackingService, settings = settingsService } = {}) {
+    this.settings = settings;
     this.sourceRepository = sourceRepository || wepRepository;
     this.postgresPool = postgresPool || wepPostgresPool;
     this.logger = logger || console;
@@ -275,6 +277,8 @@ export class WepSyncService {
   }
 
   async synchronize(filters) {
+    const { config } = await this.settings.runtime();
+    if (config.sync.blocked) return { ok: true, skipped: "IMPORTS_BLOCKED", message: "Todas las importaciones de WEP están bloqueadas" };
     this.logger.info?.(
       `[WEP SYNC] Inicio ${filters.fechaDesde} -> ${filters.fechaHasta}`,
     );
@@ -297,7 +301,7 @@ export class WepSyncService {
       const rows = await this.sourceRepository.getEntregasProgramadas(filters);
       this.logger.info?.(`[WEP SYNC] Filas ERP recibidas: ${rows.length}`);
 
-      const { prepared, quality } = prepareRows(rows);
+      const { prepared, quality } = prepareRows(rows, new Set(config.sync.vehicleCodes));
       const ignoredVehicleCodes = [
         ...new Set(
           prepared

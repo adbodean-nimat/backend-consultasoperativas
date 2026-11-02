@@ -1,3 +1,4 @@
+import wepSettings from "./wep-settings.service.js";
 import { requireStopOrder } from "./wep-stop-orders.util.js";
 import { enviarTemplateEntregaProgramada } from "../../services/whatsapp.service.js";
 import { sanitizeProviderError } from "./wep-client-notice.service.js";
@@ -43,7 +44,11 @@ export class WepProgrammedNotificationTestService {
   }
 
   async send({ entregaRepresentativaId, telefono }) {
-    if (!this.templateName) {
+    const runtime = wepSettings.enabled() ? await wepSettings.runtime() : null;
+    const template = runtime?.config.meta.templates.programmedTest;
+    const templateName = template?.name ?? this.templateName;
+    const templateLanguage = template?.language ?? this.templateLanguage;
+    if (!templateName) {
       throw new WepProgrammedTemplateNotConfiguredError(
         "Plantilla PROGRAMADA TEST no configurada",
       );
@@ -80,7 +85,7 @@ export class WepProgrammedNotificationTestService {
     const notificationId = await this.repository.reserveTestNotice({
       entregaId: entregaRepresentativaId,
       telefono,
-      templateName: this.templateName,
+      templateName: templateName,
     });
 
     let sent;
@@ -90,8 +95,9 @@ export class WepProgrammedNotificationTestService {
       );
       sent = await this.whatsappSender({
         telefono,
-        templateName: this.templateName,
-        templateLanguage: this.templateLanguage,
+        templateName: templateName,
+        templateLanguage: templateLanguage,
+        test: true,
         datos: { ...datos, trackingUrl: tracking.url },
         publicId: tracking.publicId,
       });
@@ -109,13 +115,13 @@ export class WepProgrammedNotificationTestService {
     await this.repository.confirmTestSent({
       notificationId,
       messageId: sent.messageId,
-      templateName: sent.templateName || this.templateName,
+      templateName: sent.templateName || templateName,
     });
 
     this.logger.log(
       `[WEP PROGRAMADA TEST] entregaRepresentativaId=${entregaRepresentativaId} ` +
         `grupoId=${stop.grupoId} telefono=${maskPhone(telefono)} ` +
-        `template=${this.templateName} horaDesde=${datos.horaDesde} ` +
+        `template=${templateName} horaDesde=${datos.horaDesde} ` +
         `horaHasta=${datos.horaHasta} publicId=${tracking.publicId} ` +
         `messageId=${sent.messageId}`,
     );
@@ -123,7 +129,7 @@ export class WepProgrammedNotificationTestService {
     return {
       ok: true,
       test: true,
-      template: sent.templateName || this.templateName,
+      template: sent.templateName || templateName,
       telefono,
       grupoId: stop.grupoId,
       entregaRepresentativaId,
