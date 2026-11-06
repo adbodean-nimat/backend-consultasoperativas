@@ -1,3 +1,4 @@
+import { withNotificationRouting } from "./wep-notification-context.js";
 import wepSettings from "./wep-settings.service.js";
 import { resolveStopOrders, requireStopOrder } from "./wep-stop-orders.util.js";
 import { enviarTemplateEntregaProgramada } from "../../services/whatsapp.service.js";
@@ -75,7 +76,11 @@ export class WepProgrammedNotificationsService {
     this.logger = logger;
   }
 
-  async processProgrammedDeliveryNotifications({
+  async processProgrammedDeliveryNotifications(input) {
+    return withNotificationRouting(wepSettings, () => this._processProgrammedDeliveryNotifications(input));
+  }
+
+  async _processProgrammedDeliveryNotifications({
     fecha = getBusinessDate(),
     dryRun = true,
   } = {}) {

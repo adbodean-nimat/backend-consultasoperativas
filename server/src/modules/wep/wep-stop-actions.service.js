@@ -1,3 +1,4 @@
+import { withNotificationRouting } from "./wep-notification-context.js";
 import { resolveStopOrders } from "./wep-stop-orders.util.js";
 import { enviarTemplateEntregaEnCaminoConEta } from "../../services/whatsapp.service.js";
 import wepSettings from "./wep-settings.service.js";
@@ -159,6 +160,10 @@ export class WepStopActionsService {
   }
 
   async notifyStop(viajeId, grupoId, vehiculoId) {
+    return withNotificationRouting(wepSettings, () => this._notifyStop(viajeId, grupoId, vehiculoId));
+  }
+
+  async _notifyStop(viajeId, grupoId, vehiculoId) {
     const context = await this.repository.getStopContext(
       viajeId,
       grupoId,

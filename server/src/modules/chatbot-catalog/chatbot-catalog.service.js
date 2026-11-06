@@ -11,7 +11,9 @@ let cachedSourceModifiedAt = null;
 let pendingLoad = null;
 
 function normalizeSku(value) {
-  return String(value || "").trim().toUpperCase();
+  return String(value || "")
+    .trim()
+    .toUpperCase();
 }
 
 function isTrue(value) {
@@ -58,14 +60,16 @@ function normalizeProduct(item) {
       item?.VisibleIndividually !== false &&
       String(item?.VisibleIndividually).toUpperCase() !== "FALSE" &&
       !isTrue(item?.Deleted);
-  const buyDisabled = item?.DisableBuyButton == null
-    ? !stock.available
-    : isTrue(item.DisableBuyButton);
+  const buyDisabled =
+    item?.DisableBuyButton == null
+      ? !stock.available
+      : isTrue(item.DisableBuyButton);
 
   return {
     sku,
     name: String(metadata.nombre ?? item?.Name ?? "").trim(),
     price: Number.isFinite(rawPrice) ? rawPrice : null,
+    outlet: typeof metadata.outlet === "boolean" ? metadata.outlet : null,
     stock: stock.quantity,
     stockQuantityKnown: stock.quantityKnown,
     active,
@@ -139,7 +143,9 @@ async function loadCatalogIndex() {
 }
 
 export async function findLiveCatalogProducts(requestedSkus) {
-  const uniqueSkus = [...new Set(requestedSkus.map(normalizeSku).filter(Boolean))];
+  const uniqueSkus = [
+    ...new Set(requestedSkus.map(normalizeSku).filter(Boolean)),
+  ];
   const catalogIndex = await loadCatalogIndex();
 
   return {

@@ -1,5 +1,6 @@
 import axios from "axios";
 import { normalizePlate } from "./plate.util.js";
+import { WepSettingsService } from "./wep-settings.service.js";
 
 const DEFAULT_TIMEOUT_MS = 10_000;
 const CURRENT_POSITION_OUTPUT = ["la", "lo", "fp", "se", "ve", "ev", "od"];
@@ -119,7 +120,8 @@ function isTimeoutError(error) {
 }
 
 export class GestyaService {
-  constructor({ httpClient = axios, env = process.env, logger = console } = {}) {
+  constructor({ httpClient = axios, env = process.env, logger = console, settings = new WepSettingsService({ env }) } = {}) {
+    this.settings = settings;
     this.httpClient = httpClient;
     this.env = env;
     this.logger = logger;
@@ -156,7 +158,8 @@ export class GestyaService {
     this.logger.log?.(`[GESTYA] Consultando patente=${plate}`);
 
     try {
-      const { url, user, password, timeout } = this.getConfiguration();
+      const { timeoutMs: timeout } = await this.settings.integration("gestya");
+      const { url, user, password } = this.getConfiguration();
       const response = await this.httpClient.post(
         url,
         {

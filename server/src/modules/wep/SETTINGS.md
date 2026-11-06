@@ -89,6 +89,101 @@ devuelve el token ni esa columna. Vacío conserva el token anterior.
 La interfaz muestra los últimos 50 cambios. Definir con TIC la retención y el
 backup de `wep_settings_audit`, `wep_settings` y `wep_settings_applied`.
 
+## Teléfono global de prueba para WhatsApp
+
+En Meta → Pruebas de WhatsApp, TIC puede guardar un teléfono internacional y
+activar la redirección de todos los avisos WEP. Se guarda en
+`meta.testRouting: { enabled, phone }`, con revisión y auditoría. Se normalizan
+espacios, paréntesis, guiones y el signo +; se exigen 8–15 dígitos internacionales,
+sin cero inicial. Al activar se exige un número válido. No se activa ni se asigna
+un teléfono real como parte del despliegue. Las configuraciones anteriores se
+completan en lectura con el modo desactivado, sin otra migración SQL.
+
+También puede inicializarse mediante `WEP_WHATSAPP_TEST_MODE=true` y
+`WEP_WHATSAPP_TEST_PHONE`, hasta guardar la configuración en PostgreSQL.
+
+La redirección se comprueba en el emisor común, para programada, en reparto,
+en camino, zona aproximada, aviso individual anterior y prueba técnica manual.
+La pausa de WhatsApp y los controles por plantilla conservan prioridad. La
+simulación no envía mensajes. Los avisos de deuda no cambian.
+
+El contexto de cada aviso selecciona el número de prueba incluso si el cliente
+no tiene teléfono, sin modificar columnas de entregas ni teléfonos del ERP. El
+detalle de entrega de la PWA muestra temporalmente el contacto de prueba con
+`contacto.modoPrueba=true`, para habilitar sus acciones. Fuera del contexto de
+notificación, búsquedas públicas y validaciones de identidad conservan el teléfono
+original. El número no se filtra entre peticiones concurrentes. Si se cambia el
+modo o el teléfono durante un envío en curso, ese envío se rechaza antes de
+contactar Meta, en lugar de recurrir a un destinatario real.
+
+**Este modo prueba el flujo operativo, no aísla la base:** los avisos se registran
+y los estados avanzan normalmente. Conserva elegibilidad y deduplicación. Al
+volver a producción no reenvía automáticamente avisos ya enviados al teléfono
+de prueba. Usar datos/base de prueba para recorrer el flujo completo; no borra ni
+reinicia notificaciones o entregas. El endpoint manual de prueba programada sigue
+registrando `PROGRAMADA_TEST` sin marcar la notificación `PROGRAMADA` real.
+
+Se comprobó la conexión de las dos plantillas auxiliares en código:
+
+- **Aviso por cliente · API anterior**: `/pwa/entregas/:id/avisar`. La PWA actual
+  usa el aviso por parada `/pwa/viajes/:viajeId/paradas/:grupoId/avisar` con ETA;
+  se conserva el endpoint anterior para compatibilidad y no se elimina su plantilla.
+- **Prueba de entrega programada · API técnica**:
+  `/admin/notificaciones/programadas/test`. Sigue usando la plantilla de prueba
+  y el registro `PROGRAMADA_TEST`; no corresponde a la tarea automática.
+
+Esto verifica referencias y contratos del sistema, no aprobación/estado actual
+en Meta. No se consultó WhatsApp Manager ni se eliminaron plantillas remotas.
+
+Las dos plantillas auxiliares se configuran **solo en el entorno del backend**,
+sin campos ni interruptores propios en Administración:
+
+- Aviso individual anterior: `WEP_WHATSAPP_TEMPLATE_NAME` y `WEP_WHATSAPP_TEMPLATE_LANG`.
+- Prueba manual: `WEP_WHATSAPP_TEMPLATE_PROGRAMADA_TEST` y
+  `WEP_WHATSAPP_TEMPLATE_PROGRAMADA_TEST_LANG`; si faltan, se conserva el fallback
+  anterior a `WEP_WHATSAPP_TEMPLATE_PROGRAMADA` y su idioma **del entorno**, nunca
+  a valores del tablero.
+
+Los valores auxiliares que pudieran existir en el JSON guardado se ignoran y no
+se devuelven como configuración editable; el siguiente guardado los omite. No
+se requiere migración. Reiniciar la API al cambiar estas variables. La pausa
+global de WhatsApp, el teléfono de prueba y las credenciales exclusivas de WEP
+siguen aplicando a esos endpoints.
+
+## GESTYA, Google y HeiGIT
+
+En Configuración → GPS, direcciones y rutas, TIC puede habilitar/pausar las nuevas
+consultas y definir un timeout de 1000 a 60000 ms para cada proveedor. Se verifica
+el control guardado antes de cada llamada y se conserva en la auditoría. Las
+coordenadas ya disponibles pueden seguir utilizándose al pausar Google. Pausar
+GESTYA no bloquea el registro de entregas: se conserva el manejo existente de
+fallos de posición. Pausar HeiGIT impide nuevos cálculos de ruta/ETA.
+
+Credenciales, endpoints y selección de proveedor siguen en el entorno:
+
+- GESTYA: `GESTYA_URL`, `GESTYA_USER`, `GESTYA_PASSWORD`.
+- Google: `WEP_GOOGLE_GEOCODING_API_KEY`, `WEP_GEOCODING_PROVIDER=google` (predeterminado).
+- HeiGIT: `WEP_ROUTING_API_KEY`, `WEP_ROUTING_PROVIDER=openrouteservice` y
+  `WEP_ROUTING_BASE_URL` si se necesita cambiar el endpoint predeterminado.
+
+Valores iniciales: `GESTYA_TIMEOUT_MS`, `WEP_GEOCODING_TIMEOUT_MS`,
+`WEP_ROUTING_TIMEOUT_MS`; 10000 ms si faltan. Se puede iniciar desactivado con
+`WEP_GESTYA_ENABLED=false`, `WEP_GOOGLE_ENABLED=false` o `WEP_HEIGIT_ENABLED=false`.
+Las configuraciones guardadas antes de este bloque se completan en lectura con
+esos valores iniciales, sin modificar la revisión ni requerir otra migración.
+El siguiente guardado conserva el bloque. Clientes anteriores sin el bloque
+reciben error al guardar para evitar que sobrescriban accidentalmente las pausas.
+
+`POST /api/wep/control/integrations/:provider/test` solo admite TIC, con proveedores
+`gestya`, `google`, `heigit`. Pruebas manuales con configuración guardada: un camión
+registrado, una dirección explícita o coordenadas de origen/destino. Consultan al
+proveedor y pueden consumir cuota; nunca se ejecutan automáticamente ni modifican
+entregas. Límite de una prueba por administrador/proveedor cada 10 segundos por
+instancia. El resultado está acotado a posición/fecha GPS, coordenadas o tiempo y
+distancia; no retorna claves, URLs, cabeceras o errores remotos completos. El
+resultado en pantalla corresponde a la última prueba de esa sesión, no a monitoreo
+continuo. La indicación de configuración presente no afirma conectividad.
+
 ## Camiones y accesos
 
 - Nombre y patente son de consulta; se corrigen en ERP y se actualizan en la

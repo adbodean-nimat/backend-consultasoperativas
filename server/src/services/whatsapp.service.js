@@ -213,7 +213,7 @@ async function enviarTemplateDeudaConPdf({
 
 async function sendWepPayload(type, options, buildPayload) {
   const config = await wepSettings.whatsapp(type, options);
-  const body = buildPayload({ ...options, templateName: config.templateName, templateLanguage: config.templateLanguage });
+  const body = buildPayload({ ...options, telefono: config.testPhone || options.telefono, templateName: config.templateName, templateLanguage: config.templateLanguage });
   const url = `https://graph.facebook.com/${config.apiVersion}/${config.phoneNumberId}/messages`;
   // Axios incluye Authorization y datos del destinatario: no propagar su error original.
   let response;

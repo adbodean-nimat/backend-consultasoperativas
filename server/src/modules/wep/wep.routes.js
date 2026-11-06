@@ -1,3 +1,5 @@
+import wepNotificationSettings from "./wep-settings.service.js";
+import { notificationRouting } from "./wep-notification-context.js";
 import express from "express";
 import { verifyUserToken } from "../../../auth.middleware.js";
 import requireWepVehicle from "./wep-auth.middleware.js";
@@ -97,6 +99,7 @@ import {
 } from "./wep.validator.js";
 
 export function createWepRouter({
+  notificationSettings = wepNotificationSettings,
   repository = wepRepository,
   pwaRepository = wepPwaRepository,
   syncService = wepSyncService,
@@ -647,7 +650,7 @@ export function createWepRouter({
       const id = validatePwaEntregaId(request.params.id);
       console.log(`[WEP PWA] Consultando detalle entrega id=${id}`);
 
-      const entrega = await pwaRepository.getPwaEntregaDetalle(
+      let entrega = await pwaRepository.getPwaEntregaDetalle(
         id,
         request.wepVehicle.id,
       );
@@ -659,6 +662,8 @@ export function createWepRouter({
         });
       }
 
+      const routing = notificationRouting((await notificationSettings.runtime()).config.meta);
+      if (routing.enabled) entrega = { ...entrega, contacto: { ...entrega.contacto, telefono: routing.phone, telefonoAlternativo: null, modoPrueba: true } };
       console.log(`[WEP PWA] Entrega encontrada id=${id}`);
       return response.status(200).json({
         ok: true,

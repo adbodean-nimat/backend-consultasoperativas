@@ -1,4 +1,5 @@
 import { normalizeWepWhatsappPhone } from "./wep-phone.util.js";
+import { testRecipient } from "./wep-notification-context.js";
 import wepPostgresPool from "./wep-postgres.js";
 
 const NOTICE_TYPE = "EN_CAMINO";
@@ -12,6 +13,8 @@ export class WepPwaEntregaPhoneConflictError extends Error {}
 export class WepPwaEntregaNoticeConflictError extends Error {}
 
 export function normalizeAvailablePhone(entrega) {
+  const override = testRecipient();
+  if (override) return override;
   for (const value of [entrega.telefono, entrega.telefono_alternativo]) {
     const normalized = normalizeWepWhatsappPhone(value);
     if (normalized) return normalized;

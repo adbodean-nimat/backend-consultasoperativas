@@ -110,6 +110,73 @@ test("dos órdenes de la misma parada producen un único candidato", () => {
   });
 });
 
+test("cinco pedidos y siete OP generan un solo WhatsApp y no se reenvían al repetir la tarea", async () => {
+  const orders = [890105, 890577, 890577, 890577, 890756, 890763, 890767];
+  const rows = orders.map((pedido, index) => deliveryRow({
+    entrega_id: 101 + index, orden_secuencia: index + 1,
+    orden_preparacion_numero: 500 + index, nota_pedido_numero: pedido,
+    // Espacios y mayúsculas no deben separar una misma dirección.
+    domicilio: index % 2 ? "  SAN MARTÍN   123 " : "San Martín 123",
+    localidad: index % 2 ? " CONCORDIA " : "Concordia",
+  }));
+  let notification = null;
+  let inserts = 0;
+  const sent = [];
+  const joinedRows = () => rows.map(row => ({ ...row,
+    notificacion_id: notification?.entregaId === row.entrega_id ? notification.id : null,
+    notificacion_estado: notification?.entregaId === row.entrega_id ? notification.estado : null,
+  }));
+  const client = {
+    async query(sql, params = []) {
+      if (["BEGIN", "COMMIT", "ROLLBACK"].includes(sql)) return { rows: [] };
+      if (sql.includes("SELECT id FROM public.viajes")) return { rows: [{ id: 10 }] };
+      if (sql.includes("FROM public.entregas e")) return { rows: joinedRows() };
+      if (sql.includes("INSERT INTO public.notificaciones")) {
+        assert.equal(notification, null, "no debe reservar una notificación por cada pedido");
+        assert.equal(params[1], "PROGRAMADA");
+        notification = { id: 77, entregaId: params[0], estado: "PENDIENTE" }; inserts++;
+        return { rows: [{ id: 77, entrega_id: params[0] }] };
+      }
+      if (sql.includes("UPDATE public.notificaciones") && sql.includes("estado = 'ENVIADO'")) {
+        notification.estado = "ENVIADO";
+        return { rows: [{ enviado_at: "2026-11-03T13:00:00Z" }] };
+      }
+      assert.fail(`Consulta inesperada en la prueba: ${sql}`);
+    },
+    release() {},
+  };
+  const repository = new WepProgrammedNotificationsRepository({ postgresPool: { query: (...args) => client.query(...args), async connect() { return client; } } });
+  const service = new WepProgrammedNotificationsService({ repository,
+    templateName: "programada", logger: silentLogger,
+    trackingService: { async getOrCreateTrackingForStop() { return { publicId: "a".repeat(24), url: "https://example.test/s/test" }; } },
+    async whatsappSender(payload) { sent.push(payload); return { messageId: "one-message", templateName: "programada" }; },
+  });
+  const first = await service.processProgrammedDeliveryNotifications({ fecha: "2026-09-18", dryRun: false });
+  assert.equal(first.resumen.paradasEncontradas, 1);
+  assert.equal(first.resumen.enviadas, 1); assert.equal(first.resumen.errores, 0);
+  assert.equal(inserts, 1); assert.equal(sent.length, 1);
+  assert.deepEqual(sent[0].datos.pedido, { principal: "890105", otros: ["890577", "890756", "890763", "890767"] });
+  assert.equal(sent[0].telefono, mappedStop(rows).telefonoDestino);
+
+  const second = await service.processProgrammedDeliveryNotifications({ fecha: "2026-09-18", dryRun: false });
+  assert.equal(second.resumen.yaNotificadas, 1); assert.equal(second.resumen.enviadas, 0);
+  assert.equal(sent.length, 1); assert.equal(inserts, 1);
+
+  // Una OP agregada después tampoco dispara otro aviso de la misma parada.
+  rows.push(deliveryRow({ entrega_id: 108, orden_preparacion_numero: 507, nota_pedido_numero: 890999 }));
+  const third = await service.processProgrammedDeliveryNotifications({ fecha: "2026-09-18", dryRun: false });
+  assert.equal(third.resumen.yaNotificadas, 1); assert.equal(sent.length, 1);
+});
+
+test("el mismo teléfono no fusiona paradas de otros domicilios o viajes", () => {
+  const stops = mapProgrammedNotificationStops([
+    deliveryRow(),
+    deliveryRow({ entrega_id: 102, orden_preparacion_numero: 501, domicilio: "Otro domicilio 456" }),
+    deliveryRow({ entrega_id: 103, orden_preparacion_numero: 502, viaje_id: 11 }),
+  ]);
+  assert.equal(stops.length, 3);
+});
+
 test("dry-run no reserva, envía ni registra notificaciones", async () => {
   const calls = [];
   const stop = mappedStop();

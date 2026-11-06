@@ -3,9 +3,10 @@ import authService, { WepAdminError } from "./wep-admin-auth.js";
 import dashboardRepository, { validateDashboardQuery } from "./wep-admin-dashboard.repository.js";
 import { createWepLoginRateLimit } from "./wep-login-rate-limit.middleware.js";
 import settingsService from "./wep-settings.service.js";
+import integrationDiagnostics from "./wep-integration-diagnostics.js";
 
 export function createWepAdminRouter({ auth = authService, repository = dashboardRepository,
-  loginRateLimit = createWepLoginRateLimit(), settings = settingsService } = {}) {
+  loginRateLimit = createWepLoginRateLimit(), settings = settingsService, diagnostics = integrationDiagnostics } = {}) {
   const router = express.Router();
   router.use((_req, res, next) => { res.set("Cache-Control", "no-store"); next(); });
   const handle = fn => async (req, res, next) => { try { await fn(req, res); } catch (error) { next(error); } };
@@ -25,6 +26,7 @@ export function createWepAdminRouter({ auth = authService, repository = dashboar
   router.get("/settings", tic, handle(async (_req, res) => res.json({ ok: true, ...await settings.read() })));
   router.put("/settings", tic, handle(async (req, res) => res.json({ ok: true, ...await settings.save(req.body, req.wepAdmin) })));
   router.get("/settings/history", tic, handle(async (_req, res) => res.json({ ok: true, history: await settings.history() })));
+  router.post("/integrations/:provider/test", tic, handle(async (req, res) => res.json({ ok: true, ...await diagnostics.test(req.params.provider, req.body, req.wepAdmin) })));
   router.get("/vehicles", tic, handle(async (_req, res) => res.json({ ok: true, vehicles: await settings.vehicles() })));
   router.patch("/vehicles/:id", tic, handle(async (req, res) => {
     if (!/^[1-9]\d{0,12}$/.test(req.params.id)) throw new WepAdminError("Camión inválido.");

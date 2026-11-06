@@ -1,4 +1,5 @@
 import axios from "axios";
+import { WepSettingsService } from "./wep-settings.service.js";
 
 const DEFAULT_TIMEOUT_MS = 10_000;
 
@@ -153,7 +154,8 @@ export function normalizeDeliveryLocality(value) {
 }
 
 export class GeocodingService {
-  constructor({ httpClient = axios, env = process.env, logger = console } = {}) {
+  constructor({ httpClient = axios, env = process.env, logger = console, settings = new WepSettingsService({ env }) } = {}) {
+    this.settings = settings;
     this.httpClient = httpClient;
     this.env = env;
     this.logger = logger;
@@ -210,7 +212,8 @@ export class GeocodingService {
       throw new WepGeocodingError("El destino no tiene una dirección geocodificable");
     }
 
-    const { apiKey, baseUrl, timeout } = this.getConfiguration();
+    const { timeoutMs: timeout } = await this.settings.integration("google");
+    const { apiKey, baseUrl } = this.getConfiguration();
     const countryCode = String(
       this.env.WEP_GEOCODING_COUNTRY_CODE || "AR",
     ).trim().toUpperCase();

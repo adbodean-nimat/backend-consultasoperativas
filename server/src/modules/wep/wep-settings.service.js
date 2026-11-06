@@ -3,25 +3,31 @@ import bcrypt from "bcryptjs";
 import cron from "node-cron";
 import pool from "./wep-postgres.js";
 import { WepAdminError } from "./wep-admin-auth.js";
+import { normalizeTestPhone, notificationRouting, assertNotificationRouting } from "./wep-notification-context.js";
 
-const TYPES = ["programmed", "enReparto", "enCamino", "enCaminoZona", "legacy", "programmedTest"];
-const templateKeys = { programmed: "PROGRAMADA", enReparto: "EN_REPARTO", enCamino: "EN_CAMINO", enCaminoZona: "EN_CAMINO_ZONA", legacy: "NAME", programmedTest: "PROGRAMADA_TEST" };
+const TYPES = ["programmed", "enReparto", "enCamino", "enCaminoZona"];
+const templateKeys = { programmed: "PROGRAMADA", enReparto: "EN_REPARTO", enCamino: "EN_CAMINO", enCaminoZona: "EN_CAMINO_ZONA" };
+export function defaultWepIntegrations(env = process.env) {
+  const option = (enabled, timeout) => ({ enabled: enabled !== "false", timeoutMs: Number(timeout) > 0 ? Number(timeout) : 10000 });
+  return { gestya: option(env.WEP_GESTYA_ENABLED, env.GESTYA_TIMEOUT_MS), google: option(env.WEP_GOOGLE_ENABLED, env.WEP_GEOCODING_TIMEOUT_MS), heigit: option(env.WEP_HEIGIT_ENABLED, env.WEP_ROUTING_TIMEOUT_MS) };
+}
 export function defaultWepSettings(env = process.env) {
   const flag = (key, fallback) => env[key] === undefined ? fallback : env[key] === "true";
   const template = type => {
     const key = templateKeys[type];
-    const name = env[`WEP_WHATSAPP_TEMPLATE_${key}`] || (type === "programmedTest" ? env.WEP_WHATSAPP_TEMPLATE_PROGRAMADA : "") || "";
+    const name = env[`WEP_WHATSAPP_TEMPLATE_${key}`] || "";
     const specificLanguage = env[`WEP_WHATSAPP_TEMPLATE_${key}_LANG`];
-    const inheritedLanguage = ["enReparto", "programmedTest"].includes(type) ? env.WEP_WHATSAPP_TEMPLATE_PROGRAMADA_LANG
+    const inheritedLanguage = type === "enReparto" ? env.WEP_WHATSAPP_TEMPLATE_PROGRAMADA_LANG
       : type === "enCaminoZona" ? env.WEP_WHATSAPP_TEMPLATE_EN_CAMINO_LANG : null;
     return { enabled: true, name, language: specificLanguage || inheritedLanguage || env.WEP_WHATSAPP_TEMPLATE_LANG || "es_AR" };
   };
   return {
+    integrations: defaultWepIntegrations(env),
     sync: { enabled: flag("WEP_SYNC_ENABLED", false), blocked: flag("WEP_IMPORTS_BLOCKED", false), cron: env.WEP_SYNC_CRON || "*/5 * * * *",
       daysBack: Number(env.WEP_SYNC_DAYS_BACK || 0), daysAhead: Number(env.WEP_SYNC_DAYS_AHEAD || 7), vehicleCodes: (env.WEP_SYNC_VEHICLE_CODES || "101,102,103").split(",").map(v => v.trim()).filter(Boolean) },
     programmed: { enabled: flag("WEP_PROGRAMMED_ENABLED", false), dryRun: flag("WEP_PROGRAMMED_DRY_RUN", true), cron: env.WEP_PROGRAMMED_CRON || "*/5 * * * *",
       start: env.WEP_PROGRAMMED_START || "06:00", end: env.WEP_PROGRAMMED_END || "21:00", weekdays: [0, 1, 2, 3, 4, 5, 6] },
-    meta: { paused: flag("WEP_WHATSAPP_PAUSED", false), phoneNumberId: env.WEP_WABA_PHONE_NUMBER_ID || "", apiVersion: env.WEP_WABA_VERSION || "",
+    meta: { paused: flag("WEP_WHATSAPP_PAUSED", false), testRouting: { enabled: flag("WEP_WHATSAPP_TEST_MODE", false), phone: normalizeTestPhone(env.WEP_WHATSAPP_TEST_PHONE || "") || "" }, phoneNumberId: env.WEP_WABA_PHONE_NUMBER_ID || "", apiVersion: env.WEP_WABA_VERSION || "",
       templates: Object.fromEntries(TYPES.map(type => [type, template(type)])) },
   };
 }
@@ -31,6 +37,16 @@ export function validateWepSettings(input) {
   const object = value => value && typeof value === "object" && !Array.isArray(value);
   if (!object(input) || !object(input.sync) || !object(input.programmed) || !object(input.meta)) bad("Configuración incompleta.");
   const { sync: s, programmed: p, meta: m } = input;
+  if (!object(m.testRouting) || typeof m.testRouting.enabled !== "boolean" || typeof m.testRouting.phone !== "string" || m.testRouting.phone.length > 40) bad("Actualizá el tablero: falta la configuración del teléfono de prueba.");
+  const testPhone = m.testRouting.phone.trim() ? normalizeTestPhone(m.testRouting.phone) : "";
+  if (testPhone === null || (m.testRouting.enabled && !testPhone)) bad("Ingresá un teléfono de prueba internacional válido, con código de país (por ejemplo +549…).");
+  if (!object(input.integrations)) bad("Faltan las integraciones. Actualizá el tablero antes de guardar.");
+  const integrations = {};
+  for (const key of ["gestya", "google", "heigit"]) {
+    const item = input.integrations[key];
+    if (!object(item) || typeof item.enabled !== "boolean" || !Number.isInteger(item.timeoutMs) || item.timeoutMs < 1000 || item.timeoutMs > 60000) bad("Las integraciones requieren habilitación y un tiempo de espera de 1000 a 60000 ms.");
+    integrations[key] = { enabled: item.enabled, timeoutMs: item.timeoutMs };
+  }
   for (const v of [s.enabled, s.blocked, p.enabled, p.dryRun, m.paused]) if (typeof v !== "boolean") bad("Los interruptores deben ser booleanos.");
   for (const expression of [s.cron, p.cron]) if (typeof expression !== "string" || expression.length > 100 || expression.trim().split(/\s+/).length !== 5 || !cron.validate(expression)) bad("La frecuencia debe ser un cron válido de cinco campos.");
   if (!Number.isInteger(s.daysBack) || s.daysBack < 0 || s.daysBack > 30 || !Number.isInteger(s.daysAhead) || s.daysAhead < 0 || s.daysAhead > 90) bad("Rango de importación inválido: anteriores 0–30 y futuros 0–90.");
@@ -45,9 +61,9 @@ export function validateWepSettings(input) {
     if (!object(t) || typeof t.enabled !== "boolean" || typeof t.name !== "string" || !/^[a-z0-9_]{0,100}$/.test(t.name) || typeof t.language !== "string" || !/^[a-z]{2,3}(?:_[A-Z]{2})?$/.test(t.language)) bad("Plantilla o idioma inválidos.");
     templates[type] = { enabled: t.enabled, name: t.name, language: t.language };
   }
-  return { sync: { enabled: s.enabled, blocked: s.blocked, cron: s.cron.trim(), daysBack: s.daysBack, daysAhead: s.daysAhead, vehicleCodes: [...s.vehicleCodes] },
+  return { integrations, sync: { enabled: s.enabled, blocked: s.blocked, cron: s.cron.trim(), daysBack: s.daysBack, daysAhead: s.daysAhead, vehicleCodes: [...s.vehicleCodes] },
     programmed: { enabled: p.enabled, dryRun: p.dryRun, cron: p.cron.trim(), start: p.start, end: p.end, weekdays: [...p.weekdays].sort() },
-    meta: { paused: m.paused, phoneNumberId: m.phoneNumberId, apiVersion: m.apiVersion, templates } };
+    meta: { paused: m.paused, testRouting: { enabled: m.testRouting.enabled, phone: testPhone }, phoneNumberId: m.phoneNumberId, apiVersion: m.apiVersion, templates } };
 }
 
 export class WepSettingsService {
@@ -75,28 +91,50 @@ export class WepSettingsService {
     if (!this.enabled()) return { config: defaultWepSettings(this.env), revision: 0, encrypted_token: null };
     const result = await this.pool.query("SELECT config, revision, encrypted_token, updated_at FROM public.wep_settings WHERE id = 1");
     const row = result.rows[0];
-    return row ? { ...row, config: validateWepSettings(row.config) } : { config: validateWepSettings(defaultWepSettings(this.env)), revision: 0, encrypted_token: null };
+    return row ? { ...row, config: validateWepSettings({ ...row.config, meta: { ...row.config.meta, testRouting: row.config.meta?.testRouting ?? defaultWepSettings(this.env).meta.testRouting }, integrations: row.config.integrations ?? defaultWepIntegrations(this.env) }) } : { config: validateWepSettings(defaultWepSettings(this.env)), revision: 0, encrypted_token: null };
   }
   async read() {
     this.requireEnabled();
     const runtime = await this.runtime();
     const applied = await this.pool.query("SELECT instance, revision, executor, next_sync_at, next_programmed_at, applied_at FROM public.wep_settings_applied ORDER BY instance");
     return { config: runtime.config, revision: runtime.revision, updatedAt: runtime.updated_at || null,
-      tokenConfigured: Boolean(runtime.encrypted_token || this.env.WEP_WHATSAPP_TOKEN), applied: applied.rows };
+      tokenConfigured: Boolean(runtime.encrypted_token || this.env.WEP_WHATSAPP_TOKEN), integrationStatus: this.integrationStatus(), applied: applied.rows };
+  }
+  integrationStatus() {
+    const has = key => Boolean(String(this.env[key] || "").trim());
+    return { gestya: { configured: ["GESTYA_URL", "GESTYA_USER", "GESTYA_PASSWORD"].every(has) },
+      google: { configured: has("WEP_GOOGLE_GEOCODING_API_KEY") && [undefined, "", "google"].includes(this.env.WEP_GEOCODING_PROVIDER?.trim().toLowerCase()) },
+      heigit: { configured: has("WEP_ROUTING_API_KEY") && this.env.WEP_ROUTING_PROVIDER?.trim().toLowerCase() === "openrouteservice" } };
+  }
+  async integration(key) {
+    const { config } = await this.runtime();
+    const option = config.integrations[key];
+    if (!option?.enabled) throw new WepAdminError("La integración está pausada en la configuración de WEP.", 409);
+    return option;
   }
   async token(runtime) { return runtime.encrypted_token ? this.decrypt(runtime.encrypted_token) : this.env.WEP_WHATSAPP_TOKEN || ""; }
+  environmentTemplate(type) {
+    if (type === "legacy") return { enabled: true, name: this.env.WEP_WHATSAPP_TEMPLATE_NAME || "", language: this.env.WEP_WHATSAPP_TEMPLATE_LANG || "es_AR" };
+    if (type === "programmedTest") return { enabled: true, name: this.env.WEP_WHATSAPP_TEMPLATE_PROGRAMADA_TEST || this.env.WEP_WHATSAPP_TEMPLATE_PROGRAMADA || "",
+      language: this.env.WEP_WHATSAPP_TEMPLATE_PROGRAMADA_TEST_LANG || this.env.WEP_WHATSAPP_TEMPLATE_PROGRAMADA_LANG || "es_AR" };
+    return null;
+  }
   async whatsapp(type, fallback = {}) {
-    const runtime = await this.runtime(), meta = runtime.config.meta, selected = meta.templates[type];
+    const runtime = await this.runtime(), meta = runtime.config.meta;
+    const environmentOnly = this.environmentTemplate(type);
+    const selected = environmentOnly || meta.templates[type];
+    const routing = notificationRouting(meta);
+    assertNotificationRouting(routing);
     if (meta.paused || !selected?.enabled) {
       const error = new Error("Los envíos de este tipo están pausados en WEP."); error.code = "WEP_WHATSAPP_PAUSED"; throw error;
     }
-    const templateName = this.enabled() ? selected.name : fallback.templateName || selected.name;
-    const templateLanguage = this.enabled() ? selected.language : fallback.templateLanguage || selected.language;
+    const templateName = (environmentOnly || this.enabled()) ? selected.name : fallback.templateName || selected.name;
+    const templateLanguage = (environmentOnly || this.enabled()) ? selected.language : fallback.templateLanguage || selected.language;
     const token = await this.token(runtime);
     if (!token || !meta.phoneNumberId || !meta.apiVersion || !templateName) {
       const error = new Error("Falta completar la configuración exclusiva de Meta para WEP."); error.code = "WEP_META_NOT_CONFIGURED"; throw error;
     }
-    return { templateName, templateLanguage, token, phoneNumberId: meta.phoneNumberId, apiVersion: meta.apiVersion };
+    return { templateName, templateLanguage, token, phoneNumberId: meta.phoneNumberId, apiVersion: meta.apiVersion, testPhone: routing.enabled ? routing.phone : null };
   }
   async transaction(callback) {
     const client = await this.pool.connect();

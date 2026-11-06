@@ -1,4 +1,5 @@
 import axios from "axios";
+import { WepSettingsService } from "./wep-settings.service.js";
 
 const DEFAULT_TIMEOUT_MS = 10_000;
 
@@ -69,7 +70,8 @@ function decodeRouteGeometry(encoded) {
 }
 
 export class RoutingService {
-  constructor({ httpClient = axios, env = process.env } = {}) {
+  constructor({ httpClient = axios, env = process.env, settings = new WepSettingsService({ env }) } = {}) {
+    this.settings = settings;
     this.httpClient = httpClient;
     this.env = env;
   }
@@ -96,7 +98,8 @@ export class RoutingService {
   async calculateRouteEta({ origin, destination }) {
     const from = normalizePoint(origin, "El origen");
     const to = normalizePoint(destination, "El destino");
-    const { apiKey, baseUrl, timeout } = this.getConfiguration();
+    const { timeoutMs: timeout } = await this.settings.integration("heigit");
+    const { apiKey, baseUrl } = this.getConfiguration();
 
     try {
       const response = await this.httpClient.post(

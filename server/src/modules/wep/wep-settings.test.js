@@ -61,6 +61,26 @@ test("no habilita avisos reales incompletos y exige activar la configuración de
   assert.throws(() => disabled.encrypt("test"), e => e.status === 503);
 });
 
+test("las plantillas auxiliares solo provienen del entorno y se excluyen de la configuración editable", async () => {
+  const f = fixture();
+  f.service.env = { ...env, WEP_WHATSAPP_TOKEN: "fake-token", WEP_WHATSAPP_TEMPLATE_NAME: "legacy_env", WEP_WHATSAPP_TEMPLATE_LANG: "es",
+    WEP_WHATSAPP_TEMPLATE_PROGRAMADA_TEST: "manual_env", WEP_WHATSAPP_TEMPLATE_PROGRAMADA_TEST_LANG: "es_AR" };
+  const config = defaultWepSettings({}); config.meta.phoneNumberId = "123"; config.meta.apiVersion = "v99.0";
+  config.meta.templates.legacy = { name: "legacy_from_db", language: "en", enabled: false };
+  config.meta.templates.programmedTest = { name: "manual_from_db", language: "en", enabled: false };
+  f.setSaved({ config, revision: 2 });
+  const read = await f.service.read();
+  assert.deepEqual(Object.keys(read.config.meta.templates), ["programmed", "enReparto", "enCamino", "enCaminoZona"]);
+  assert.equal((await f.service.whatsapp("legacy", { templateName: "ignored" })).templateName, "legacy_env");
+  assert.equal((await f.service.whatsapp("legacy")).templateLanguage, "es");
+  assert.equal((await f.service.whatsapp("programmedTest", { templateName: "ignored" })).templateName, "manual_env");
+  await f.service.save({ config, revision: 2 }, actor);
+  const write = f.queries.find(q => q.sql.startsWith("INSERT INTO public.wep_settings ("));
+  assert.equal(JSON.parse(write.params[1]).meta.templates.legacy, undefined);
+  delete f.service.env.WEP_WHATSAPP_TEMPLATE_NAME;
+  await assert.rejects(f.service.whatsapp("legacy", { templateName: "must_not_fallback" }), e => e.code === "WEP_META_NOT_CONFIGURED");
+});
+
 test("el bloqueo global impide acceder al ERP y a la conexión de importación", async () => {
   const config = defaultWepSettings({}); config.sync.blocked = true;
   const service = new WepSyncService({ settings: { async runtime() { return { config }; } },
@@ -110,7 +130,7 @@ test("CONSULTA no puede leer ni escribir configuración, historial ni camiones",
   app.use(createWepAdminRouter({ auth: { async authenticate() { return { ...actor, role: "CONSULTA" }; } }, settings: new Proxy({}, { get() { assert.fail("Acceso a configuración sin rol TIC"); } }) }));
   const server = app.listen(0, "127.0.0.1"); await new Promise(resolve => server.once("listening", resolve));
   try {
-    for (const [method, path] of [["GET", "/settings"], ["PUT", "/settings"], ["GET", "/settings/history"], ["GET", "/vehicles"], ["PATCH", "/vehicles/3"]]) {
+    for (const [method, path] of [["GET", "/settings"], ["PUT", "/settings"], ["GET", "/settings/history"], ["GET", "/vehicles"], ["PATCH", "/vehicles/3"], ["POST", "/integrations/google/test"]]) {
       assert.equal((await fetch(`http://127.0.0.1:${server.address().port}${path}`, { method })).status, 403);
     }
   } finally { await new Promise(resolve => server.close(resolve)); }

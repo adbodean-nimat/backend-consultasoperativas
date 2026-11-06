@@ -1,3 +1,4 @@
+import { withNotificationRouting } from "./wep-notification-context.js";
 import wepSettings from "./wep-settings.service.js";
 import { resolveStopOrders, requireStopOrder } from "./wep-stop-orders.util.js";
 import { enviarTemplateEntregaEnReparto } from "../../services/whatsapp.service.js";
@@ -25,7 +26,11 @@ export class WepEnRepartoNotificationsService {
     this.logger = logger;
   }
 
-  async notifyTransitionedStops({ viajeId, entregaIds }) {
+  async notifyTransitionedStops(input) {
+    return withNotificationRouting(wepSettings, () => this._notifyTransitionedStops(input));
+  }
+
+  async _notifyTransitionedStops({ viajeId, entregaIds }) {
     const runtime = wepSettings.enabled() ? await wepSettings.runtime() : null;
     const template = runtime?.config.meta.templates.enReparto;
     const templateName = template?.name ?? this.templateName;

@@ -1,3 +1,5 @@
+import wepSettings from "./wep-settings.service.js";
+import { withNotificationRouting } from "./wep-notification-context.js";
 import { enviarTemplateEntregaEnCamino } from "../../services/whatsapp.service.js";
 import wepClientNoticeRepository from "./wep-client-notice.repository.js";
 
@@ -43,6 +45,10 @@ export class WepClientNoticeService {
   }
 
   async notifyClient(entregaId, vehiculoId) {
+    return withNotificationRouting(wepSettings, () => this._notifyClient(entregaId, vehiculoId));
+  }
+
+  async _notifyClient(entregaId, vehiculoId) {
     const reservation = await this.repository.reserveNotice(
       entregaId,
       vehiculoId,

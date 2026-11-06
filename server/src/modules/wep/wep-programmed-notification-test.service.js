@@ -1,3 +1,4 @@
+import { withNotificationRouting, testRecipient } from "./wep-notification-context.js";
 import wepSettings from "./wep-settings.service.js";
 import { requireStopOrder } from "./wep-stop-orders.util.js";
 import { enviarTemplateEntregaProgramada } from "../../services/whatsapp.service.js";
@@ -43,11 +44,14 @@ export class WepProgrammedNotificationTestService {
     this.logger = logger;
   }
 
-  async send({ entregaRepresentativaId, telefono }) {
-    const runtime = wepSettings.enabled() ? await wepSettings.runtime() : null;
-    const template = runtime?.config.meta.templates.programmedTest;
-    const templateName = template?.name ?? this.templateName;
-    const templateLanguage = template?.language ?? this.templateLanguage;
+  async send(input) {
+    return withNotificationRouting(wepSettings, () => this._send(input));
+  }
+
+  async _send({ entregaRepresentativaId, telefono }) {
+    telefono = testRecipient() || telefono;
+    const templateName = this.templateName;
+    const templateLanguage = this.templateLanguage;
     if (!templateName) {
       throw new WepProgrammedTemplateNotConfiguredError(
         "Plantilla PROGRAMADA TEST no configurada",
