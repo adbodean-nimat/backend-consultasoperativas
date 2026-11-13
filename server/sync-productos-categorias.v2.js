@@ -977,7 +977,7 @@ export async function sincronizarCompletoV2() {
       if (sku) {
         urlsMap[sku] = {
           id: row.Id || "",
-          url: row.Url || "",
+          url: row.url || "",
           imageUrl: row.imageUrl || "",
           FullDescription: FullDescriptionLarga || "",
           especificaciones: row.Especificaciones ?? "",
