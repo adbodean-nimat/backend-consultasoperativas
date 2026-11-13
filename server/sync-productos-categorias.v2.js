@@ -980,6 +980,7 @@ export async function sincronizarCompletoV2() {
           url: row.url || "",
           imageUrl: row.imageUrl || "",
           FullDescription: FullDescriptionLarga || "",
+          especificaciones: row.especificaciones ?? "",
         };
       }
     });
@@ -999,6 +1000,7 @@ export async function sincronizarCompletoV2() {
           url: "",
           imageUrl: "",
           FullDescription: "",
+          especificaciones: "",
         };
 
         return {
@@ -1010,6 +1012,7 @@ export async function sincronizarCompletoV2() {
             "",
           ),
           descripcion_larga: urlData.FullDescription,
+          especificaciones: urlData.especificaciones,
           precio: parseFloat(row.Price) || 0,
           stock: parseInt(row.StockQuantity) || 0,
           marca: row.Manufacturers || "",
@@ -1237,6 +1240,7 @@ export async function sincronizarCompletoV2() {
         const content = [
           `Nombre: ${p.nombre.trim()}`,
           p.marca ? `Marca: ${p.marca}` : "",
+          p.especificaciones ? `Especificaciones: ${p.especificaciones}` : "",
           skuStr ? `SKU: ${skuStr}` : "",
           mejorCategoria ? `Categoría: ${mejorCategoria}` : "",
           categoriaRoot ? `Rubro: ${categoriaRoot}` : "",
@@ -1264,6 +1268,7 @@ export async function sincronizarCompletoV2() {
             sku: skuStr,
             nombre: p.nombre.trim().replaceAll("*", ""),
             descripcion: p.descripcion_larga,
+            especificaciones: p.especificaciones,
             ficha_tecnica_url: fichaTecnicaUrl,
             manual_url: manualUrl,
             marca: p.marca,
@@ -1308,6 +1313,7 @@ export async function sincronizarCompletoV2() {
 ID: prod_${p.metadata.sku}
 SKU: ${p.metadata.sku}
 Nombre: ${p.metadata.nombre}
+Especificaciones: ${p.metadata.especificaciones}
 Marca: ${p.metadata.marca}
 Outlet: ${p.metadata.outlet}
 Categoría: ${p.metadata.categoria}

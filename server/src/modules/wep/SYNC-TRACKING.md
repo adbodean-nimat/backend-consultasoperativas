@@ -90,3 +90,15 @@ agrupación y separación de paradas, repetición sin duplicados, conservación 
 enlaces, vigencia, errores y rollback, uso del cliente transaccional y regresiones
 de los avisos y del seguimiento directo. No sustituyen una prueba de integración
 contra PostgreSQL de testing para verificar locks y restricciones del esquema.
+
+El procedimiento de integración está en [SYNC-TRACKING-TESTING.md](./SYNC-TRACKING-TESTING.md).
+Incluye una prueba opt-in con PostgreSQL real y fuente ERP sintética, y la aceptación
+del despliegue con ERP de testing y navegador `/s`. Ninguna de las dos se considera
+ejecutada por la sola existencia de estos archivos.
+
+Para aislar las pruebas anteriores del `.env` local, configurar en el proceso de
+pruebas `WEP_SETTINGS_ENABLED=false`, `WEP_WHATSAPP_TEST_MODE=false`,
+`WEP_IMPORTS_BLOCKED=false`, `WEP_SYNC_VEHICLE_CODES=101,102,103` y una conexión
+predeterminada inutilizable (`WEP_PG_HOST=127.0.0.1`, `WEP_PG_PORT=1`). Los repositorios
+simulados no necesitan esa conexión. Esto evita consultar settings persistidos o
+heredar redirecciones de teléfonos del entorno durante las pruebas aisladas.

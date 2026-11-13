@@ -120,11 +120,36 @@ test("agrupa órdenes por parada y reutiliza tokens y enlaces entre sincronizaci
   const { sync } = service(db, rows);
   await sync.synchronize(filters);
   const id = db.tokens[0].public_id;
+  const expiration = db.tokens[0].expira_at.toISOString();
   const again = await sync.synchronize(filters);
   assert.equal(again.tracking.disponibles, 1);
   assert.equal(db.tokens.length, 1);
   assert.equal(db.tokens[0].public_id, id);
+  assert.equal(db.tokens[0].expira_at.toISOString(), expiration);
   assert.equal(db.queries.filter(item => item.sql.includes("INSERT INTO public.tracking_tokens")).length, 1);
+});
+
+test("NP de una misma parada usa su propio teléfono, incluido alternativo, sin heredar otro contacto", async () => {
+  const db = database();
+  const { sync } = service(db, [row,
+    { ...row, NumeroOrdenPreparacion: 124, NumeroNotaPedido: 883525,
+      TelefonoDomicilio: null, TelefonoCliente: null },
+    { ...row, NumeroOrdenPreparacion: 125, NumeroNotaPedido: 883526,
+      TelefonoDomicilio: "inválido", TelefonoCliente: "3454331234" },
+    { ...row, NumeroOrdenPreparacion: 126, NumeroNotaPedido: 883527,
+      TelefonoCliente: "3454331234" },
+  ]);
+  assert.equal((await sync.synchronize(filters)).tracking.disponibles, 1);
+  assert.equal(db.tokens.length, 1);
+  const lookup = new WepTrackingLookupService({ repository: new WepTrackingLookupRepository({ postgresPool: db.pool }) });
+  const expected = { publicId: db.tokens[0].public_id };
+  assert.deepEqual(await lookup.lookup({ pedido: "883524", telefonoUltimos4: "3569" }), expected);
+  assert.equal(await lookup.lookup({ pedido: "883525", telefonoUltimos4: "3569" }), null);
+  assert.equal(await lookup.lookup({ pedido: "883525", telefonoUltimos4: "1234" }), null);
+  assert.deepEqual(await lookup.lookup({ pedido: "883526", telefonoUltimos4: "1234" }), expected);
+  assert.equal(await lookup.lookup({ pedido: "883526", telefonoUltimos4: "3569" }), null);
+  assert.deepEqual(await lookup.lookup({ pedido: "883527", telefonoUltimos4: "3569" }), expected);
+  assert.equal(await lookup.lookup({ pedido: "883527", telefonoUltimos4: "1234" }), null);
 });
 
 test("separa por viaje, cliente y domicilio; una entrega sin teléfono puede recibir token", async () => {
