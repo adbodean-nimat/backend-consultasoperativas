@@ -977,10 +977,10 @@ export async function sincronizarCompletoV2() {
       if (sku) {
         urlsMap[sku] = {
           id: row.Id || "",
-          url: row.url || "",
+          url: row.Url || "",
           imageUrl: row.imageUrl || "",
           FullDescription: FullDescriptionLarga || "",
-          especificaciones: row.especificaciones ?? "",
+          especificaciones: row.Especificaciones ?? "",
         };
       }
     });
