@@ -101,6 +101,13 @@ class WorkerTests(unittest.TestCase):
             with patch('ews_worker.resolve_folder', return_value='folder'), self.assertRaises(ProbeError):
                 download(session, CONFIG, 'message', 'attachment', 1024)
 
+    def test_size_mismatch_reports_only_expected_and_received_byte_counts(self):
+        session = Session([Response(metadata(size=100)), Response(attachment(b'short'))])
+        with patch('ews_worker.resolve_folder', return_value='folder'), self.assertRaises(ProbeError) as caught:
+            download(session, CONFIG, 'message', 'attachment', 1024)
+        self.assertEqual(str(caught.exception), 'EWS_ATTACHMENT_INCOMPLETE')
+        self.assertEqual(caught.exception.attachment_diagnostic, {'expectedBytes': 100, 'receivedBytes': 5})
+
     def test_oversized_or_duplicate_expected_attachment_fails_closed(self):
         extra = '<t:FileAttachment><t:AttachmentId Id="other"/><t:Name>Reporte2.xlsx</t:Name><t:Size>3</t:Size></t:FileAttachment>'
         for body in [metadata(size=30 * 1024 * 1024), metadata(extra=extra)]:

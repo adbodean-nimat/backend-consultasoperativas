@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { validateReport } from "./report.validator.js";
 import { contentHash, retry } from "./report.dropbox.js";
-import { fault } from "./report.config.js";
+import { fault, attachmentDiagnostic } from "./report.config.js";
 
 const digest = value => createHash("sha256").update(value).digest("hex");
 const timestamp = value => {
@@ -108,8 +108,9 @@ export class ReportService {
     } catch (error) {
       // Do not log provider errors, response bodies, subjects, addresses or tokens.
       const code = typeof error?.code === "string" && /^(REPORT_[A-Z0-9_]{1,100}|EWS_[A-Z0-9_]{1,100}|Error(?:AccessDenied|FolderNotFound|NonExistentMailbox|ServerBusy|InvalidUserInfo|InvalidPropertyForOperation|ItemNotFound|InvalidSyncStateData|SyncFolderNotFound))$/.test(error.code) ? error.code : "REPORT_RUN_FAILED";
-      this.logger.error("[productos-web-report]", { code });
-      throw Object.assign(fault("REPORT_RUN_FAILED"), { detail: code });
+      const diagnostic = code === "EWS_ATTACHMENT_INCOMPLETE" ? attachmentDiagnostic(error) : {};
+      this.logger.error("[productos-web-report]", { code, ...diagnostic });
+      throw Object.assign(fault("REPORT_RUN_FAILED"), { detail: code, ...diagnostic });
     } finally { this.running = false; }
   }
   commit(state, rev) {

@@ -1,6 +1,6 @@
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { fault } from "./report.config.js";
+import { fault, attachmentDiagnostic } from "./report.config.js";
 
 const WORKER = fileURLToPath(new URL("./ews_worker.py", import.meta.url));
 const MAX_OUTPUT = 30 * 1024 * 1024;
@@ -42,6 +42,7 @@ export function runExchangeWorker(python, request, { spawnProcess = spawn, timeo
       if (code !== 0 || result.ok !== true) {
         const safeCode = typeof result.code === "string" && /^(EWS_[A-Z0-9_]{1,80}|Error[A-Za-z]{1,70})$/.test(result.code) ? result.code : "REPORT_EXCHANGE_FAILED";
         const error = fault(safeCode);
+        if (safeCode === "EWS_ATTACHMENT_INCOMPLETE") Object.assign(error, attachmentDiagnostic(result));
         if (result.retryable === true) error.status = result.status === 429 ? 429 : 503;
         finish(error); return;
       }

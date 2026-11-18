@@ -181,7 +181,9 @@ def download(session, config, message_id, attachment_id, max_bytes):
     except ValueError:
         raise ProbeError('EWS_ATTACHMENT_RESPONSE_INVALID') from None
     if len(data) != attachment['size'] or len(data) > max_bytes:
-        raise ProbeError('EWS_ATTACHMENT_INCOMPLETE')
+        error = ProbeError('EWS_ATTACHMENT_INCOMPLETE')
+        error.attachment_diagnostic = {'expectedBytes': attachment['size'], 'receivedBytes': len(data)}
+        raise error
     return {'base64': base64.b64encode(data).decode('ascii')}
 
 
@@ -214,7 +216,10 @@ def main():
     except ProbeError as error:
         status = getattr(error, 'http_status', None)
         retryable = str(error) == 'ErrorServerBusy' or status == 429 or (status is not None and status >= 500)
-        print(json.dumps({'ok': False, 'code': str(error), 'retryable': retryable, 'status': status}))
+        result = {'ok': False, 'code': str(error), 'retryable': retryable, 'status': status}
+        if str(error) == 'EWS_ATTACHMENT_INCOMPLETE':
+            result['attachmentDiagnostic'] = error.attachment_diagnostic
+        print(json.dumps(result))
     except ImportError:
         print(json.dumps({'ok': False, 'code': 'EWS_DEPENDENCIES_MISSING', 'retryable': False}))
     except Exception as error:

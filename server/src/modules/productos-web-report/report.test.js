@@ -91,6 +91,22 @@ test("descarga incompleta conserva cursor para reintentar", async () => {
   assert.equal(f.state(), null); assert.equal(f.uploads(), 0);
   m.attachments[0].size--; await f.service().run(); assert.equal(f.uploads(), 1);
 });
+test("diagnóstico de tamaño llega al resultado sin guardar cursor ni tocar Dropbox en dry-run", async () => {
+  const f = fixture([mail("size-mismatch", "2026-11-02T00:00:00Z")]);
+  f.source.download = async () => { throw Object.assign(new Error("provider private-secret"), {
+    code: "EWS_ATTACHMENT_INCOMPLETE", attachmentDiagnostic: { expectedBytes: 100, receivedBytes: 90, secret: "private-secret" },
+  }); };
+  await assert.rejects(f.service({ dryRun: true }).run(), error => {
+    assert.equal(error.detail, "EWS_ATTACHMENT_INCOMPLETE");
+    assert.deepEqual(error.attachmentDiagnostic, { expectedBytes: 100, receivedBytes: 90 });
+    assert.ok(!JSON.stringify(error).includes("private-secret"));
+    return true;
+  });
+  assert.equal(f.state(), null);
+  assert.equal(f.uploads(), 0);
+  assert.equal(f.metadataCalls(), 0);
+});
+
 test("fallo de conexión no adelanta cursor y próxima ejecución recupera", async () => {
   const f = fixture([mail("1", "2026-11-02T00:00:00Z")]);
   const list = f.source.list; f.source.list = async () => { throw new Error("connection failed with secret"); };

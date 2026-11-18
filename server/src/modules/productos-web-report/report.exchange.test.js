@@ -54,6 +54,23 @@ test("bridge terminates hung worker and exposes no provider text", async () => {
   await assert.rejects(runExchangeWorker("python", {}, { spawnProcess: p.spawnProcess, timeoutMs: 10 }), /REPORT_EXCHANGE_WORKER_TIMEOUT/);
   assert.equal(p.state().killed, true);
 });
+
+test("attachment diagnostics allow only bounded numeric byte counts", async () => {
+  for (const sizes of [
+    { expectedBytes: 100, receivedBytes: 90, secret: "private-secret" },
+    { expectedBytes: "private-secret", receivedBytes: 90 },
+    { expectedBytes: 100, receivedBytes: -1 },
+    { expectedBytes: 100, receivedBytes: 21 * 1024 * 1024 },
+  ]) {
+    const p = processFixture(JSON.stringify({ ok: false, code: "EWS_ATTACHMENT_INCOMPLETE", attachmentDiagnostic: sizes }), { exitCode: 1 });
+    await assert.rejects(runExchangeWorker("python", {}, { spawnProcess: p.spawnProcess }), error => {
+      assert.equal(error.code, "EWS_ATTACHMENT_INCOMPLETE");
+      assert.deepEqual(error.attachmentDiagnostic, sizes.expectedBytes === 100 && sizes.receivedBytes === 90 ? { expectedBytes: 100, receivedBytes: 90 } : undefined);
+      assert.ok(!JSON.stringify(error).includes("private-secret"));
+      return true;
+    });
+  }
+});
 test("source preserves cursor and validates configured folder", async () => {
   const calls = [];
   const source = createExchangeSource(config, { env, runner: async (python, request) => {

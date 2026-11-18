@@ -1,6 +1,12 @@
 import { PRODUCTOS_WEB_PROFILE } from "./report.profile.js";
 export const TARGET_PATH = "/Productos Nimat Urls.xlsx";
 export function fault(code) { return Object.assign(new Error(code), { code }); }
+// Only byte counts may cross the worker/log/CLI diagnostic boundary.
+export function attachmentDiagnostic(value) {
+  const sizes = value?.attachmentDiagnostic;
+  if (!sizes || ![sizes.expectedBytes, sizes.receivedBytes].every(n => Number.isSafeInteger(n) && n >= 0 && n <= 20 * 1024 * 1024)) return {};
+  return { attachmentDiagnostic: { expectedBytes: sizes.expectedBytes, receivedBytes: sizes.receivedBytes } };
+}
 export function readConfig(env = process.env) {
   const required = (name) => { if (!env[name]?.trim()) throw fault(`MISSING_${name}`); return env[name].trim(); };
   if (env.EXCEL_URLS_PATH !== TARGET_PATH) throw fault("REPORT_DESTINATION_MISMATCH");

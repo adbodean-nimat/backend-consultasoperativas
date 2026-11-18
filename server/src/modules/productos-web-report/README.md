@@ -214,6 +214,13 @@ mensaje original. El archivo válido se conserva ante fallos del procesamiento.
 
 ## Verificación
 
+Si la recepción devuelve `EWS_ATTACHMENT_INCOMPLETE`, el diagnóstico incluye
+`attachmentDiagnostic.expectedBytes` (Size de EWS) y `receivedBytes` (contenido
+binario descargado). Sólo se registran esos contadores; no se registra contenido
+del correo, identificadores ni credenciales. Conservar la validación y repetir
+`npm run report:receive -- --dry-run` para obtener ambos valores antes de
+atribuir el rechazo a truncamiento o a una diferencia de metadatos.
+
 ```bash
 npm run test:productos-web-report
 python3 -B -m unittest discover -s src/modules/productos-web-report -p 'test_ews*.py' -v
