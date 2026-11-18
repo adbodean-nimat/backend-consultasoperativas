@@ -36,12 +36,14 @@ import { importarMasivoFinanzas } from "./controllers/importController.js";
 import gestionRouter from "./src/modules/gestion/gestion.routes.js";
 import gdcRouter from "./src/modules/gdc/gdc.routes.js";
 import gestionScheduler from "./src/modules/gestion/gestion-scheduler.js";
+import { startReportScheduler } from "./src/modules/productos-web-report/report.scheduler.js";
 import { verifyUserToken } from "./auth.middleware.js";
 import { authorizeAdLogin } from "./src/modules/gestion/gestion-auth.service.js";
 import { GestionError } from "./src/modules/gestion/gestion.errors.js";
 import duplicateTransferRouter from "./src/modules/duplicate-transfers/duplicate-transfer.routes.js";
 import duplicateTransferScheduler from "./src/modules/duplicate-transfers/duplicate-transfer-scheduler.js";
 import chatbotCatalogRouter from "./src/modules/chatbot-catalog/chatbot-catalog.routes.js";
+import chatbotHistoryRouter from "./src/modules/chatbot-history/chatbot-history.routes.js";
 import wepRouter from "./src/modules/wep/wep.routes.js";
 import wepAdminRouter from "./src/modules/wep/wep-admin.routes.js";
 import wepSyncScheduler from "./src/modules/wep/wep-sync-scheduler.js";
@@ -79,7 +81,8 @@ try {
 }
 
 try {
-  if (process.env.WEP_SETTINGS_ENABLED !== "true") wepProgrammedScheduler.start();
+  if (process.env.WEP_SETTINGS_ENABLED !== "true")
+    wepProgrammedScheduler.start();
 } catch (error) {
   console.error("Error inicializando avisos automáticos WEP:", error?.message);
 }
@@ -110,6 +113,11 @@ gestionScheduler
 }) */
 
 const router = express.Router();
+startReportScheduler().catch(() =>
+  console.error(
+    "[productos-web-report] No se inició: revisar configuración y acceso Exchange confirmado.",
+  ),
+);
 const httpsOptions = {
   key: fs.readFileSync(process.env.SSL_KEY),
   cert: fs.readFileSync(process.env.SSL_CERT),
@@ -223,6 +231,8 @@ app.post("/api/gestion/login", function (req, res, next) {
 
 // WEP usa tokens opacos propios en /auth y /pwa. Sus rutas técnicas conservan
 // internamente el JWT corporativo que antes aplicaba el middleware global.
+// Historial: autenticación interna y sectores propios, con no-store incluso en 401.
+app.use("/api/chatbot", chatbotHistoryRouter);
 app.use("/api/wep/control", wepAdminRouter);
 app.use("/api/wep", wepRouter);
 app.use("/api", verifyUserToken, router);
@@ -425,7 +435,7 @@ router.route("/vblesentnp/clasif6").get(async (request, response) => {
 
 router.route("/vblesentrnp").get(async (request, response) => {
   try {
-    const diasAtras = request.query.diasAtras || 30;
+    const diasAtras = request.query.diasAtras || request.params.diasAtras || 30;
     const marcaClasif6 = request.query.marcaClasif6 || null;
     const fechaDesde = request.query.fechaDesde || null;
     const fechaHasta = request.query.fechaHasta || null;
