@@ -14,7 +14,8 @@ from xml.etree import ElementTree as ET
 from ews_probe import (MAX_RESPONSE, NS, ProbeError, call, check_response,
                        find_report, get_folder, probe, settings,
                        find_inbox_subfolder, resolve_inbox_subfolder, connection_detail,
-                       get_sender_metadata, inspect_sender_candidate, smtp_metadata)
+                       get_sender_metadata, inspect_sender_candidate, smtp_metadata,
+                       verify_report_candidates)
 from ews_probe import main
 
 
@@ -32,6 +33,13 @@ def folder(modify="false"):
                '<t:CreateHierarchy>false</t:CreateHierarchy>'
                '<t:Delete>false</t:Delete><t:Modify>' + modify
                + '</t:Modify></t:EffectiveRights>')
+
+
+def page(ids=(), last=True, next_offset=None):
+    continuation = '' if next_offset is None else ' IndexedPagingOffset="' + str(next_offset) + '"'
+    items = ''.join('<t:Message><t:ItemId Id="' + item_id + '"/></t:Message>' for item_id in ids)
+    return xml('<m:RootFolder IncludesLastItemInRange="' + ('true' if last else 'false')
+               + '"' + continuation + '><t:Items>' + items + '</t:Items></m:RootFolder>')
 
 
 class Response:
@@ -87,13 +95,15 @@ class ProbeTests(unittest.TestCase):
         self.assertIsNone(custom.find(".//t:DistinguishedFolderId", NS))
 
     def test_successful_probe_reports_no_writes_or_download(self):
-        session = Session([Response(folder()), Response(xml('<t:Items><t:Message/></t:Items>'))])
-        result = probe(session, self.config, "Reporte2", "erp@example.test")
+        session = Session([Response(folder()), Response(page(['candidate'])),
+                           Response(xml('<m:Items><t:Message>' + self.sender_metadata_xml() + '</t:Message></m:Items>'))])
+        result = probe(session, self.config, "Reporte2", "erp@example.test", filename='Reporte2.xlsx')
         self.assertTrue(result["folderReadable"])
         self.assertTrue(result["reportFound"])
         self.assertFalse(result["attachmentDownloaded"])
         self.assertFalse(result["dropboxTouched"])
-        self.assertEqual(len(session.calls), 2)
+        self.assertEqual(len(session.calls), 3)
+        self.assertEqual(result['matchMethod'], 'verified_item_metadata')
         for _, options in session.calls:
             self.assertIs(options["verify"], True)
             self.assertIs(options["allow_redirects"], False)
@@ -101,24 +111,28 @@ class ProbeTests(unittest.TestCase):
             self.assertNotIn("Authorization", options["headers"])
 
     def test_missing_report_is_not_a_connection_failure(self):
-        session = Session([Response(folder()), Response(xml('<t:Items/>'))])
-        result = probe(session, self.config, "Reporte2", "erp@example.test")
+        session = Session([Response(folder()), Response(page())])
+        result = probe(session, self.config, "Reporte2", "erp@example.test", filename='Reporte2.xlsx')
         self.assertTrue(result["ok"])
         self.assertFalse(result["reportFound"])
 
-    def test_filter_diagnostics_distinguish_sender_mismatch_without_listing_mail(self):
+    def test_server_sender_filter_false_does_not_hide_verified_report(self):
         empty = Response(xml('<t:Items/>'))
         hit = lambda: Response(xml('<t:Items><t:Message><t:ItemId Id="private-id"/></t:Message></t:Items>'))
-        session = Session([Response(folder()), empty, hit(), hit(), empty, empty])
-        result = probe(session, self.config, "Reporte2", "erp@example.test", "child-id", diagnose_filters=True)
-        self.assertFalse(result["reportFound"])
+        metadata = Response(xml('<m:Items><t:Message>' + self.sender_metadata_xml() + '</t:Message></m:Items>'))
+        session = Session([Response(folder()), Response(page(['private-id'])), metadata, hit(), hit(), empty, empty, empty])
+        result = probe(session, self.config, "Reporte2", "erp@example.test", "child-id", diagnose_filters=True, filename='Reporte2.xlsx')
+        self.assertTrue(result["reportFound"])
         self.assertEqual(result["diagnosticMatches"],
             {"all": True, "subject": True, "sender": False, "subject_sender": False, "combined": False})
         self.assertNotIn("private-id", json.dumps(result))
-        self.assertEqual(len(session.calls), 6)
+        self.assertEqual(len(session.calls), 8)
         for _, options in session.calls:
             tree = ET.fromstring(options["data"])
-            self.assertEqual(tree.find(".//t:FolderId", NS).get("Id"), "child-id")
+            if tree.find('.//m:GetItem', NS) is not None:
+                self.assertEqual(tree.find('.//t:ItemId', NS).get('Id'), 'private-id')
+            else:
+                self.assertEqual(tree.find(".//t:FolderId", NS).get("Id"), "child-id")
             self.assertIsNone(tree.find(".//t:DistinguishedFolderId", NS))
 
     def test_filter_modes_preserve_combined_restriction_and_bound_results(self):
@@ -208,6 +222,56 @@ class ProbeTests(unittest.TestCase):
         self.assertEqual(inspect_sender_candidate(session, self.config, 'Reporte2', 'erp@example.test', 'Reporte2.xlsx', 'child'), {'candidateFound': False})
         self.assertEqual(len(session.calls), 1)
 
+    def test_verified_search_continues_after_wrong_sender_and_into_next_page(self):
+        wrong = xml('<m:Items><t:Message>' + self.sender_metadata_xml(address='other@example.test') + '</t:Message></m:Items>')
+        good = xml('<m:Items><t:Message>' + self.sender_metadata_xml() + '</t:Message></m:Items>')
+        session = Session([Response(page(['wrong'], last=False, next_offset=1)), Response(wrong),
+                           Response(page(['good'])), Response(good)])
+        found, search = verify_report_candidates(session, self.config, 'Reporte2', 'erp@example.test', 'Reporte2.xlsx', 'child')
+        self.assertTrue(found)
+        self.assertEqual(search['inspected'], 2)
+        for index, offset in [(0, '0'), (2, '1')]:
+            tree = ET.fromstring(session.calls[index][1]['data'])
+            self.assertEqual(tree.find('.//m:IndexedPageItemView', NS).get('Offset'), offset)
+            restriction = tree.find('.//m:Restriction', NS)
+            self.assertEqual([n.get('FieldURI') for n in restriction.findall('.//t:FieldURI', NS)], ['item:Subject'])
+            self.assertEqual(tree.find('.//t:FolderId', NS).get('Id'), 'child')
+
+    def test_verified_search_rejects_wrong_subject_sender_inline_and_duplicate_files(self):
+        file = '<t:FileAttachment><t:Name>Reporte2.xlsx</t:Name><t:IsInline>false</t:IsInline></t:FileAttachment>'
+        bodies = [self.sender_metadata_xml(address='other@example.test'),
+                  self.sender_metadata_xml().replace('<t:Subject>Reporte2', '<t:Subject>changed'),
+                  self.sender_metadata_xml(attachments=file.replace('false', 'true')),
+                  self.sender_metadata_xml(attachments=file + file)]
+        for body in bodies:
+            session = Session([Response(page(['candidate'])), Response(xml('<m:Items><t:Message>' + body + '</t:Message></m:Items>'))])
+            found, search = verify_report_candidates(session, self.config, 'Reporte2', 'erp@example.test', 'Reporte2.xlsx', 'child')
+            self.assertFalse(found)
+            self.assertTrue(search['exhausted'])
+
+    def test_verified_search_rejects_broken_paging_and_repeated_ids(self):
+        wrong = xml('<m:Items><t:Message>' + self.sender_metadata_xml(address='other@example.test') + '</t:Message></m:Items>')
+        for responses in [
+            [Response(xml('<t:Items/>'))],
+            [Response(page([], last=False, next_offset=1))],
+            [Response(page(['same'], last=False, next_offset=0)), Response(wrong)],
+            [Response(page(['same'], last=False, next_offset=1)), Response(wrong), Response(page(['same']))],
+        ]:
+            with self.assertRaises(ProbeError):
+                verify_report_candidates(Session(responses), self.config, 'Reporte2', 'erp@example.test', 'Reporte2.xlsx', 'child')
+
+    def test_verified_search_does_not_report_absence_when_scan_limit_reached(self):
+        wrong = xml('<m:Items><t:Message>' + self.sender_metadata_xml(address='other@example.test') + '</t:Message></m:Items>')
+        session = Session([Response(page(['one'], last=False, next_offset=1)), Response(wrong)])
+        with patch('ews_probe.MAX_CANDIDATES', 1), self.assertRaisesRegex(ProbeError, 'EWS_REPORT_SCAN_LIMIT'):
+            verify_report_candidates(session, self.config, 'Reporte2', 'erp@example.test', 'Reporte2.xlsx', 'child')
+
+    def test_verified_search_requires_attachment_configuration(self):
+        session = Session([])
+        with self.assertRaisesRegex(ProbeError, 'EWS_ATTACHMENT_CONFIG_REQUIRED'):
+            verify_report_candidates(session, self.config, 'Reporte2', 'erp@example.test', None, 'child')
+        self.assertEqual(session.calls, [])
+
     def test_effective_rights_must_be_read_only(self):
         for data in [folder("true"), xml(), folder().replace(b'<t:Read>true', b'<t:Read>false')]:
             with self.assertRaises(ProbeError):
@@ -247,10 +311,10 @@ class ProbeTests(unittest.TestCase):
         content = xml('<m:RootFolder IncludesLastItemInRange="true"><t:Folders><t:Folder>'
                       '<t:FolderId Id="opaque-child"/><t:DisplayName>Reportes</t:DisplayName>'
                       '</t:Folder></t:Folders></m:RootFolder>')
-        session = Session([Response(content), Response(folder()), Response(xml('<t:Items/>'))])
+        session = Session([Response(content), Response(folder()), Response(page())])
         child = resolve_inbox_subfolder(session, self.config, "Reportes")
         self.assertEqual(child, "opaque-child")
-        self.assertTrue(probe(session, self.config, "Reporte2", "erp@example.test", child)["ok"])
+        self.assertTrue(probe(session, self.config, "Reporte2", "erp@example.test", child, filename='Reporte2.xlsx')["ok"])
         for _, options in session.calls[1:]:
             tree = ET.fromstring(options["data"])
             self.assertEqual(tree.find(".//t:FolderId", NS).get("Id"), "opaque-child")
@@ -308,7 +372,8 @@ class ProbeTests(unittest.TestCase):
         exceptions = types.SimpleNamespace(SSLError=SSLError, Timeout=Timeout,
             ConnectionError=ConnectionError, ConnectTimeout=ConnectTimeout, ReadTimeout=ReadTimeout)
         env = {**self.env, "PRODUCTOS_WEB_SUBJECT": "Reporte2",
-               "PRODUCTOS_WEB_SENDER": "erp@example.test", "PRODUCTOS_WEB_EXCHANGE_PASSWORD": "password-secret"}
+               "PRODUCTOS_WEB_SENDER": "erp@example.test", "PRODUCTOS_WEB_EXCHANGE_PASSWORD": "password-secret",
+               "PRODUCTOS_WEB_ATTACHMENT": "Reporte2.xlsx"}
         for error_type, detail in [(ConnectTimeout, "CONNECT_TIMEOUT"),
                                    (ReadTimeout, "READ_TIMEOUT"), (Timeout, "UNCLASSIFIED_TIMEOUT")]:
             with self.subTest(detail=detail):

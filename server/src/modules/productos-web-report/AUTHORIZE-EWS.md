@@ -30,6 +30,15 @@ regla del usuario mueve los reportes a Reportes y muestra remitente
 la representación de From en EWS con la dirección SMTP configurada; no se modifica
 el remitente autorizado ni se procesa un correo sólo por su asunto.
 
+El resultado real de `--inspect-sender` confirmó RoutingType SMTP, From y Sender
+coincidentes, un adjunto exacto y `candidateMatchesExpectedMetadata=true`. La
+restricción de remitente enviada por nuestro FindItem produjo un falso negativo;
+no era una representación EX en este caso. Se corrigió la búsqueda normal del
+diagnóstico: FindItem selecciona candidatos por asunto en la carpeta autorizada
+y GetItem verifica asunto exacto, From SMTP normalizado y un único FileAttachment
+no inline con el nombre configurado. La comprobación del remitente se conserva.
+La corrección aún debe ejecutarse desde Linux contra Exchange.
+
 La captura posterior del administrador confirma la cuenta creada:
 `sAMAccountName=svc_prodweb`, `UPN=svc_prodweb@prades.local`, correo
 `svc_prodweb@nimat.com.ar`, base `Bases` y OU de usuarios
@@ -275,8 +284,8 @@ Para un ID EWS previamente confirmado se puede usar `--folder-id 'ID_EWS_CONFIRM
 caso. No usar una ruta de Outlook ni un ID de FolderStatistics sin convertir.
 
 La prueba realiza exclusivamente `FindFolder` (al resolver la subcarpeta),
-`GetFolder` y `FindItem` con filtro de
-remitente/asunto y presencia de adjunto, un resultado como máximo. Consulta los
+`GetFolder`, `FindItem` por asunto y `GetItem` para validar el remitente y el
+adjunto esperado. Consulta los
 derechos efectivos y rechaza lectura ausente o permisos efectivos de escritura.
 No ensaya operaciones de borrado para comprobar permisos. No marca leído, no
 descarga adjuntos, no envía, no escribe cursor/deduplicación y no toca Dropbox.
@@ -341,12 +350,33 @@ candidato. No se hace resolución de nombres por coincidencias parciales.
 
 `candidateMatchesExpectedMetadata=true` significa que ese candidato satisface
 asunto, From SMTP exacto y un único adjunto con el nombre esperado; no acredita
-que el archivo sea válido ni modifica `reportFound`, que conserva el resultado
-del filtro original del servidor. La inspección es de una muestra, no un recorrido
+que el archivo sea válido. La inspección es de una muestra, no un recorrido
 de todos los reportes. Si falta el candidato, no se consulta ningún otro buzón.
 Referencias: [GetItem](https://learn.microsoft.com/en-us/exchange/client-developer/web-service-reference/getitem-operation-email-message),
 [SMTP del representado](https://learn.microsoft.com/en-us/openspecs/exchange_server_protocols/ms-oxprops/03690c3c-cdf9-48b8-ad2e-f4b681bbeb1b),
 [SMTP del remitente técnico](https://learn.microsoft.com/en-us/openspecs/exchange_server_protocols/ms-oxprops/b970e688-7602-46ad-a7be-7df7bd09f7a6).
+
+La búsqueda normal corregida se ejecuta sin flags de diagnóstico:
+
+```bash
+"$HOME/.venvs/nimat-ews-probe/bin/python" \
+  src/modules/productos-web-report/ews_probe.py \
+  --env-file .env --inbox-subfolder Reportes
+```
+
+`reportFound` se determina ahora mediante metadatos verificados; la salida incluye
+`matchMethod=verified_item_metadata` y `candidateSearch.inspected/exhausted`.
+Se recorre por páginas de 10 candidatos, hasta 100 como máximo. Si se agota el
+límite con búsqueda incompleta, falla con `EWS_REPORT_SCAN_LIMIT`, sin afirmar
+que el reporte está ausente. La fecha de recepción sólo ordena esta prueba de
+existencia; no se utiliza como fecha de generación ni para decidir cargas.
+Se detectan páginas repetidas y continuaciones inválidas. Esta enumeración
+diagnóstica no reemplaza el cursor persistente del adaptador productivo pendiente.
+
+Si se conserva `--diagnose-filters`, los booleanos muestran cómo responden las
+restricciones originales del servidor. `diagnosticMatches.combined=false` puede
+coexistir con `reportFound=true` cuando GetItem verifica el remitente y adjunto
+correctos. No se requiere cambiar `.env` ni relajar sus filtros.
 
 Con la versión actualizada de `ews_probe.py` en Linux, ejecutar:
 

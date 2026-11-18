@@ -22,8 +22,11 @@ Estos valores se guardaron en `.env`. El usuario confirmó además:
   El administrador comprobó desde Linux respuesta HTTP 401 con TLS validado e IP
   remota `192.168.0.42`; se actualizó `.env` a 8443. La prueba posterior confirmó
   autenticación NTLM de `PRADES\svc_prodweb`, lectura de Reportes y ausencia de
-  derechos efectivos de escritura. `reportFound=false`; el usuario confirmó que
-  el reporte ya está en la carpeta y se prepara diagnóstico por filtros.
+  derechos efectivos de escritura. El filtro original dio `reportFound=false`;
+  `GetItem` confirmó From/Sender SMTP exactos y un único Reporte2.xlsx, con
+  `candidateMatchesExpectedMetadata=true`. Se corrigió el diagnóstico para
+  buscar por asunto y verificar metadatos completos antes de aceptar candidatos;
+  pendiente ejecutar esa versión corregida desde Linux y revisar el XLSX real.
   El filtro exclusivo por ruta EWS aún no está verificado.
 - `WindowsAuthentication=True`, `BasicAuthentication=False`, `OAuthAuthentication=True`.
 - Cuenta creada por el administrador: `svc_prodweb`, UPN `svc_prodweb@prades.local`,
@@ -40,8 +43,8 @@ concreto Kerberos/NTLM debe verificarse según identidad, políticas y proveedor
 del servidor. No se habilita Basic ni se desactiva Extended Protection/TLS.
 `OAuthAuthentication=True` por sí solo no prueba un flujo OAuth utilizable por
 esta aplicación (emisor, registro, permisos y adquisición de token pendientes).
-Faltan resolver la coincidencia del correo y obtener el XLSX real para definir
-esquema y fecha confiable de generación.
+Faltan verificar la búsqueda corregida desde Linux y obtener el XLSX real para
+definir esquema y fecha confiable de generación.
 
 La revisión del backend encontró:
 

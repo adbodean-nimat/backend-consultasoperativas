@@ -16,6 +16,8 @@ from xml.sax.saxutils import escape, quoteattr
 NS = {"m": "http://schemas.microsoft.com/exchange/services/2006/messages",
       "t": "http://schemas.microsoft.com/exchange/services/2006/types"}
 MAX_RESPONSE = 2 * 1024 * 1024
+MAX_CANDIDATES = 100
+CANDIDATE_PAGE_SIZE = 10
 
 
 class ProbeError(Exception):
@@ -102,7 +104,9 @@ def get_folder(mailbox, folder_id=None):
                     + '</m:FolderIds></m:GetFolder>')
 
 
-def find_report(mailbox, subject, sender, folder_id=None, filter_mode="combined"):
+def find_report(mailbox, subject, sender, folder_id=None, filter_mode="combined", offset=0, page_size=1, sort_latest=False):
+    if type(offset) is not int or offset < 0 or type(page_size) is not int or not 1 <= page_size <= CANDIDATE_PAGE_SIZE:
+        raise ProbeError("EWS_PAGING_INVALID")
     def equals(field, value):
         return ('<t:IsEqualTo><t:FieldURI FieldURI=' + quoteattr(field)
                 + '/><t:FieldURIOrConstant><t:Constant Value=' + quoteattr(value)
@@ -121,10 +125,13 @@ def find_report(mailbox, subject, sender, folder_id=None, filter_mode="combined"
     if clauses:
         condition = clauses[0] if len(clauses) == 1 else '<t:And>' + ''.join(clauses) + '</t:And>'
         restriction = '<m:Restriction>' + condition + '</m:Restriction>'
+    sorting = ('<m:SortOrder><t:FieldOrder Order="Descending"><t:FieldURI '
+               'FieldURI="item:DateTimeReceived"/></t:FieldOrder></m:SortOrder>') if sort_latest else ''
     return envelope('<m:FindItem Traversal="Shallow"><m:ItemShape>'
                     '<t:BaseShape>IdOnly</t:BaseShape></m:ItemShape>'
-                    '<m:IndexedPageItemView MaxEntriesReturned="1" Offset="0" BasePoint="Beginning"/>'
-                    + restriction + '<m:ParentFolderIds>'
+                    '<m:IndexedPageItemView MaxEntriesReturned=' + quoteattr(str(page_size))
+                    + ' Offset=' + quoteattr(str(offset)) + ' BasePoint="Beginning"/>'
+                    + restriction + sorting + '<m:ParentFolderIds>'
                     + folder_xml(mailbox, folder_id) + '</m:ParentFolderIds></m:FindItem>')
 
 
@@ -192,11 +199,19 @@ def inspect_sender_candidate(session, config, subject, sender, filename, folder_
         return {'candidateFound': False}
     if len(items) != 1 or not items[0].get('Id'):
         raise ProbeError('EWS_CANDIDATE_AMBIGUOUS')
-    metadata = call(session, config, get_sender_metadata(items[0].get('Id')))
+    message = load_message_metadata(session, config, items[0].get('Id'))
+    return inspect_message_metadata(message, subject, sender, filename)
+
+
+def load_message_metadata(session, config, item_id):
+    metadata = call(session, config, get_sender_metadata(item_id))
     messages = metadata.findall('.//m:Items/t:Message', NS)
     if len(messages) != 1:
         raise ProbeError('EWS_CANDIDATE_METADATA_INVALID')
-    message = messages[0]
+    return messages[0]
+
+
+def inspect_message_metadata(message, subject, sender, filename):
     subject_matches = message.findtext('t:Subject', default='', namespaces=NS) == subject
     from_type, from_smtp, from_source = smtp_metadata(message, 'From', 0x5D02)
     sender_type, sender_smtp, sender_source = smtp_metadata(message, 'Sender', 0x5D01)
@@ -212,6 +227,50 @@ def inspect_sender_candidate(session, config, subject, sender, filename, folder_
             'expectedAttachmentCount': len(files),
             'candidateMatchesExpectedMetadata': subject_matches and bool(from_smtp)
                 and from_smtp == expected and len(files) == 1}
+
+
+def verify_report_candidates(session, config, subject, sender, filename, folder_id=None):
+    """FindItem selects by subject; GetItem is authoritative for exact From/file."""
+    if not filename:
+        raise ProbeError('EWS_ATTACHMENT_CONFIG_REQUIRED')
+    offset, inspected, seen = 0, 0, set()
+    while inspected < MAX_CANDIDATES:
+        listing = call(session, config, find_report(config['mailbox'], subject, sender,
+                       folder_id, 'subject', offset=offset,
+                       page_size=CANDIDATE_PAGE_SIZE, sort_latest=True))
+        root = listing.find('.//m:RootFolder', NS)
+        if root is None or root.get('IncludesLastItemInRange') not in ('true', 'false'):
+            raise ProbeError('EWS_REPORT_PAGE_INVALID')
+        items = root.findall('t:Items/*', NS)
+        if len(items) > CANDIDATE_PAGE_SIZE:
+            raise ProbeError('EWS_REPORT_PAGE_INVALID')
+        for item in items:
+            if inspected >= MAX_CANDIDATES:
+                raise ProbeError('EWS_REPORT_SCAN_LIMIT')
+            inspected += 1
+            # Calendar/meeting objects cannot qualify as the expected report email.
+            if item.tag != '{' + NS['t'] + '}Message':
+                continue
+            identity = item.find('t:ItemId', NS)
+            item_id = identity.get('Id') if identity is not None else None
+            if not item_id or item_id in seen:
+                raise ProbeError('EWS_REPORT_PAGING_REPEATED')
+            seen.add(item_id)
+            message = load_message_metadata(session, config, item_id)
+            check = inspect_message_metadata(message, subject, sender, filename)
+            if check['candidateMatchesExpectedMetadata']:
+                return True, {'inspected': inspected, 'exhausted': False}
+        if root.get('IncludesLastItemInRange') == 'true':
+            return False, {'inspected': inspected, 'exhausted': True}
+        try:
+            next_offset = int(root.get('IndexedPagingOffset', ''))
+        except ValueError:
+            raise ProbeError('EWS_REPORT_PAGE_INVALID') from None
+        if not items or next_offset <= offset:
+            raise ProbeError('EWS_REPORT_PAGE_INVALID')
+        offset = next_offset
+    # A bounded incomplete scan must not be reported as "report absent".
+    raise ProbeError('EWS_REPORT_SCAN_LIMIT')
 
 
 def resolve_inbox_subfolder(session, config, name):
@@ -264,7 +323,7 @@ def call(session, config, body):
         return check_response(bytes(content))
 
 
-def probe(session, config, subject, sender, folder_id=None, diagnose_filters=False):
+def probe(session, config, subject, sender, folder_id=None, diagnose_filters=False, filename=None):
     folder = call(session, config, get_folder(config["mailbox"], folder_id))
     rights = folder.find(".//t:EffectiveRights", NS)
     if rights is None or rights.findtext("t:Read", namespaces=NS) != "true":
@@ -275,17 +334,16 @@ def probe(session, config, subject, sender, folder_id=None, diagnose_filters=Fal
         raise ProbeError("EWS_WRITE_RIGHTS_NOT_CONFIRMED")
     if any(rights.findtext("t:" + right, namespaces=NS) == "true" for right in mutations):
         raise ProbeError("EWS_PERMISSIONS_TOO_BROAD")
-    tree = call(session, config, find_report(config["mailbox"], subject, sender, folder_id))
-    matched = bool(tree.findall(".//t:Items/t:Message", NS))
+    matched, search = verify_report_candidates(session, config, subject, sender, filename, folder_id)
     result = {"ok": True, "folderReadable": True, "reportFound": matched,
             "readOnly": True, "writeRightsDetected": False,
-            "attachmentDownloaded": False, "dropboxTouched": False}
+            "attachmentDownloaded": False, "dropboxTouched": False,
+            "matchMethod": "verified_item_metadata", "candidateSearch": search}
     if diagnose_filters:
         matches = {}
-        for mode in ("all", "subject", "sender", "subject_sender"):
+        for mode in ("all", "subject", "sender", "subject_sender", "combined"):
             response = call(session, config, find_report(config["mailbox"], subject, sender, folder_id, mode))
             matches[mode] = bool(response.findall(".//t:Items/*", NS))
-        matches["combined"] = matched
         result["diagnosticMatches"] = matches
     return result
 
@@ -317,7 +375,7 @@ def main():
         config = settings(env)
         subject = required(env, "PRODUCTOS_WEB_SUBJECT")
         sender = required(env, "PRODUCTOS_WEB_SENDER")
-        filename = required(env, "PRODUCTOS_WEB_ATTACHMENT") if args.inspect_sender else None
+        filename = required(env, "PRODUCTOS_WEB_ATTACHMENT")
         password = env.get("PRODUCTOS_WEB_EXCHANGE_PASSWORD", "")
         if not password:
             if not sys.stdin.isatty():
@@ -334,7 +392,7 @@ def main():
             folder_id = args.folder_id
             if args.inbox_subfolder:
                 folder_id = resolve_inbox_subfolder(session, config, args.inbox_subfolder)
-            result = probe(session, config, subject, sender, folder_id, args.diagnose_filters)
+            result = probe(session, config, subject, sender, folder_id, args.diagnose_filters, filename)
             if args.inspect_sender:
                 result['senderInspection'] = inspect_sender_candidate(session, config, subject, sender, filename, folder_id)
         print(json.dumps(result))
