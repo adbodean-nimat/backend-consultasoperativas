@@ -13,7 +13,8 @@ from unittest.mock import patch
 from xml.etree import ElementTree as ET
 from ews_probe import (MAX_RESPONSE, NS, ProbeError, call, check_response,
                        find_report, get_folder, probe, settings,
-                       find_inbox_subfolder, resolve_inbox_subfolder, connection_detail)
+                       find_inbox_subfolder, resolve_inbox_subfolder, connection_detail,
+                       get_sender_metadata, inspect_sender_candidate, smtp_metadata)
 from ews_probe import main
 
 
@@ -132,6 +133,80 @@ class ProbeTests(unittest.TestCase):
                 self.assertIsNone(tree.find(".//m:Restriction", NS))
         with self.assertRaisesRegex(ProbeError, "EWS_FILTER_MODE_INVALID"):
             find_report("mail@example.test", "Reporte2", "erp@example.test", filter_mode="invalid")
+
+    def candidate_session(self, metadata):
+        return Session([Response(xml('<t:Items><t:Message><t:ItemId Id="private-id"/></t:Message></t:Items>')),
+                        Response(xml('<m:Items><t:Message>' + metadata + '</t:Message></m:Items>'))])
+
+    def sender_metadata_xml(self, routing='SMTP', address='erp@example.test', extended='', attachments=None):
+        if attachments is None:
+            attachments = '<t:FileAttachment><t:Name>Reporte2.xlsx</t:Name><t:IsInline>false</t:IsInline></t:FileAttachment>'
+        return ('<t:Subject>Reporte2</t:Subject><t:From><t:Mailbox><t:RoutingType>' + routing
+                + '</t:RoutingType><t:EmailAddress>' + address + '</t:EmailAddress></t:Mailbox></t:From>'
+                '<t:Sender><t:Mailbox><t:RoutingType>SMTP</t:RoutingType>'
+                '<t:EmailAddress>erp@example.test</t:EmailAddress></t:Mailbox></t:Sender>'
+                + extended + '<t:Attachments>' + attachments + '</t:Attachments>')
+
+    def test_sender_getitem_requests_only_relevant_metadata(self):
+        tree = ET.fromstring(get_sender_metadata('id&"'))
+        self.assertEqual(tree.find('.//t:ItemId', NS).get('Id'), 'id&"')
+        self.assertEqual([f.get('FieldURI') for f in tree.findall('.//t:FieldURI', NS)],
+                         ['item:Subject', 'message:From', 'message:Sender', 'item:Attachments'])
+        self.assertEqual([f.get('PropertyTag') for f in tree.findall('.//t:ExtendedFieldURI', NS)], ['0x5D02', '0x5D01'])
+        self.assertIsNone(tree.find('.//m:GetAttachment', NS))
+
+    def test_sender_inspection_verifies_smtp_without_exposing_address_or_id(self):
+        session = self.candidate_session(self.sender_metadata_xml(address='ERP@EXAMPLE.TEST'))
+        result = inspect_sender_candidate(session, self.config, 'Reporte2', 'erp@example.test', 'Reporte2.xlsx', 'child')
+        self.assertTrue(result['candidateMatchesExpectedMetadata'])
+        self.assertTrue(result['fromMatchesConfigured'])
+        self.assertEqual(result['fromRoutingType'], 'SMTP')
+        self.assertEqual(result['expectedAttachmentCount'], 1)
+        self.assertNotIn('erp@example.test', json.dumps(result))
+        self.assertNotIn('private-id', json.dumps(result))
+        first = ET.fromstring(session.calls[0][1]['data'])
+        self.assertEqual(first.find('.//t:FolderId', NS).get('Id'), 'child')
+        second = ET.fromstring(session.calls[1][1]['data'])
+        self.assertEqual(second.find('.//t:ItemId', NS).get('Id'), 'private-id')
+
+    def test_sender_inspection_resolves_ex_using_represented_smtp_property(self):
+        prop = ('<t:ExtendedProperty><t:ExtendedFieldURI PropertyTag="0x5d02" PropertyType="String"/>'
+                '<t:Value>erp@example.test</t:Value></t:ExtendedProperty>')
+        session = self.candidate_session(self.sender_metadata_xml('EX', '/o=private/cn=Recipients/cn=erp', prop))
+        result = inspect_sender_candidate(session, self.config, 'Reporte2', 'erp@example.test', 'Reporte2.xlsx', 'child')
+        self.assertTrue(result['candidateMatchesExpectedMetadata'])
+        self.assertEqual(result['fromRoutingType'], 'EX')
+        self.assertEqual(result['fromSmtpSource'], 'smtp_extended_property')
+
+    def test_matching_sender_does_not_substitute_for_different_from(self):
+        session = self.candidate_session(self.sender_metadata_xml(address='different@example.test'))
+        result = inspect_sender_candidate(session, self.config, 'Reporte2', 'erp@example.test', 'Reporte2.xlsx', 'child')
+        self.assertTrue(result['senderMatchesConfigured'])
+        self.assertFalse(result['fromMatchesConfigured'])
+        self.assertFalse(result['candidateMatchesExpectedMetadata'])
+
+    def test_sender_conflicts_and_unresolved_ex_fail_closed(self):
+        prop = ('<t:ExtendedProperty><t:ExtendedFieldURI PropertyTag="23810" PropertyType="String"/>'
+                '<t:Value>other@example.test</t:Value></t:ExtendedProperty>')
+        for body, source in [(self.sender_metadata_xml(extended=prop), 'conflicting'),
+                             (self.sender_metadata_xml('EX', '/o=private/cn=erp@example.test'), 'unresolved')]:
+            session = self.candidate_session(body)
+            result = inspect_sender_candidate(session, self.config, 'Reporte2', 'erp@example.test', 'Reporte2.xlsx', 'child')
+            self.assertFalse(result['candidateMatchesExpectedMetadata'])
+            self.assertEqual(result['fromSmtpSource'], source)
+
+    def test_sender_inspection_requires_exact_subject_and_unique_noninline_file(self):
+        good = '<t:FileAttachment><t:Name>Reporte2.xlsx</t:Name><t:IsInline>false</t:IsInline></t:FileAttachment>'
+        for files in [good.replace('Reporte2.xlsx', 'wrong.xlsx'), good.replace('false', 'true'), good + good, '']:
+            session = self.candidate_session(self.sender_metadata_xml(attachments=files))
+            self.assertFalse(inspect_sender_candidate(session, self.config, 'Reporte2', 'erp@example.test', 'Reporte2.xlsx', 'child')['candidateMatchesExpectedMetadata'])
+        session = self.candidate_session(self.sender_metadata_xml().replace('<t:Subject>Reporte2', '<t:Subject>changed'))
+        self.assertFalse(inspect_sender_candidate(session, self.config, 'Reporte2', 'erp@example.test', 'Reporte2.xlsx', 'child')['candidateMatchesExpectedMetadata'])
+
+    def test_sender_inspection_without_subject_candidate_does_not_getitem(self):
+        session = Session([Response(xml('<t:Items/>'))])
+        self.assertEqual(inspect_sender_candidate(session, self.config, 'Reporte2', 'erp@example.test', 'Reporte2.xlsx', 'child'), {'candidateFound': False})
+        self.assertEqual(len(session.calls), 1)
 
     def test_effective_rights_must_be_read_only(self):
         for data in [folder("true"), xml(), folder().replace(b'<t:Read>true', b'<t:Read>false')]:

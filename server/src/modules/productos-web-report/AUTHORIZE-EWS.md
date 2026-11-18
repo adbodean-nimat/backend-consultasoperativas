@@ -23,6 +23,13 @@ La prueba autenticada posterior desde Linux devolvió `ok=true`,
 Reportes. Está verificado el acceso de lectura; falta resolver cuál de los
 filtros no coincide antes de descargar el reporte real.
 
+El diagnóstico por filtros devolvió `all=true`, `subject=true`, `sender=false`,
+`subject_sender=false`, `combined=false`. La captura posterior confirma que una
+regla del usuario mueve los reportes a Reportes y muestra remitente
+`info@nimat.com.ar`, asunto `Reporte2` y adjunto `Reporte2.xlsx`. Falta contrastar
+la representación de From en EWS con la dirección SMTP configurada; no se modifica
+el remitente autorizado ni se procesa un correo sólo por su asunto.
+
 La captura posterior del administrador confirma la cuenta creada:
 `sAMAccountName=svc_prodweb`, `UPN=svc_prodweb@prades.local`, correo
 `svc_prodweb@nimat.com.ar`, base `Bases` y OU de usuarios
@@ -309,9 +316,37 @@ privada. El funcionamiento del diagnóstico NTLM ya fue verificado desde Linux;
 actualmente está pendiente la coincidencia del correo y la validación del XLSX.
 Guardar la contraseña exclusivamente en el entorno privado correspondiente.
 
-## Diagnóstico de EWS_CONNECTION_FAILED desde Linux
+## Diagnósticos adicionales
 
 ### Diagnóstico de filtros cuando el acceso ya funciona
+
+Para la discrepancia observada de remitente, actualizar el script en Linux y usar:
+
+```bash
+"$HOME/.venvs/nimat-ews-probe/bin/python" \
+  src/modules/productos-web-report/ews_probe.py \
+  --env-file .env --inbox-subfolder Reportes --diagnose-filters --inspect-sender
+```
+
+El nuevo `senderInspection` consulta GetItem sobre un único candidato devuelto
+por asunto exacto dentro de Reportes. Solicita Subject, From, Sender, metadatos
+de adjuntos y las propiedades SMTP `0x5D02` (representado/From) y `0x5D01`
+(Sender). No pide cuerpo, cabeceras de Internet, MIME ni contenido de adjuntos.
+Devuelve únicamente tipos de enrutamiento SMTP/EX, origen de normalización,
+booleanos de coincidencia y cantidad de adjuntos Excel exactos no inline. No
+imprime direcciones, legacy DN ni IDs. From y Sender se mantienen separados:
+un Sender coincidente no sustituye un From distinto. Representaciones SMTP
+contradictorias y EX sin propiedad SMTP quedan sin resolver y no autorizan el
+candidato. No se hace resolución de nombres por coincidencias parciales.
+
+`candidateMatchesExpectedMetadata=true` significa que ese candidato satisface
+asunto, From SMTP exacto y un único adjunto con el nombre esperado; no acredita
+que el archivo sea válido ni modifica `reportFound`, que conserva el resultado
+del filtro original del servidor. La inspección es de una muestra, no un recorrido
+de todos los reportes. Si falta el candidato, no se consulta ningún otro buzón.
+Referencias: [GetItem](https://learn.microsoft.com/en-us/exchange/client-developer/web-service-reference/getitem-operation-email-message),
+[SMTP del representado](https://learn.microsoft.com/en-us/openspecs/exchange_server_protocols/ms-oxprops/03690c3c-cdf9-48b8-ad2e-f4b681bbeb1b),
+[SMTP del remitente técnico](https://learn.microsoft.com/en-us/openspecs/exchange_server_protocols/ms-oxprops/b970e688-7602-46ad-a7be-7df7bd09f7a6).
 
 Con la versión actualizada de `ews_probe.py` en Linux, ejecutar:
 

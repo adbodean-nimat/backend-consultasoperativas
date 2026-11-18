@@ -142,6 +142,78 @@ def find_inbox_subfolder(mailbox, name):
                     + folder_xml(mailbox) + '</m:ParentFolderIds></m:FindFolder>')
 
 
+def get_sender_metadata(item_id):
+    fields = ''.join('<t:FieldURI FieldURI=' + quoteattr(field) + '/>' for field in
+                     ("item:Subject", "message:From", "message:Sender", "item:Attachments"))
+    extended = ''.join('<t:ExtendedFieldURI PropertyTag=' + quoteattr(tag)
+                       + ' PropertyType="String"/>' for tag in ("0x5D02", "0x5D01"))
+    return envelope('<m:GetItem><m:ItemShape><t:BaseShape>IdOnly</t:BaseShape>'
+                    '<t:AdditionalProperties>' + fields + extended
+                    + '</t:AdditionalProperties></m:ItemShape><m:ItemIds><t:ItemId Id='
+                    + quoteattr(item_id) + '/></m:ItemIds></m:GetItem>')
+
+
+def smtp_metadata(message, field, tag):
+    """Keep From and Sender distinct; never infer SMTP from a display name/EX DN."""
+    mailbox = message.find('t:' + field + '/t:Mailbox', NS)
+    routing = mailbox.findtext('t:RoutingType', default='', namespaces=NS).upper() if mailbox is not None else ''
+    routing_label = routing if routing in ('SMTP', 'EX') else ('OTHER' if routing else 'MISSING')
+    direct = mailbox.findtext('t:EmailAddress', default='', namespaces=NS).strip().casefold() if mailbox is not None and routing == 'SMTP' else ''
+    properties = []
+    for prop in message.findall('t:ExtendedProperty', NS):
+        uri = prop.find('t:ExtendedFieldURI', NS)
+        if uri is None:
+            continue
+        try:
+            raw = uri.get('PropertyTag', '')
+            number = int(raw, 16) if raw.lower().startswith('0x') else int(raw)
+        except ValueError:
+            continue
+        if number == tag and uri.get('PropertyType') == 'String':
+            value = prop.findtext('t:Value', default='', namespaces=NS).strip().casefold()
+            if value:
+                properties.append(value)
+    candidates = set(([direct] if direct else []) + properties)
+    # Conflicting representations fail closed, even if one matches the configuration.
+    if len(candidates) > 1:
+        return routing_label, '', 'conflicting'
+    address = next(iter(candidates), '')
+    if not re.fullmatch(r'[^\s<>@]+@[^\s<>@]+', address):
+        return routing_label, '', 'unresolved'
+    return routing_label, address, 'smtp_field' if direct else 'smtp_extended_property'
+
+
+def inspect_sender_candidate(session, config, subject, sender, filename, folder_id=None):
+    # Query within the authorized folder by exact subject; metadata verification
+    # still requires the exact configured From and attachment. No download occurs.
+    listing = call(session, config, find_report(config['mailbox'], subject, sender, folder_id, 'subject'))
+    items = listing.findall('.//t:Items/t:Message/t:ItemId', NS)
+    if not items:
+        return {'candidateFound': False}
+    if len(items) != 1 or not items[0].get('Id'):
+        raise ProbeError('EWS_CANDIDATE_AMBIGUOUS')
+    metadata = call(session, config, get_sender_metadata(items[0].get('Id')))
+    messages = metadata.findall('.//m:Items/t:Message', NS)
+    if len(messages) != 1:
+        raise ProbeError('EWS_CANDIDATE_METADATA_INVALID')
+    message = messages[0]
+    subject_matches = message.findtext('t:Subject', default='', namespaces=NS) == subject
+    from_type, from_smtp, from_source = smtp_metadata(message, 'From', 0x5D02)
+    sender_type, sender_smtp, sender_source = smtp_metadata(message, 'Sender', 0x5D01)
+    expected = sender.strip().casefold()
+    files = [a for a in message.findall('t:Attachments/t:FileAttachment', NS)
+             if a.findtext('t:Name', default='', namespaces=NS) == filename
+             and a.findtext('t:IsInline', default='false', namespaces=NS) == 'false']
+    return {'candidateFound': True, 'subjectMatches': subject_matches,
+            'fromRoutingType': from_type, 'fromSmtpSource': from_source,
+            'fromMatchesConfigured': bool(from_smtp) and from_smtp == expected,
+            'senderRoutingType': sender_type, 'senderSmtpSource': sender_source,
+            'senderMatchesConfigured': bool(sender_smtp) and sender_smtp == expected,
+            'expectedAttachmentCount': len(files),
+            'candidateMatchesExpectedMetadata': subject_matches and bool(from_smtp)
+                and from_smtp == expected and len(files) == 1}
+
+
 def resolve_inbox_subfolder(session, config, name):
     tree = call(session, config, find_inbox_subfolder(config["mailbox"], name))
     root = tree.find(".//m:RootFolder", NS)
@@ -223,6 +295,8 @@ def main():
     parser.add_argument("--env-file", required=True)
     parser.add_argument("--diagnose-filters", action="store_true",
                         help="Devuelve sólo coincidencias booleanas de filtros; no lista datos de correos.")
+    parser.add_argument("--inspect-sender", action="store_true",
+                        help="Comprueba From/Sender SMTP y adjunto de un candidato por asunto; no muestra direcciones.")
     target = parser.add_mutually_exclusive_group(required=True)
     target.add_argument("--inbox", action="store_true", help="Sólo si el administrador confirmó Bandeja de entrada.")
     target.add_argument("--folder-id", help="ID EWS de la carpeta autorizada, no ID de Outlook ni FolderStatistics.")
@@ -243,6 +317,7 @@ def main():
         config = settings(env)
         subject = required(env, "PRODUCTOS_WEB_SUBJECT")
         sender = required(env, "PRODUCTOS_WEB_SENDER")
+        filename = required(env, "PRODUCTOS_WEB_ATTACHMENT") if args.inspect_sender else None
         password = env.get("PRODUCTOS_WEB_EXCHANGE_PASSWORD", "")
         if not password:
             if not sys.stdin.isatty():
@@ -260,6 +335,8 @@ def main():
             if args.inbox_subfolder:
                 folder_id = resolve_inbox_subfolder(session, config, args.inbox_subfolder)
             result = probe(session, config, subject, sender, folder_id, args.diagnose_filters)
+            if args.inspect_sender:
+                result['senderInspection'] = inspect_sender_candidate(session, config, subject, sender, filename, folder_id)
         print(json.dumps(result))
         return 0
     except ProbeError as error:
