@@ -6,8 +6,9 @@ import { ReportRepository } from "./report.repository.js";
 import { ReportDropbox } from "./report.dropbox.js";
 
 export async function buildService(env = process.env) {
+  if (env.NODE_TLS_REJECT_UNAUTHORIZED === "0") throw fault("REPORT_TLS_REQUIRED");
   const config = readConfig(env);
-  const source = createExchangeSource(config);
+  const source = createExchangeSource(config, { env });
   const { pool } = await import("../../../dboperacion_pg.js");
   return new ReportService({ config, source, repository: new ReportRepository(pool),
     dropbox: config.dryRun ? null : new ReportDropbox({ env }) });

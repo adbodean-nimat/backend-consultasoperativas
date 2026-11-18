@@ -1,216 +1,231 @@
-# Productos Web II → Dropbox
+# Productos Web II: Exchange → validación XLSX → Dropbox
 
-## Estado de esta entrega
+El adaptador EWS/NTLM está implementado y el validador se verificó contra el
+Reporte2.xlsx real aportado por el usuario. El scheduler permanece desactivado.
+Desde este workspace no se ejecutaron migraciones, conexiones EWS ni cargas a
+Dropbox. El usuario ya comprobó desde Linux autenticación y lectura del correo;
+falta probar allí el nuevo worker SyncFolderItems/GetAttachment y ejecutar el
+circuito completo en modo de prueba antes de activar escrituras.
 
-**Estructura implementada y probada; recepción de Exchange pendiente de datos.**
-No existe todavía un adaptador de correo operativo. `createExchangeSource()`
-rechaza iniciar con `REPORT_EXCHANGE_ADAPTER_PENDING`: falta integrar el adaptador
-productivo con el contrato del reporte real, esquema y fecha de generación.
-La tarea está desactivada en `.env` y `.env.example`. El usuario ejecutó las
-consultas EWS desde Linux; desde este workspace no se contactó Exchange ni se
-reemplazó el archivo remoto.
+## Configuración confirmada
 
-Datos confirmados posteriormente por el usuario: Exchange Server 2019 y casilla
-`soporte@nimat.com.ar`. Según la captura: remitente `info@nimat.com.ar`, asunto
-`Reporte2`, adjunto `Reporte2.xlsx`; `Productos Web II` aparece en el cuerpo.
-Estos valores se guardaron en `.env`. El usuario confirmó además:
+- Exchange Server 2019 CU14, EXCHSERVER. AdminDisplayVersion no determina SU/HU.
+- EWS interno del servicio: `https://correo.nimat.com.ar:8443/ews/exchange.asmx`.
+  HTTPS y autenticación NTLM comprobados desde Linux. El binding público 443 se
+  conserva; el filtro exclusivo de ruta `/ews` en 8443 no fue verificado.
+- Casilla `soporte@nimat.com.ar`; carpeta `Bandeja de entrada\Reportes`.
+- Cuenta `PRADES\svc_prodweb`, UPN `svc_prodweb@prades.local`.
+  Reviewer en Reportes y FolderVisible en Bandeja de entrada. No FullAccess,
+  impersonación, SendAs ni permisos administrativos para el servicio.
+- Remitente From SMTP exacto `info@nimat.com.ar`, asunto exacto `Reporte2`, adjunto
+  FileAttachment no inline único `Reporte2.xlsx`. Una regla administrada por el
+  usuario mueve los correos a Reportes; el backend no mueve ni marca mensajes.
+- El usuario confirmó que cada envío genera un Excel nuevo. Se usa DateTimeSent
+  original como referencia de orden, explícitamente configurada. El XLSX no tiene
+  una fecha de generación verificable. Si cambia este contrato, detener el job;
+  un adjunto viejo reenviado con fecha nueva no puede distinguirse sólo por fecha.
+- Destino fijo: `/NIMAT/Productos Nimat Urls.xlsx` (`EXCEL_URLS_PATH`).
 
-- Servidor `EXCHSERVER`, Standard, `AdminDisplayVersion 15.2.1544.4`: CU14.
-  Este comando identifica el CU, no el nivel de SU/HU instalado.
-- EWS interno y externo: `https://correo.nimat.com.ar/ews/exchange.asmx`.
-- Endpoint adicional del servicio: `https://correo.nimat.com.ar:8443/ews/exchange.asmx`.
-  El administrador comprobó desde Linux respuesta HTTP 401 con TLS validado e IP
-  remota `192.168.0.42`; se actualizó `.env` a 8443. La prueba posterior confirmó
-  autenticación NTLM de `PRADES\svc_prodweb`, lectura de Reportes y ausencia de
-  derechos efectivos de escritura. El filtro original dio `reportFound=false`;
-  `GetItem` confirmó From/Sender SMTP exactos y un único Reporte2.xlsx, con
-  `candidateMatchesExpectedMetadata=true`. Se corrigió el diagnóstico para
-  buscar por asunto y verificar metadatos completos antes de aceptar candidatos;
-  pendiente ejecutar esa versión corregida desde Linux y revisar el XLSX real.
-  El filtro exclusivo por ruta EWS aún no está verificado.
-- `WindowsAuthentication=True`, `BasicAuthentication=False`, `OAuthAuthentication=True`.
-- Cuenta creada por el administrador: `svc_prodweb`, UPN `svc_prodweb@prades.local`,
-  correo `svc_prodweb@nimat.com.ar`, base `Bases`, OU de usuarios Sistemas.
-  Se guardó el sAMAccountName en `.env`.
-- Reviewer verificado por el administrador en `Bandeja de entrada\Reportes` de
-  soporte. Ruta guardada en `.env`. FolderVisible sobre el padre también confirmado.
-- NETBIOS `PRADES`, DNSRoot `prades.local`. Configurado `AUTH=ntlm` para la prueba
-  solicitada y completada con éxito desde Linux; no se modificó contraseña.
+La API usa ESM, node-cron, instancia PM2 0 y locks advisory PostgreSQL; este módulo
+sigue ese patrón. Reutiliza app/refresh token y SDK Dropbox existentes. No importa
+ni ejecuta conversores de jobs.js, chatbot, productos.json o Typesense. Cambiar
+EXCEL_URLS_PATH hace que sus consumidores existentes lean la ruta solicitada al
+reiniciar, sin modificar su implementación.
 
-Se guardaron protocolo `ews` y endpoint en `.env`. Se recomienda autenticación
-integrada Windows para evaluar el acceso desde el host del backend; el mecanismo
-concreto Kerberos/NTLM debe verificarse según identidad, políticas y proveedores
-del servidor. No se habilita Basic ni se desactiva Extended Protection/TLS.
-`OAuthAuthentication=True` por sí solo no prueba un flujo OAuth utilizable por
-esta aplicación (emisor, registro, permisos y adquisición de token pendientes).
-Faltan verificar la búsqueda corregida desde Linux y obtener el XLSX real para
-definir esquema y fecha confiable de generación.
+## Referencia XLSX revisada
 
-La revisión del backend encontró:
+`report.profile.js` define `productos-web-ii-v1`:
 
-- API ESM en `api.js`, tareas `node-cron`, instancia PM2 0 y bloqueos advisory
-  PostgreSQL en Gestión y transferencias duplicadas.
-- `jobs.js` ejecuta conversores existentes. Este módulo no los importa ni ejecuta.
-- Dropbox ya tiene SDK y autorización con `DROPBOX_APP_KEY`,
-  `DROPBOX_APP_SECRET`, `DROPBOX_REFRESH_TOKEN`. Se reutilizan esa app, credenciales
-  y SDK sin incorporar otra cuenta ni dependencias.
-- Inicialmente `.env` no contenía acceso Exchange; ahora registra el endpoint
-  confirmado, pero la autenticación operativa sigue pendiente.
-- El destino anterior de `.env` era `/Productos Nimat Urls.xlsx`; se actualizó a
-  `/NIMAT/Productos Nimat Urls.xlsx`, el único destino aceptado por este módulo.
-  Los consumidores existentes de `EXCEL_URLS_PATH` leerán ese destino al reiniciar;
-  no se modificó su implementación ni se ejecutó su sincronización.
-- No se encontró un reporte real Productos Web II en el workspace. El Excel de
-  Gestión disponible pertenece a otro proceso y no se usó para inferir columnas.
+- Hoja `Productos Web II`, siete encabezados en orden:
+  `Id`, `Sku`, `Name`, `FullDescription`, `imageUrl`, `url`, `Especificaciones`.
+- Referencia: 2.922 filas, 465.275 bytes, SHA256
+  `ec3700b3eb8b4aba5ede30287e0efe86a5b2439c24f84dcbafcbc50e24a88e23`.
+- Valores esenciales: Id, Name, imageUrl y url. En el reporte real hay 24 SKU,
+  31 descripciones y 1.956 especificaciones vacíos; se admiten esos vacíos.
+- Id entero positivo único; columnas textuales conservan sus tipos (incluido SKU
+  con ceros iniciales). URL e imagen HTTPS de nimat.com.ar/www.nimat.com.ar.
+- ZIP íntegro (CRC y tamaños), MIME XLSX resuelto por Default u Override Open XML,
+  hoja/columnas exactas, datos, ausencia de macros, enlaces externos de libro,
+  fórmulas y errores de celda. El HTML de descripción se trata como texto.
+- Límites: 20 MiB comprimidos, 80 MiB descomprimidos, 2.000 entradas ZIP,
+  250.000 filas y 200 columnas. MIN_ROWS es configurable, inicialmente 1;
+  no se presume que siempre deban existir exactamente 2.922 productos.
 
-## Datos necesarios antes de completar el adaptador
+El SHA256 identifica la referencia revisada; los reportes futuros pueden cambiar
+su contenido. La validación estructural no demuestra que el exportador haya
+incluido todo el inventario: si se requiere un umbral mínimo mayor o un recuento
+contra el origen, definirlo con el responsable de datos.
 
-1. Confirmar dónde corre el backend (Windows/Linux, dominio, cuenta del servicio)
-   y la autenticación autorizada para esa identidad. EWS/HTTPS y CU14 ya constan.
-   Para comprobar parches en el servidor Exchange:
-   `Get-Command ExSetup.exe | ForEach-Object { $_.FileVersionInfo }`.
-   Ver [versiones Microsoft](https://learn.microsoft.com/en-us/exchange/new-features/build-numbers-and-release-dates).
-2. Casilla, carpeta, remitente, asunto y nombre EXACTOS del adjunto. Confirmar si
-   existen variantes; por ahora las coincidencias son exactas (remitente sin
-   distinción de mayúsculas). No se busca texto parcial ni cualquier `.xlsx`.
-3. Permisos de lectura autorizados sobre esa casilla/carpeta. Credenciales sólo
-   por configuración privada, nunca en tickets, logs ni este documento.
-4. Reporte real y regla confiable para obtener su fecha de GENERACIÓN. No basta
-   con la fecha de recepción: un correo reenviado puede contener un reporte viejo.
-5. Hoja, encabezados, fila de encabezados y reglas de datos reales. El validador
-   preparado supone encabezados en la primera fila no vacía, sin fórmulas y valores
-   presentes en todas las columnas configuradas. Ajustar con evidencia si el
-   reporte legítimo admite otras estructuras o valores opcionales.
-6. Fecha de generación y revisión Dropbox (`rev`) del archivo vigente para fijar
-   la línea inicial; comprobar que la app ve `/NIMAT` en su espacio autorizado.
+## Componentes y permisos
 
-## Configuración y autorización
+- `report.exchange.js`: puente Node → worker Python mediante stdin JSON.
+  Credenciales fuera de argumentos y logs; proceso acotado a 120 segundos y
+  salida limitada. Sin shell. El worker necesita el Python de su venv.
+- `ews_worker.py`: reutiliza el transporte NTLMv2/CBT de `ews_probe.py`, TLS
+  obligatorio, sin proxies implícitos ni redirecciones. GetFolder/FindFolder
+  verifican carpeta y derechos efectivos de lectura, sin escritura.
+- SyncFolderItems guarda SyncState opaco ligado al endpoint/casilla/carpeta;
+  páginas de 25 cambios, Create/Update se hidratan con GetItem, ReadFlagChange y
+  Delete sólo se observan/ignoran. El backend nunca modifica el buzón.
+- FindItem con filtro directo From produjo un falso negativo. El worker acepta
+  candidatos únicamente tras verificar Subject, From SMTP y adjunto con GetItem.
+  From y Sender no se sustituyen; EX puede usar la propiedad SMTP 0x5D02; datos
+  contradictorios o sin resolver no autorizan el reporte.
+- Antes de GetAttachment se vuelven a verificar remitente/asunto/nombre, ID,
+  tamaño y ParentFolderId. Se descarga sólo el Excel esperado, con respuesta
+  limitada y base64/tamaño comprobados; Node valida el XLSX antes de publicar.
+- `report.repository.js` y `schema.sql`: cursor, watermark, hashes de IDs y
+  contenido, revisión Dropbox e intención de carga en una fila JSONB, bajo lock
+  de sesión PostgreSQL. El rol de runtime necesita SELECT/INSERT/UPDATE en esa
+  tabla; DDL se ejecuta con rol de migración, sin privilegios globales del servicio.
+- `report.service.js`: reúne todas las páginas, ordena por fecha original y
+  procesa en serie. Rechaza iguales/anteriores al watermark. Los inválidos se
+  registran; transporte incompleto no adelanta cursor. La deduplicación persiste
+  entre reinicios. No hay poda automática del historial: respaldar esta tabla.
+- `report.dropbox.js`: app y refresh token existentes. Scopes mínimos del módulo:
+  files.metadata.read y files.content.write con acceso a /NIMAT. Reautorizar la app
+  sólo si falta write; preservar scopes que ya usan otros procesos.
+- La subida usa update(rev), strict_conflict=true, autorename=false y compara hash.
+  Se persiste intención antes de cargar. Si se pierde la respuesta o cae el proceso
+  tras commit remoto, se reconcilia por content hash antes de continuar. Si otro
+  escritor cambia la revisión, se detiene sin sobrescribirlo.
 
-Ver [guía de cuenta mínima y prueba Linux](./AUTHORIZE-EWS.md) para crear la
-cuenta, asignar Reviewer a una carpeta, completar únicamente datos confirmados
-y ejecutar `ews_probe.py`. Es un diagnóstico manual separado; no habilita el
-adaptador de recepción pendiente ni modifica correos o Dropbox.
+## Preparar Linux y configuración privada
 
-Las variables nuevas están documentadas en `.env.example`, sin secretos.
-`.env` queda privado e ignorado por Git. Se reservaron campos vacíos de dominio,
-usuario, contraseña y CA para el diagnóstico NTLM. No hay credenciales inventadas;
-el administrador debe aprobar el modo y completar los datos reales en privado.
+Copiar todo `src/modules/productos-web-report` y package.json de esta versión.
+Usar el usuario de Linux del backend. Crear un venv accesible por ese usuario:
 
-Dropbox requiere la autorización existente con `files.metadata.read` y
-`files.content.write`, además del acceso a la carpeta. Si faltan scopes, el titular
-debe reautorizar la app con acceso offline y guardar el refresh token en `.env`.
-No ampliar scopes ni sustituir el token de otros procesos sin revisar su uso.
-Ver [OAuth oficial](https://docs.dropboxapi.com/dropbox-api/docs/oauth) y
-[upload oficial](https://docs.dropboxapi.com/dropbox-api/api-reference/user-endpoints/files/upload).
-El módulo usa actualización condicional por revisión y `strict_conflict`, sin
-renombrar ni crear copias ante conflictos.
-
-Para Exchange, el administrador debe conceder únicamente lectura de mensajes y
-adjuntos en la casilla autorizada según el protocolo elegido. El adaptador no
-debe borrar, mover, marcar leído ni enviar mensajes. Mantener validación de TLS,
-timeouts y límites de descarga. Para CA privada usar `NODE_EXTRA_CA_CERTS` con la
-cadena confiable, nunca desactivar certificados. El scheduler rechaza
-`NODE_TLS_REJECT_UNAUTHORIZED=0`.
-
-## Contrato del adaptador pendiente
-
-Implementar en `report.exchange.js` sólo después de la confirmación:
-
-```js
-// list recibe { cursor, mailbox, folder }.
-// cursor null: fotografía inicial completa de la carpeta configurada.
-// Continuaciones: páginas de un snapshot estable/cambios, sin perder mensajes.
-return {
-  cursor: "cursor-opaco-persistible", hasMore: false,
-  messages: [{
-    id: "id-inmutable-del-correo", sender: "direccion@dominio", subject: "asunto",
-    reportAt: "2026-11-17T09:00:00-03:00", // generación, verificada con reporte real
-    attachments: [{ id: "id-estable", name: "exacto.xlsx", size: 12345, inline: false }],
-  }],
-};
-// download({ messageId, attachmentId, maxBytes }) devuelve un Buffer completo.
+```bash
+python3 -m venv "$HOME/.venvs/nimat-ews-probe"
+"$HOME/.venvs/nimat-ews-probe/bin/python" -m pip install \
+  -r src/modules/productos-web-report/probe-requirements.txt
 ```
 
-Filtrar y recorrer únicamente la casilla/carpeta indicada; descargar sólo el
-adjunto solicitado. Aplicar el límite durante la transferencia, no después.
-Normalizar remitente a una dirección SMTP, IDs persistentes y fechas con zona.
-El adaptador debe verificar la fecha de generación con la regla acordada antes
-de devolver `reportAt`. Si necesita contenido para extraerla, reutilizar el mismo
-Buffer limitado del adjunto esperado. Nunca usar recepción como fallback silencioso.
-Un cursor expirado debe fallar cerrado; su resincronización debe preservar
-deduplicación y watermark. Un cambio de configuración produce error de binding:
-no se reutiliza automáticamente el cursor de otra carpeta o casilla.
+Completar las claves del .env privado de Linux, sin duplicarlas ni compartir su
+contenido. El .env local Windows no despliega estos cambios en producción:
 
-El servicio reúne todas las páginas antes de ordenar por fecha de generación.
-Fechas iguales no reemplazan al último reporte válido. Adjuntos ambiguos, tamaño
-incierto, descargas incompletas, fechas ausentes y fallos de transporte detienen
-el lote sin adelantar cursor. XLSX definitivamente inválidos se registran como
-inválidos y permiten continuar. No se descargan otros archivos.
+```dotenv
+PRODUCTOS_WEB_ENABLED=false
+PRODUCTOS_WEB_DRY_RUN=true
+PRODUCTOS_WEB_CRON=*/5 * * * *
+PRODUCTOS_WEB_EXCHANGE_VERSION=2019
+PRODUCTOS_WEB_EXCHANGE_PROTOCOL=ews
+PRODUCTOS_WEB_EXCHANGE_URL=https://correo.nimat.com.ar:8443/ews/exchange.asmx
+PRODUCTOS_WEB_EXCHANGE_AUTH=ntlm
+PRODUCTOS_WEB_EXCHANGE_DOMAIN=PRADES
+PRODUCTOS_WEB_EXCHANGE_USER=svc_prodweb
+PRODUCTOS_WEB_EXCHANGE_PASSWORD=
+PRODUCTOS_WEB_EXCHANGE_CA_FILE=
+PRODUCTOS_WEB_PYTHON=
+PRODUCTOS_WEB_MAILBOX=soporte@nimat.com.ar
+PRODUCTOS_WEB_FOLDER="Bandeja de entrada\Reportes"
+PRODUCTOS_WEB_SENDER=info@nimat.com.ar
+PRODUCTOS_WEB_SUBJECT=Reporte2
+PRODUCTOS_WEB_ATTACHMENT=Reporte2.xlsx
+PRODUCTOS_WEB_SHEET="Productos Web II"
+PRODUCTOS_WEB_COLUMNS=["Id","Sku","Name","FullDescription","imageUrl","url","Especificaciones"]
+PRODUCTOS_WEB_REQUIRED_VALUES=["Id","Name","imageUrl","url"]
+PRODUCTOS_WEB_SCHEMA_PROFILE=productos-web-ii-v1
+PRODUCTOS_WEB_MIN_ROWS=1
+PRODUCTOS_WEB_REFERENCE_SHA256=ec3700b3eb8b4aba5ede30287e0efe86a5b2439c24f84dcbafcbc50e24a88e23
+PRODUCTOS_WEB_ORDERING=message_sent
+PRODUCTOS_WEB_FRESH_REPORT_PER_MESSAGE_CONFIRMED=true
+EXCEL_URLS_PATH="/NIMAT/Productos Nimat Urls.xlsx"
+PRODUCTOS_WEB_INITIAL_REPORT_AT=
+PRODUCTOS_WEB_INITIAL_DROPBOX_REV=
+```
 
-## Persistencia y despliegue
+PYTHON debe ser la ruta absoluta al ejecutable del venv de ese host; por ejemplo
+`/home/usuario/.venvs/nimat-ews-probe/bin/python`. No usar `$HOME` literalmente en
+.env ni resolver el symlink hacia el Python del sistema (perdería el venv).
+PASSWORD debe completarse en privado para ejecuciones desatendidas; el worker no
+solicita claves interactivamente. `ews_probe.py` sigue admitiendo prompt para
+pruebas manuales. El archivo .env debe ser propiedad del usuario correcto y modo
+600. CA_FILE es opcional para una CA privada confiable. Nunca desactivar TLS,
+CBT/Extended Protection ni habilitar Basic para resolver un fallo.
 
-1. Aplicar `schema.sql` en la base PostgreSQL `PSQL_*` con rol de migraciones.
-   El runtime necesita `SELECT`, `INSERT`, `UPDATE` en esa única tabla; no DDL,
-   `DELETE` ni permisos de administrador. No se aplicaron migraciones a producción.
-2. Verificar el reporte real, completar `PRODUCTOS_WEB_SHEET` y
-   `PRODUCTOS_WEB_COLUMNS` (array JSON con nombres exactos). Ejecutar:
+## Migración y primera prueba real
 
-   ```powershell
-   npm run report:validate -- --validate "C:\ruta\Productos Web II.xlsx"
+1. Aplicar `schema.sql` en la base PostgreSQL PSQL_* del backend, con rol de
+   migraciones. No se ejecuta DDL automáticamente ni se aplicó desde este chat.
+2. Si se quiere volver a validar la referencia local sin servicios externos:
+
+   ```bash
+   npm run report:validate -- --validate /ruta/Reporte2.xlsx
    ```
 
-   Sólo lee un archivo local; devuelve filas, encabezados y SHA256, sin conectarse
-   a Exchange, PostgreSQL ni Dropbox. Guardar el hash revisado como
-   `PRODUCTOS_WEB_REFERENCE_SHA256`. El hash es evidencia de referencia revisada,
-   no una restricción que obligue a todos los reportes nuevos a tener igual contenido.
-3. Completar las variables confirmadas, implementar el adaptador y probarlo contra
-   un entorno autorizado. Configurar `PRODUCTOS_WEB_INITIAL_REPORT_AT` en ISO con
-   zona y `PRODUCTOS_WEB_INITIAL_DROPBOX_REV` según el archivo actual. No inventar
-   una fecha inicial: podría permitir reemplazar un reporte vigente por uno viejo.
-   Si el destino aún no existe, copiar primero un reporte validado por el proceso
-   actual y tomar su revisión. El módulo exige destino existente para actualizarlo.
-4. Con el adaptador verificado, activar `PRODUCTOS_WEB_ENABLED=true` manteniendo
-   `PRODUCTOS_WEB_DRY_RUN=true` y reiniciar API. Corre cada cinco minutos por
-   defecto, hora Argentina, en instancia PM2 0 o proceso único. En simulación
-   valida candidatos pero no escribe cursor/deduplicación ni toca Dropbox; es
-   esperable que vuelva a validarlos en el siguiente ciclo.
-5. Revisar resultados y sólo entonces usar `PRODUCTOS_WEB_DRY_RUN=false`, reiniciar
-   y comprobar la revisión/hash del destino. Hoy el paso 4 falla intencionalmente
-   por el adaptador pendiente; no representa una integración lista para producción.
+3. Ejecutar una vez el circuito real en modo de prueba:
 
-PostgreSQL mantiene cursor, IDs de correo/adjunto hasheados, hashes de contenido,
-watermark, revisión y una intención de carga. Se persiste intención antes de
-subir. Si cae después del commit remoto, se reconcilia por content hash y se
-confirma localmente sin repetir la carga. Si cambió la revisión por otro escritor,
-se detiene sin sobrescribir. Un pendiente no reconciliable requiere investigación,
-no borrar estado. El lock de sesión PostgreSQL protege instancias y el guard local
-evita solapamientos del mismo servicio; las cargas también usan revisión condicional.
+   ```bash
+   npm run report:receive -- --dry-run
+   ```
 
-No eliminar ni restaurar hacia atrás esta tabla sin reconciliar con el destino.
-Respaldarla junto a PostgreSQL. La deduplicación se conserva sin poda automática;
-planificar archivado con watermark si crece mucho. La primera enumeración está
-limitada a 1000 páginas/50000 mensajes; separar una carpeta de reportes cuando sea
-necesario. El XLSX está limitado a 20 MiB comprimidos/80 MiB descomprimidos y 2000
-entradas ZIP, con CRC, tamaño, hoja, columnas y datos comprobados.
+   Toma el lock PostgreSQL, consulta EWS y valida los adjuntos. No escribe
+   cursor/deduplicación ni hace llamadas a Dropbox. No arranca la API ni el cron.
+   Si falta baseline y no hay estado previo, usa epoch exclusivamente para esta
+   simulación. Cada resultado válido incluye filas, reportAt y contentHash; no
+   incluye datos de productos, asuntos, direcciones, IDs crudos ni credenciales.
 
-Conexión temporal, 429 y 5xx se reintentan hasta cuatro veces con espera creciente
-y `Retry-After` acotado a 30 segundos; al agotarse, vuelve a intentarse en el
-siguiente ciclo sin perder cursor/intención. Autenticación, certificados y
-conflictos requieren corregir la causa. Los logs no incluyen respuestas crudas,
-credenciales, casillas, asuntos ni contenido del reporte. Los logs de error del
-servicio son genéricos para evitar que un error de proveedor exponga secretos.
+4. Obtener revisión y hash del destino existente mediante consulta de metadatos:
 
-## Pruebas
+   ```bash
+   npm run report:dropbox-info
+   ```
 
-```powershell
+   No sube ni descarga archivos. Comparar contentHash con los resultados válidos
+   de dry-run. Si hay coincidencias, la mayor reportAt de esas coincidencias es
+   una referencia verificable del contenido actualmente publicado, bajo el contrato
+   de Excel nuevo por envío confirmado por el usuario. Guardar esa fecha en
+   INITIAL_REPORT_AT y la revisión obtenida en INITIAL_DROPBOX_REV.
+   serverModified no es una fecha de generación: no usarlo como sustituto.
+   Si no hay coincidencia, investigar la fecha del reporte vigente; no inventarla.
+   Si el destino no existe, sembrar primero un XLSX validado y tomar su referencia.
+5. Después de revisar la simulación y completar la línea inicial, la publicación
+   manual explícita se ejecuta con:
+
+   ```bash
+   npm run report:receive -- --publish
+   ```
+
+   Requiere baseline incluso si se invoca desde CLI. Las revisiones se contrastan
+   con el servidor: si cambia el archivo durante la revisión, falla por conflicto.
+6. Para programación, usar DRY_RUN=false y ENABLED=true y reiniciar API/PM2 con
+   su procedimiento habitual. Corre sólo en instancia 0 o proceso único, cada
+   cinco minutos por defecto, zona America/Argentina/Buenos_Aires. El lock de
+   PostgreSQL protege otras instancias y ejecuciones manuales.
+
+## Fallos y operación
+
+Conexiones temporales, 429 y 5xx se reintentan hasta cuatro veces con espera
+creciente acotada. Al agotarse, el siguiente ciclo retoma sin perder cursor o
+intención. Certificados, autenticación, permisos, ambigüedades y conflictos no se
+resuelven ampliando permisos ni sobrescribiendo. Logs y CLI muestran códigos
+seguros, sin cuerpos de respuesta ni secretos. Un SyncState expirado falla cerrado;
+la resincronización debe preservar processed/hashes/watermark/rev, nunca borrar
+estado a ciegas. Cambios de endpoint/carpeta/esquema/criterio de orden requieren
+revisar el binding del estado antes de reutilizar un cursor. Rotar la contraseña
+y cambiar la ruta del Python no cambian ese binding.
+
+No restaurar el estado hacia atrás sin reconciliar con Dropbox. Conservar un
+pendiente si no se puede reconciliar: requiere investigar el archivo remoto o el
+mensaje original. El archivo válido se conserva ante fallos del procesamiento.
+
+## Verificación
+
+```bash
 npm run test:productos-web-report
+python3 -B -m unittest discover -s src/modules/productos-web-report -p 'test_ews*.py' -v
+npm run build
 ```
 
-Fixtures sintéticos en memoria: XLSX válido, formato falso, corrupción/truncado,
-columnas y datos faltantes, fórmulas, duplicados entre reinicios, orden entre
-páginas, antiguos tardíos, coincidencias exactas, simulación, descargas incompletas,
-fallos de conexión, retries, conflictos externos, exclusión mutua, SQL parametrizado
-y recuperación de caída antes/después de carga. No usan servicios reales.
-Faltan las pruebas de integración del protocolo/autenticación Exchange y del
-reporte real hasta recibir los datos pendientes. No se modificaron chatbot,
-productos.json ni sincronización Typesense.
+Pruebas offline: validez/invalidez de XLSX, Default/Override de MIME real,
+campos opcionales, tipos, URLs, orden, duplicados entre reinicios, concurrencia,
+cursores, páginas, cambios del buzón, sólo lectura, transporte acotado, credenciales
+por stdin, respuestas perdidas y recuperación. La referencia real se validó
+localmente, sin modificarla. La prueba de integración del nuevo worker completo,
+PostgreSQL y Dropbox requiere ejecutarse en el entorno Linux autorizado.
+
+La guía histórica `AUTHORIZE-EWS.md` conserva los pasos de creación de cuenta,
+ACL y diagnóstico de red. Para ejecutar el circuito final prevalecen estas
+instrucciones; no repetir la creación de la cuenta ni modificar la publicación
+pública 443 de Exchange.

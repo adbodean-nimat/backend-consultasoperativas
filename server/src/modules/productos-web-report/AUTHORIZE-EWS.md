@@ -1,5 +1,12 @@
 # Cuenta de servicio y prueba EWS desde Linux
 
+> Guía de autorización y diagnóstico que documenta también resultados intermedios.
+> Estado actual: cuenta/ACL y acceso EWS verificados; XLSX real validado y adaptador
+> SyncFolderItems/GetAttachment implementado. El usuario confirmó exportación nueva
+> por envío; se configuró orden por fecha de envío original. Para configuración y
+> ejecución del circuito final, seguir [README.md](./README.md), que prevalece sobre
+> ejemplos de diagnóstico anteriores. No repetir creación de cuenta ni permisos.
+
 ## Datos confirmados y pendientes
 
 Confirmado por el administrador: Exchange 2019 CU14, servidor EXCHSERVER,
@@ -301,8 +308,10 @@ Salida esperada:
 
 `reportFound=false` con `ok=true` prueba lectura de la carpeta, pero no encontró
 un correo que coincida. No demuestra lectura/validez del adjunto. Aun con éxito,
-falta implementar/probar el adaptador Node, obtener el Excel real y verificar
-fecha, esquema y línea inicial Dropbox antes de activar la recepción automática.
+falta probar el nuevo adaptador Node/Python completo desde Linux y verificar la
+línea inicial Dropbox antes de activar la recepción automática. El XLSX real y
+el esquema ya se revisaron; la fecha de orden es DateTimeSent bajo confirmación
+del usuario de que se genera un archivo nuevo en cada envío.
 
 Errores seguros que se pueden compartir sin incluir contraseña ni XML crudo:
 
@@ -322,7 +331,7 @@ Errores seguros que se pueden compartir sin incluir contraseña ni XML crudo:
 Dominio NETBIOS, sAMAccountName, carpeta y ACL ya fueron confirmados. Devolver
 el JSON del diagnóstico ejecutado desde Linux e indicar si fue necesaria una CA
 privada. El funcionamiento del diagnóstico NTLM ya fue verificado desde Linux;
-actualmente está pendiente la coincidencia del correo y la validación del XLSX.
+el candidato ya coincidió por metadatos y el XLSX real se validó localmente.
 Guardar la contraseña exclusivamente en el entorno privado correspondiente.
 
 ## Diagnósticos adicionales

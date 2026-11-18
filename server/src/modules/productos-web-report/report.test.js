@@ -80,6 +80,8 @@ test("dry-run valida sin Dropbox ni cambios persistentes; después se puede publ
   const f = fixture([mail("1", "2026-11-02T00:00:00Z")]);
   const result = await f.service({ dryRun: true }).run();
   assert.equal(result.results[0].status, "validated");
+  assert.equal(result.results[0].reportAt, "2026-11-02T00:00:00.000Z");
+  assert.equal(result.results[0].contentHash, contentHash(f.messages[0].buffer));
   assert.equal(f.state(), null); assert.equal(f.uploads(), 0); assert.equal(f.metadataCalls(), 0);
   await f.service().run(); assert.equal(f.uploads(), 1);
 });
@@ -119,6 +121,18 @@ test("fallo antes de carga conserva intención y permite repetir", async () => {
   const upload = f.dropbox.upload; f.dropbox.upload = async () => { throw new Error("offline"); };
   await assert.rejects(f.service().run()); assert.ok(f.state().pending); assert.equal(f.state().cursor, null);
   f.dropbox.upload = upload; await f.service().run(); assert.equal(f.uploads(), 1);
+});
+
+test("recupera intención pendiente antes de procesar un correo antiguo llegado entre ejecuciones", async () => {
+  const f = fixture([mail("pending", "2026-11-04T00:00:00Z")]);
+  const upload = f.dropbox.upload; f.dropbox.upload = async () => { throw new Error("offline"); };
+  await assert.rejects(f.service().run());
+  f.messages.unshift(mail("late", "2026-11-02T00:00:00Z", excel([["SKU", "URL"], [2, "https://example.test/2"]])));
+  f.dropbox.upload = upload;
+  await f.service().run();
+  assert.equal(f.uploads(), 1);
+  assert.equal(f.state().watermark, "2026-11-04T00:00:00.000Z");
+  assert.ok(Object.values(f.state().processed).some(item => item.status === "out_of_order"));
 });
 test("no sobrescribe cambios externos de Dropbox", async () => {
   const f = fixture([mail("1", "2026-11-02T00:00:00Z")]);

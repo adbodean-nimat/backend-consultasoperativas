@@ -301,24 +301,27 @@ def check_response(content):
     if not codes or any(code != "NoError" for code in codes):
         # Only report identifiers from a fixed allowlist; never MessageText or raw XML.
         allowed = {"ErrorAccessDenied", "ErrorFolderNotFound", "ErrorNonExistentMailbox",
-                   "ErrorServerBusy", "ErrorInvalidUserInfo", "ErrorInvalidPropertyForOperation"}
+                   "ErrorServerBusy", "ErrorInvalidUserInfo", "ErrorInvalidPropertyForOperation",
+                   "ErrorItemNotFound", "ErrorInvalidSyncStateData", "ErrorSyncFolderNotFound"}
         code = next((code for code in codes if code in allowed), "EWS_OPERATION_FAILED")
         raise ProbeError(code)
     return tree
 
 
-def call(session, config, body):
+def call(session, config, body, max_response=MAX_RESPONSE):
     with session.post(config["endpoint"], data=body,
                       headers={"Content-Type": "text/xml; charset=utf-8",
                                "User-Agent": "Nimat-ProductosWeb/1.0"},
                       timeout=(10, 30), verify=config["verify"],
                       allow_redirects=False, stream=True) as response:
         if response.status_code != 200:
-            raise ProbeError("EWS_HTTP_" + str(response.status_code))
+            error = ProbeError("EWS_HTTP_" + str(response.status_code))
+            error.http_status = response.status_code
+            raise error
         content = bytearray()
         for chunk in response.iter_content(65536):
             content.extend(chunk)
-            if len(content) > MAX_RESPONSE:
+            if len(content) > max_response:
                 raise ProbeError("EWS_RESPONSE_LIMIT")
         return check_response(bytes(content))
 

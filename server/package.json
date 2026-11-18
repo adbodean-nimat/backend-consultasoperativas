@@ -5,8 +5,10 @@
   "main": "api.js",
   "type": "module",
   "scripts": {
-    "test:productos-web-report": "node --test src/modules/productos-web-report/report.test.js",
+    "test:productos-web-report": "node --test src/modules/productos-web-report/report.test.js src/modules/productos-web-report/report.exchange.test.js",
     "report:validate": "node src/modules/productos-web-report/report.cli.js",
+    "report:receive": "node src/modules/productos-web-report/report.run.js",
+    "report:dropbox-info": "node src/modules/productos-web-report/report.dropbox-info.js",
     "test:chatbot-history": "node --test src/modules/chatbot-history/chatbot-history.test.js",
     "test": "node --test src/modules/rotacion-general-productos/rotacion-general-productos.test.js src/modules/duplicate-transfers/duplicate-transfer.test.js src/modules/duplicate-transfers/duplicate-transfer-review.test.js src/modules/gestion/gestion.test.js src/modules/gestion/gestion-auth.test.js src/modules/gestion/gestion-scheduler.test.js src/modules/gestion/gestion.routes.test.js src/modules/gdc/gdc.test.js src/modules/gdc/gdc.routes.test.js src/modules/chatbot-history/chatbot-history.test.js",
     "test:wep-programmed": "node --test src/modules/wep/wep-programmed-notifications.test.js",

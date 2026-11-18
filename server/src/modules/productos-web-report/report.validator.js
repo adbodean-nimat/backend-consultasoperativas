@@ -1,6 +1,7 @@
 import xlsx from "xlsx";
 import { inflateRawSync } from "node:zlib";
 import { fault } from "./report.config.js";
+import { PRODUCTOS_WEB_PROFILE } from "./report.profile.js";
 
 function crc32(bytes) {
   let crc = 0xffffffff;
@@ -42,7 +43,11 @@ function inspectZip(buffer) {
       const types = bytes.toString("utf8");
       const overrides = types.match(/<(?:\w+:)?Override\b[^>]*>/g) || [];
       const workbook = overrides.filter(tag => /\bPartName\s*=\s*["']\/xl\/workbook\.xml["']/.test(tag));
-      workbookType = workbook.length === 1 && /\bContentType\s*=\s*["']application\/vnd\.openxmlformats-officedocument\.spreadsheetml\.sheet\.main\+xml["']/.test(workbook[0]);
+      const defaults = (types.match(/<(?:\w+:)?Default\b[^>]*>/g) || [])
+        .filter(tag => /\bExtension\s*=\s*["']xml["']/.test(tag));
+      // Open XML permits a Default for XML parts, overridden individually.
+      const declaration = workbook.length === 1 ? workbook[0] : workbook.length === 0 && defaults.length === 1 ? defaults[0] : "";
+      workbookType = /\bContentType\s*=\s*["']application\/vnd\.openxmlformats-officedocument\.spreadsheetml\.sheet\.main\+xml["']/.test(declaration);
     }
     pos += 46 + nameLength + buffer.readUInt16LE(pos + 30) + buffer.readUInt16LE(pos + 32);
   }
@@ -61,8 +66,25 @@ export function validateReport(buffer, config) {
     const rows = xlsx.utils.sheet_to_json(sheet, { header: 1, defval: "", blankrows: false });
     const headers = rows.shift()?.map(v => String(v).trim()) || [];
     if (new Set(headers).size !== headers.length || config.columns.some(c => !headers.includes(c))) throw fault("REPORT_COLUMNS_INVALID");
-    const positions = config.columns.map(c => headers.indexOf(c));
-    if (!rows.length || rows.some(row => positions.some(i => String(row[i] ?? "").trim() === ""))) throw fault("REPORT_DATA_INVALID");
+    const requiredValues = config.requiredValues || config.columns;
+    if (requiredValues.some(c => !config.columns.includes(c))) throw fault("REPORT_REQUIRED_VALUES_CONFIG");
+    const positions = requiredValues.map(c => headers.indexOf(c));
+    if (rows.length < (config.minRows || 1) || rows.some(row => positions.some(i => String(row[i] ?? "").trim() === ""))) throw fault("REPORT_DATA_INVALID");
+    if (config.profile === PRODUCTOS_WEB_PROFILE.name) {
+      if (headers.length !== PRODUCTOS_WEB_PROFILE.columns.length || PRODUCTOS_WEB_PROFILE.columns.some((c, i) => headers[i] !== c)) throw fault("REPORT_COLUMNS_INVALID");
+      const seenIds = new Set();
+      for (const row of rows) {
+        const [id, sku, name, description, image, url, specifications] = row;
+        if (!Number.isSafeInteger(id) || id <= 0 || seenIds.has(id)) throw fault("REPORT_ID_INVALID");
+        seenIds.add(id);
+        if ([sku, name, description, image, url, specifications].some(v => typeof v !== "string")) throw fault("REPORT_VALUE_TYPE_INVALID");
+        for (const value of [image, url]) {
+          let parsed;
+          try { parsed = new URL(value); } catch { throw fault("REPORT_URL_INVALID"); }
+          if (parsed.protocol !== "https:" || !["www.nimat.com.ar", "nimat.com.ar"].includes(parsed.hostname) || parsed.username || parsed.password) throw fault("REPORT_URL_INVALID");
+        }
+      }
+    }
     for (const [address, cell] of Object.entries(sheet)) {
       if (!address.startsWith("!") && (cell.f || cell.t === "e")) throw fault("REPORT_FORMULA_OR_ERROR");
     }

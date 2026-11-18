@@ -20,7 +20,7 @@ export class ReportService {
     try {
       return await this.repository.withLock(async store => {
         const c = this.config;
-        const binding = digest(JSON.stringify([c.path, c.protocol, c.endpoint, c.version, c.auth, c.mailbox, c.folder, c.sender, c.subject, c.filename, c.sheet, c.columns, c.referenceSha256]));
+        const binding = digest(JSON.stringify([c.path, c.protocol, c.endpoint, c.version, c.auth, c.mailbox, c.folder, c.sender, c.subject, c.filename, c.sheet, c.columns, c.referenceSha256, c.profile, c.requiredValues, c.minRows, c.ordering, c.freshReportPerMessageConfirmed]));
         const state = await store.load() || { binding, cursor: null, watermark: timestamp(c.initialDate), rev: c.initialRev, processed: {}, hashes: {} };
         if (state.binding !== binding) throw fault("REPORT_STATE_BINDING_MISMATCH");
         const save = async () => { if (!c.dryRun) await store.save(state); };
@@ -56,6 +56,11 @@ export class ReportService {
           candidates.push({ message, attachment: attachments[0], date: timestamp(message.reportAt) });
         }
         candidates.sort((a, b) => a.date.localeCompare(b.date) || String(a.message.id).localeCompare(String(b.message.id)));
+        if (state.pending) {
+          const index = candidates.findIndex(({ message, attachment }) => digest(JSON.stringify([message.id, attachment.id])) === state.pending.key);
+          if (index < 0) throw fault("REPORT_PENDING_NOT_REPLAYED");
+          candidates.unshift(...candidates.splice(index, 1));
+        }
         const results = [];
         for (const { message, attachment, date } of candidates) {
           store.guard();
@@ -76,7 +81,7 @@ export class ReportService {
             await save(); results.push({ key, status: "invalid", code: error.code }); continue;
           }
           const hash = contentHash(buffer);
-          if (c.dryRun) { results.push({ key, status: "validated", rows: validation.rows }); continue; }
+          if (c.dryRun) { results.push({ key, status: "validated", rows: validation.rows, reportAt: date, contentHash: hash }); continue; }
           if (state.pending && (state.pending.key !== key || state.pending.hash !== hash)) throw fault("REPORT_PENDING_NOT_REPLAYED");
           const remote = await this.dropbox.metadata(c.path);
           if (remote.rev !== state.rev) throw fault("REPORT_DROPBOX_CONFLICT");
@@ -102,8 +107,9 @@ export class ReportService {
       });
     } catch (error) {
       // Do not log provider errors, response bodies, subjects, addresses or tokens.
-      this.logger.error("[productos-web-report]", { code: "REPORT_RUN_FAILED" });
-      throw fault("REPORT_RUN_FAILED");
+      const code = typeof error?.code === "string" && /^(REPORT_[A-Z0-9_]{1,100}|EWS_[A-Z0-9_]{1,100}|Error(?:AccessDenied|FolderNotFound|NonExistentMailbox|ServerBusy|InvalidUserInfo|InvalidPropertyForOperation|ItemNotFound|InvalidSyncStateData|SyncFolderNotFound))$/.test(error.code) ? error.code : "REPORT_RUN_FAILED";
+      this.logger.error("[productos-web-report]", { code });
+      throw Object.assign(fault("REPORT_RUN_FAILED"), { detail: code });
     } finally { this.running = false; }
   }
   commit(state, rev) {
