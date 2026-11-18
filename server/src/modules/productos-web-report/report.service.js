@@ -72,7 +72,10 @@ export class ReportService {
           }
           if (!Number.isSafeInteger(attachment.size) || attachment.size <= 0 || attachment.size > c.maxBytes) throw fault("REPORT_ATTACHMENT_SIZE");
           const buffer = await retry(() => this.source.download({ messageId: message.id, attachmentId: attachment.id, maxBytes: c.maxBytes }));
-          if (!Buffer.isBuffer(buffer) || buffer.length !== attachment.size) throw fault("REPORT_ATTACHMENT_INCOMPLETE");
+          // EWS attachment.size is a store estimate including properties, not
+          // the file length. The source verifies transport; validateReport
+          // checks ZIP completeness, entry sizes/CRCs and the workbook below.
+          if (!Buffer.isBuffer(buffer) || !buffer.length || buffer.length > c.maxBytes) throw fault("REPORT_ATTACHMENT_INCOMPLETE");
           let validation;
           try { validation = validateReport(buffer, c); }
           catch (error) {

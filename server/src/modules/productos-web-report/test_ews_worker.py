@@ -92,21 +92,26 @@ class WorkerTests(unittest.TestCase):
         with patch('ews_worker.resolve_folder', return_value='folder'):
             result = download(session, CONFIG, 'message', 'attachment', 1024)
         self.assertEqual(base64.b64decode(result['base64']), data)
+        self.assertEqual(result['byteLength'], len(data))
         request = ET.fromstring(session.calls[1][1]['data'])
         self.assertEqual(request.find('.//t:AttachmentId', NS).get('Id'), 'attachment')
 
-    def test_incomplete_wrong_name_and_wrong_id_response_are_rejected(self):
-        for response in [attachment(b'short'), attachment(name='other.xlsx'), attachment(identity='other')]:
+    def test_empty_oversized_invalid_base64_wrong_name_and_wrong_id_are_rejected(self):
+        for response in [attachment(b''), attachment(b'x' * 1025),
+                         attachment().replace(base64.b64encode(b'xlsx-bytes'), b'???'),
+                         attachment()[:-20],
+                         attachment(name='other.xlsx'), attachment(identity='other')]:
             session = Session([Response(metadata()), Response(response)])
             with patch('ews_worker.resolve_folder', return_value='folder'), self.assertRaises(ProbeError):
                 download(session, CONFIG, 'message', 'attachment', 1024)
 
-    def test_size_mismatch_reports_only_expected_and_received_byte_counts(self):
-        session = Session([Response(metadata(size=100)), Response(attachment(b'short'))])
-        with patch('ews_worker.resolve_folder', return_value='folder'), self.assertRaises(ProbeError) as caught:
-            download(session, CONFIG, 'message', 'attachment', 1024)
-        self.assertEqual(str(caught.exception), 'EWS_ATTACHMENT_INCOMPLETE')
-        self.assertEqual(caught.exception.attachment_diagnostic, {'expectedBytes': 100, 'receivedBytes': 5})
+    def test_ews_size_includes_properties_and_is_not_content_length(self):
+        data = b'file-content'
+        session = Session([Response(metadata(size=len(data) + 390)), Response(attachment(data))])
+        with patch('ews_worker.resolve_folder', return_value='folder'):
+            result = download(session, CONFIG, 'message', 'attachment', 1024)
+        self.assertEqual(base64.b64decode(result['base64']), data)
+        self.assertEqual(result['byteLength'], len(data))
 
     def test_oversized_or_duplicate_expected_attachment_fails_closed(self):
         extra = '<t:FileAttachment><t:AttachmentId Id="other"/><t:Name>Reporte2.xlsx</t:Name><t:Size>3</t:Size></t:FileAttachment>'

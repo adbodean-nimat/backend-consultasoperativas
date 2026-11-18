@@ -180,11 +180,14 @@ def download(session, config, message_id, attachment_id, max_bytes):
         data = base64.b64decode(encoded, validate=True)
     except ValueError:
         raise ProbeError('EWS_ATTACHMENT_RESPONSE_INVALID') from None
-    if len(data) != attachment['size'] or len(data) > max_bytes:
+    # EWS Size includes attachment properties (PR_ATTACH_SIZE); it is not the
+    # exact length of Content. Node checks this decoded byte count and validates
+    # the entire XLSX ZIP/CRC/schema before any Dropbox write.
+    if not data or len(data) > max_bytes:
         error = ProbeError('EWS_ATTACHMENT_INCOMPLETE')
         error.attachment_diagnostic = {'expectedBytes': attachment['size'], 'receivedBytes': len(data)}
         raise error
-    return {'base64': base64.b64encode(data).decode('ascii')}
+    return {'base64': base64.b64encode(data).decode('ascii'), 'byteLength': len(data)}
 
 
 def main():

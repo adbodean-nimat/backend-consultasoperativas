@@ -85,11 +85,23 @@ test("dry-run valida sin Dropbox ni cambios persistentes; después se puede publ
   assert.equal(f.state(), null); assert.equal(f.uploads(), 0); assert.equal(f.metadataCalls(), 0);
   await f.service().run(); assert.equal(f.uploads(), 1);
 });
-test("descarga incompleta conserva cursor para reintentar", async () => {
-  const m = mail("1", "2026-11-02T00:00:00Z"); m.attachments[0].size++;
-  const f = fixture([m]); await assert.rejects(f.service().run(), /REPORT_RUN_FAILED/);
-  assert.equal(f.state(), null); assert.equal(f.uploads(), 0);
-  m.attachments[0].size--; await f.service().run(); assert.equal(f.uploads(), 1);
+test("tamaño EWS incluye propiedades: acepta XLSX completo con 390 bytes de diferencia", async () => {
+  const m = mail("1", "2026-11-02T00:00:00Z"); m.attachments[0].size += 390;
+  const f = fixture([m]);
+  const dry = await f.service({ dryRun: true }).run();
+  assert.equal(dry.results[0].status, "validated");
+  assert.equal(f.state(), null); assert.equal(f.uploads(), 0); assert.equal(f.metadataCalls(), 0);
+  await f.service().run(); assert.equal(f.uploads(), 1);
+});
+
+test("XLSX truncado con tamaño EWS mayor conserva último archivo válido", async () => {
+  const m = mail("truncated", "2026-11-02T00:00:00Z");
+  m.buffer = m.buffer.subarray(0, -390);
+  const f = fixture([m]);
+  const result = await f.service().run();
+  assert.equal(result.results[0].status, "invalid");
+  assert.equal(f.uploads(), 0); assert.equal(f.metadataCalls(), 0);
+  assert.equal(f.state().rev, "baseline");
 });
 test("diagnóstico de tamaño llega al resultado sin guardar cursor ni tocar Dropbox en dry-run", async () => {
   const f = fixture([mail("size-mismatch", "2026-11-02T00:00:00Z")]);

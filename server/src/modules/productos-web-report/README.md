@@ -74,7 +74,10 @@ contra el origen, definirlo con el responsable de datos.
   contradictorios o sin resolver no autorizan el reporte.
 - Antes de GetAttachment se vuelven a verificar remitente/asunto/nombre, ID,
   tamaño y ParentFolderId. Se descarga sólo el Excel esperado, con respuesta
-  limitada y base64/tamaño comprobados; Node valida el XLSX antes de publicar.
+  limitada y base64 comprobado. El worker informa `byteLength` del contenido
+  decodificado; Node exige que coincida con el buffer y valida el XLSX antes de
+  publicar. `Size` de EWS incluye propiedades y se usa como control preventivo
+  de tamaño, sin exigir igualdad con el archivo.
 - `report.repository.js` y `schema.sql`: cursor, watermark, hashes de IDs y
   contenido, revisión Dropbox e intención de carga en una fila JSONB, bajo lock
   de sesión PostgreSQL. El rol de runtime necesita SELECT/INSERT/UPDATE en esa
@@ -214,12 +217,16 @@ mensaje original. El archivo válido se conserva ante fallos del procesamiento.
 
 ## Verificación
 
-Si la recepción devuelve `EWS_ATTACHMENT_INCOMPLETE`, el diagnóstico incluye
-`attachmentDiagnostic.expectedBytes` (Size de EWS) y `receivedBytes` (contenido
-binario descargado). Sólo se registran esos contadores; no se registra contenido
-del correo, identificadores ni credenciales. Conservar la validación y repetir
-`npm run report:receive -- --dry-run` para obtener ambos valores antes de
-atribuir el rechazo a truncamiento o a una diferencia de metadatos.
+El tamaño `Size` de EWS puede superar los bytes del archivo porque incluye
+propiedades del adjunto ([PR_ATTACH_SIZE de Microsoft](https://learn.microsoft.com/en-us/office/client-developer/outlook/mapi/pidtagattachsize-canonical-property)).
+Una diferencia como 465749 frente a 465359 bytes no prueba truncamiento. No se
+resta una cantidad fija ni se admite un margen arbitrario: se comprueba el
+contenido base64, el límite de bytes reales, el contrato `byteLength` entre
+Python y Node y la integridad completa del ZIP (directorio, tamaños y CRC),
+además del esquema y los datos del XLSX. Desplegar juntos `ews_worker.py`,
+`report.exchange.js` y `report.service.js` y repetir
+`npm run report:receive -- --dry-run`. La aprobación de ese archivo concreto
+depende de la validación en Linux; el diagnóstico anterior no la reemplaza.
 
 ```bash
 npm run test:productos-web-report

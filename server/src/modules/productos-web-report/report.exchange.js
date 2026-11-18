@@ -78,7 +78,7 @@ export function createExchangeSource(config, { env = process.env, runner = runEx
       const response = await runner(python, { action: "download", config: requestConfig, messageId, attachmentId, maxBytes });
       if (typeof response?.base64 !== "string" || response.base64.length % 4 !== 0 || response.base64.length > Math.ceil(maxBytes / 3) * 4 || !/^[A-Za-z0-9+/]*={0,2}$/.test(response.base64)) throw fault("REPORT_EXCHANGE_ATTACHMENT_INVALID");
       const buffer = Buffer.from(response.base64, "base64");
-      if (!buffer.length || buffer.length > maxBytes || buffer.toString("base64") !== response.base64) throw fault("REPORT_EXCHANGE_ATTACHMENT_INVALID");
+      if (!Number.isSafeInteger(response.byteLength) || response.byteLength !== buffer.length || !buffer.length || buffer.length > maxBytes || buffer.toString("base64") !== response.base64) throw fault("REPORT_EXCHANGE_ATTACHMENT_INVALID");
       return buffer;
     },
   };

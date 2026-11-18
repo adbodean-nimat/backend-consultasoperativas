@@ -87,10 +87,14 @@ test("source requires confirmed ordering and explicit private credentials", () =
 });
 test("source rejects malformed attachment transport and caps decoded bytes", async () => {
   for (const base64 of ["??", "YWJj\n", "YWJj====", Buffer.alloc(11).toString("base64")]) {
-    const source = createExchangeSource(config, { env, runner: async () => ({ base64 }) });
+    const source = createExchangeSource(config, { env, runner: async () => ({ base64, byteLength: Buffer.from(base64, "base64").length }) });
     await assert.rejects(source.download({ messageId: "message", attachmentId: "file", maxBytes: 10 }), /ATTACHMENT_INVALID/);
   }
-  const source = createExchangeSource(config, { env, runner: async () => ({ base64: Buffer.from("abc").toString("base64") }) });
+  for (const byteLength of [undefined, "3", 2, 4, -1]) {
+    const bad = createExchangeSource(config, { env, runner: async () => ({ base64: "YWJj", byteLength }) });
+    await assert.rejects(bad.download({ messageId: "message", attachmentId: "file", maxBytes: 10 }), /ATTACHMENT_INVALID/);
+  }
+  const source = createExchangeSource(config, { env, runner: async () => ({ base64: Buffer.from("abc").toString("base64"), byteLength: 3 }) });
   assert.equal((await source.download({ messageId: "message", attachmentId: "file", maxBytes: 10 })).toString(), "abc");
 });
 
