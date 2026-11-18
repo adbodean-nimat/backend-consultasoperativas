@@ -8,6 +8,21 @@ deshabilitado y OAuth habilitado en el directorio virtual. Casilla objetivo:
 `soporte@nimat.com.ar`. Según la captura: remitente `info@nimat.com.ar`, asunto
 `Reporte2`, adjunto `Reporte2.xlsx`. Producción: Linux con PM2; testing: Windows.
 
+Actualización del endpoint del servicio: el administrador agregó HTTPS interno
+en 8443 y verificó desde Linux `HTTP=401 IP=192.168.0.42` mediante curl sin
+desactivar TLS. `.env` local ahora usa
+`https://correo.nimat.com.ar:8443/ews/exchange.asmx`. Esto acredita conectividad
+HTTPS en esa prueba, no autenticación ni acceso a Reportes. Actualizar también
+la clave existente en el `.env` de Linux antes de repetir `ews_probe.py`.
+La publicación de 443 se conserva; no se verificó todavía un filtro que limite
+el nuevo binding únicamente a la ruta `/ews`.
+
+La prueba autenticada posterior desde Linux devolvió `ok=true`,
+`folderReadable=true`, `readOnly=true`, `writeRightsDetected=false` y
+`reportFound=false`. El usuario confirmó que el correo original ya está en
+Reportes. Está verificado el acceso de lectura; falta resolver cuál de los
+filtros no coincide antes de descargar el reporte real.
+
 La captura posterior del administrador confirma la cuenta creada:
 `sAMAccountName=svc_prodweb`, `UPN=svc_prodweb@prades.local`, correo
 `svc_prodweb@nimat.com.ar`, base `Bases` y OU de usuarios
@@ -20,8 +35,9 @@ La captura de permisos confirma `Reviewer` para `svc_prodweb@prades.local` en
 El administrador confirmó también `FolderVisible` sobre Bandeja de entrada,
 dominio **NETBIOS PRADES** y **DNSRoot prades.local**. Se configuró `AUTH=ntlm`
 para realizar la prueba solicitada desde Linux, sin dar por verificado el acceso.
-Falta comprobar que NTLMv2 esté permitido para esa cuenta y desde la IP de producción. Windows
-Authentication habilitado no demuestra que la política permita NTLM.
+El diagnóstico NTLM ya funcionó desde producción con esa cuenta. Windows
+Authentication habilitado por sí solo no lo demostraba; la prueba autenticada
+es la evidencia operativa registrada.
 OAuth habilitado tampoco acredita un flujo de autorización para esta app.
 `nimat.com.ar` es el dominio del correo; no inferir que NETBIOS sea `NIMAT`.
 
@@ -189,7 +205,7 @@ PRODUCTOS_WEB_ENABLED=false
 PRODUCTOS_WEB_DRY_RUN=true
 PRODUCTOS_WEB_EXCHANGE_VERSION=2019
 PRODUCTOS_WEB_EXCHANGE_PROTOCOL=ews
-PRODUCTOS_WEB_EXCHANGE_URL=https://correo.nimat.com.ar/ews/exchange.asmx
+PRODUCTOS_WEB_EXCHANGE_URL=https://correo.nimat.com.ar:8443/ews/exchange.asmx
 PRODUCTOS_WEB_MAILBOX=soporte@nimat.com.ar
 PRODUCTOS_WEB_SENDER=info@nimat.com.ar
 PRODUCTOS_WEB_SUBJECT=Reporte2
@@ -289,5 +305,96 @@ Errores seguros que se pueden compartir sin incluir contraseña ni XML crudo:
 
 Dominio NETBIOS, sAMAccountName, carpeta y ACL ya fueron confirmados. Devolver
 el JSON del diagnóstico ejecutado desde Linux e indicar si fue necesaria una CA
-privada. El funcionamiento de NTLMv2 sigue pendiente de esa prueba.
+privada. El funcionamiento del diagnóstico NTLM ya fue verificado desde Linux;
+actualmente está pendiente la coincidencia del correo y la validación del XLSX.
 Guardar la contraseña exclusivamente en el entorno privado correspondiente.
+
+## Diagnóstico de EWS_CONNECTION_FAILED desde Linux
+
+### Diagnóstico de filtros cuando el acceso ya funciona
+
+Con la versión actualizada de `ews_probe.py` en Linux, ejecutar:
+
+```bash
+"$HOME/.venvs/nimat-ews-probe/bin/python" \
+  src/modules/productos-web-report/ews_probe.py \
+  --env-file .env --inbox-subfolder Reportes --diagnose-filters
+```
+
+Además del resultado habitual devuelve `diagnosticMatches`, con booleanos:
+`all` (hay algún elemento), `subject` (coincide el asunto), `sender` (coincide el
+remitente), `subject_sender` (ambos en un mismo elemento) y `combined` (ambos y
+presencia de adjunto). Cada consulta tiene máximo un resultado, shape IdOnly y
+se limita al ID de Reportes ya autorizado; no busca en otras carpetas ni imprime
+asuntos, direcciones, IDs o contenido. En este diagnóstico los filtros se prueban
+aislados únicamente para ubicar la discrepancia; los filtros de producción no
+se relajan. La existencia del nombre exacto del adjunto requiere un GetItem y su
+validación queda pendiente de la siguiente etapa.
+
+Si `all=false`, revisar que el mensaje esté directamente en la carpeta compartida
+del servidor y no en una subcarpeta, otro buzón, PST local o vista de búsqueda.
+`subject=true` y `sender=false` orientan a revisar el remitente real/representación
+SMTP frente a EX; `subject_sender=true` y `combined=false` orientan a adjunto
+ausente. Los booleanos individuales no acreditan que se trate del mismo mensaje.
+
+### Diagnóstico de conectividad previo a la autenticación
+
+Este código por sí solo no determina si falló DNS, TCP o una conexión que se
+cerró durante el intercambio. Tampoco acredita ni descarta credenciales correctas.
+No ampliar permisos de la cuenta ni cambiar la clave sólo por este resultado.
+
+Desde el mismo servidor Linux, consultar resolución y HTTPS sin credenciales:
+
+```bash
+getent ahosts correo.nimat.com.ar
+
+curl -q --noproxy '*' --connect-timeout 10 --max-time 20 \
+  -sS -o /dev/null -w 'HTTP=%{http_code} IP=%{remote_ip}\n' \
+  'https://correo.nimat.com.ar/ews/exchange.asmx'
+```
+
+`-q` evita opciones heredadas de `.curlrc`; `--noproxy '*'` reproduce la conexión
+directa del diagnóstico Python, que no usa proxies del entorno. No hay usuario,
+contraseña ni seguimiento de redirecciones. Se conserva la validación TLS.
+Referencia: [manual curl](https://curl.se/docs/manpage.html).
+
+Un HTTP 401 permite confirmar una respuesta del endpoint que solicita
+autenticación; esta consulta no envió credenciales. HTTP 000 indica que curl no
+obtuvo un estado HTTP; revisar el error asociado. Error curl 6 apunta a resolución
+DNS, 7 a conexión TCP, 28 a timeout y 60 a validación del certificado. Confirmar
+con el administrador que la IP resuelta es la esperada para la ubicación de
+producción (DNS interno/externo, VPN, rutas, firewall y eventual NAT).
+
+Si funciona únicamente usando `curl -q -4 ...` con las mismas opciones, revisar
+resolución/ruta IPv6 antes de modificar el backend. No reemplazar el hostname de
+la URL por una IP ni usar `-k` para sortear validación de certificados.
+
+La versión actualizada de `ews_probe.py` conserva el código general y agrega un
+`detail` seguro cuando puede identificar la excepción encadenada: por ejemplo
+`DNS_RESOLUTION_FAILED`, `CONNECTION_REFUSED`, `NETWORK_UNREACHABLE`,
+`HOST_UNREACHABLE`, `CONNECTION_RESET` o `UNCLASSIFIED_CONNECTION_ERROR`.
+Copiar el script actualizado a Linux antes de repetir el mismo comando de prueba;
+no hace falta reiniciar PM2 ni cambiar `.env` para incorporar esta mejora.
+No se imprimen mensajes crudos de excepción, solicitudes, XML ni credenciales.
+
+Si después de corregir DNS aparece `EWS_TIMEOUT`, todavía no se conoce la etapa
+exacta con una versión anterior del script. La versión actual agrega
+`detail=CONNECT_TIMEOUT` cuando Requests informa timeout al conectar y
+`detail=READ_TIMEOUT` cuando informa espera de lectura. No interpretar esos
+códigos como prueba de autenticación exitosa ni como una causa única de red.
+
+Consultar desde el mismo Linux, sin credenciales, por IPv4:
+
+```bash
+getent ahostsv4 correo.nimat.com.ar
+
+curl -q -4 --noproxy '*' --connect-timeout 10 --max-time 20 \
+  -sS -o /dev/null \
+  -w 'HTTP=%{http_code} IP=%{remote_ip} TCP=%{time_connect}s TLS=%{time_appconnect}s TOTAL=%{time_total}s\n' \
+  'https://correo.nimat.com.ar/ews/exchange.asmx'
+```
+
+Compartir también el error de curl si lo hay. Sus tiempos ayudan a localizar
+qué fases se completaron, pero no prueban acceso delegado al buzón. Una IP
+resuelta correctamente no demuestra que TCP/443 sea alcanzable. No aumentar
+timeouts ni modificar permisos como primera respuesta sin esta información.

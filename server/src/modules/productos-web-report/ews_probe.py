@@ -1,10 +1,13 @@
 """Manual read-only EWS/NTLM diagnostic; independent of the pending Node adapter."""
 import argparse
+import errno
 import getpass
 import json
 import os
 from pathlib import Path
 import re
+import socket
+import ssl
 import sys
 from urllib.parse import urlsplit
 from xml.etree import ElementTree as ET
@@ -17,6 +20,35 @@ MAX_RESPONSE = 2 * 1024 * 1024
 
 class ProbeError(Exception):
     """Contains a safe diagnostic code, never a raw provider response."""
+
+
+def connection_detail(error):
+    """Classify wrapped Requests/urllib3 failures without exposing exception text."""
+    pending, seen, errors = [error], set(), []
+    while pending and len(seen) < 32:
+        current = pending.pop()
+        if not isinstance(current, BaseException) or id(current) in seen:
+            continue
+        seen.add(id(current))
+        errors.append(current)
+        pending.extend([current.__cause__, current.__context__, getattr(current, "reason", None)])
+        pending.extend(arg for arg in current.args if isinstance(arg, BaseException))
+    if any(isinstance(e, ssl.SSLError) for e in errors):
+        return "TLS_HANDSHAKE_FAILED"
+    if any(isinstance(e, socket.gaierror) or
+           (type(e).__module__.startswith("urllib3.") and type(e).__name__ == "NameResolutionError") for e in errors):
+        return "DNS_RESOLUTION_FAILED"
+    if any(isinstance(e, TimeoutError) for e in errors):
+        return "NETWORK_TIMEOUT"
+    reasons = [(errno.ECONNREFUSED, "CONNECTION_REFUSED"),
+               (errno.ENETUNREACH, "NETWORK_UNREACHABLE"),
+               (errno.EHOSTUNREACH, "HOST_UNREACHABLE"),
+               (errno.ECONNRESET, "CONNECTION_RESET"),
+               (errno.EPIPE, "CONNECTION_CLOSED")]
+    for number, reason in reasons:
+        if any(isinstance(e, OSError) and e.errno == number for e in errors):
+            return reason
+    return "UNCLASSIFIED_CONNECTION_ERROR"
 
 
 def required(env, name):
@@ -70,17 +102,29 @@ def get_folder(mailbox, folder_id=None):
                     + '</m:FolderIds></m:GetFolder>')
 
 
-def find_report(mailbox, subject, sender, folder_id=None):
+def find_report(mailbox, subject, sender, folder_id=None, filter_mode="combined"):
     def equals(field, value):
         return ('<t:IsEqualTo><t:FieldURI FieldURI=' + quoteattr(field)
                 + '/><t:FieldURIOrConstant><t:Constant Value=' + quoteattr(value)
                 + '/></t:FieldURIOrConstant></t:IsEqualTo>')
+    criteria = {
+        "all": [],
+        "subject": [("item:Subject", subject)],
+        "sender": [("message:From", sender)],
+        "subject_sender": [("item:Subject", subject), ("message:From", sender)],
+        "combined": [("item:Subject", subject), ("message:From", sender), ("item:HasAttachments", "true")],
+    }
+    if filter_mode not in criteria:
+        raise ProbeError("EWS_FILTER_MODE_INVALID")
+    clauses = [equals(field, value) for field, value in criteria[filter_mode]]
+    restriction = ""
+    if clauses:
+        condition = clauses[0] if len(clauses) == 1 else '<t:And>' + ''.join(clauses) + '</t:And>'
+        restriction = '<m:Restriction>' + condition + '</m:Restriction>'
     return envelope('<m:FindItem Traversal="Shallow"><m:ItemShape>'
                     '<t:BaseShape>IdOnly</t:BaseShape></m:ItemShape>'
                     '<m:IndexedPageItemView MaxEntriesReturned="1" Offset="0" BasePoint="Beginning"/>'
-                    '<m:Restriction><t:And>' + equals("item:Subject", subject)
-                    + equals("message:From", sender) + equals("item:HasAttachments", "true")
-                    + '</t:And></m:Restriction><m:ParentFolderIds>'
+                    + restriction + '<m:ParentFolderIds>'
                     + folder_xml(mailbox, folder_id) + '</m:ParentFolderIds></m:FindItem>')
 
 
@@ -148,7 +192,7 @@ def call(session, config, body):
         return check_response(bytes(content))
 
 
-def probe(session, config, subject, sender, folder_id=None):
+def probe(session, config, subject, sender, folder_id=None, diagnose_filters=False):
     folder = call(session, config, get_folder(config["mailbox"], folder_id))
     rights = folder.find(".//t:EffectiveRights", NS)
     if rights is None or rights.findtext("t:Read", namespaces=NS) != "true":
@@ -161,14 +205,24 @@ def probe(session, config, subject, sender, folder_id=None):
         raise ProbeError("EWS_PERMISSIONS_TOO_BROAD")
     tree = call(session, config, find_report(config["mailbox"], subject, sender, folder_id))
     matched = bool(tree.findall(".//t:Items/t:Message", NS))
-    return {"ok": True, "folderReadable": True, "reportFound": matched,
+    result = {"ok": True, "folderReadable": True, "reportFound": matched,
             "readOnly": True, "writeRightsDetected": False,
             "attachmentDownloaded": False, "dropboxTouched": False}
+    if diagnose_filters:
+        matches = {}
+        for mode in ("all", "subject", "sender", "subject_sender"):
+            response = call(session, config, find_report(config["mailbox"], subject, sender, folder_id, mode))
+            matches[mode] = bool(response.findall(".//t:Items/*", NS))
+        matches["combined"] = matched
+        result["diagnosticMatches"] = matches
+    return result
 
 
 def main():
     parser = argparse.ArgumentParser(description="Consulta EWS sin modificar correos ni tocar Dropbox.")
     parser.add_argument("--env-file", required=True)
+    parser.add_argument("--diagnose-filters", action="store_true",
+                        help="Devuelve sólo coincidencias booleanas de filtros; no lista datos de correos.")
     target = parser.add_mutually_exclusive_group(required=True)
     target.add_argument("--inbox", action="store_true", help="Sólo si el administrador confirmó Bandeja de entrada.")
     target.add_argument("--folder-id", help="ID EWS de la carpeta autorizada, no ID de Outlook ni FolderStatistics.")
@@ -205,17 +259,22 @@ def main():
             folder_id = args.folder_id
             if args.inbox_subfolder:
                 folder_id = resolve_inbox_subfolder(session, config, args.inbox_subfolder)
-            result = probe(session, config, subject, sender, folder_id)
+            result = probe(session, config, subject, sender, folder_id, args.diagnose_filters)
         print(json.dumps(result))
         return 0
     except ProbeError as error:
         print(json.dumps({"ok": False, "code": str(error)}))
     except requests.exceptions.SSLError:
         print(json.dumps({"ok": False, "code": "EWS_TLS_FAILED"}))
+    except requests.exceptions.ConnectTimeout:
+        print(json.dumps({"ok": False, "code": "EWS_TIMEOUT", "detail": "CONNECT_TIMEOUT"}))
+    except requests.exceptions.ReadTimeout:
+        print(json.dumps({"ok": False, "code": "EWS_TIMEOUT", "detail": "READ_TIMEOUT"}))
     except requests.exceptions.Timeout:
-        print(json.dumps({"ok": False, "code": "EWS_TIMEOUT"}))
-    except requests.exceptions.ConnectionError:
-        print(json.dumps({"ok": False, "code": "EWS_CONNECTION_FAILED"}))
+        print(json.dumps({"ok": False, "code": "EWS_TIMEOUT", "detail": "UNCLASSIFIED_TIMEOUT"}))
+    except requests.exceptions.ConnectionError as error:
+        print(json.dumps({"ok": False, "code": "EWS_CONNECTION_FAILED",
+                          "detail": connection_detail(error)}))
     except Exception:
         print(json.dumps({"ok": False, "code": "EWS_PROBE_FAILED"}))
     return 1

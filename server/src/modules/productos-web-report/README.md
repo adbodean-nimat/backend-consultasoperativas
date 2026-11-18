@@ -4,10 +4,11 @@
 
 **Estructura implementada y probada; recepción de Exchange pendiente de datos.**
 No existe todavía un adaptador de correo operativo. `createExchangeSource()`
-rechaza cualquier intento de iniciar hasta verificar el flujo de autenticación
-y la autorización de la cuenta de ejecución sobre la casilla.
-La tarea está desactivada en `.env` y `.env.example`. No se contactó Exchange ni
-se reemplazó el archivo remoto durante el desarrollo.
+rechaza iniciar con `REPORT_EXCHANGE_ADAPTER_PENDING`: falta integrar el adaptador
+productivo con el contrato del reporte real, esquema y fecha de generación.
+La tarea está desactivada en `.env` y `.env.example`. El usuario ejecutó las
+consultas EWS desde Linux; desde este workspace no se contactó Exchange ni se
+reemplazó el archivo remoto.
 
 Datos confirmados posteriormente por el usuario: Exchange Server 2019 y casilla
 `soporte@nimat.com.ar`. Según la captura: remitente `info@nimat.com.ar`, asunto
@@ -17,6 +18,13 @@ Estos valores se guardaron en `.env`. El usuario confirmó además:
 - Servidor `EXCHSERVER`, Standard, `AdminDisplayVersion 15.2.1544.4`: CU14.
   Este comando identifica el CU, no el nivel de SU/HU instalado.
 - EWS interno y externo: `https://correo.nimat.com.ar/ews/exchange.asmx`.
+- Endpoint adicional del servicio: `https://correo.nimat.com.ar:8443/ews/exchange.asmx`.
+  El administrador comprobó desde Linux respuesta HTTP 401 con TLS validado e IP
+  remota `192.168.0.42`; se actualizó `.env` a 8443. La prueba posterior confirmó
+  autenticación NTLM de `PRADES\svc_prodweb`, lectura de Reportes y ausencia de
+  derechos efectivos de escritura. `reportFound=false`; el usuario confirmó que
+  el reporte ya está en la carpeta y se prepara diagnóstico por filtros.
+  El filtro exclusivo por ruta EWS aún no está verificado.
 - `WindowsAuthentication=True`, `BasicAuthentication=False`, `OAuthAuthentication=True`.
 - Cuenta creada por el administrador: `svc_prodweb`, UPN `svc_prodweb@prades.local`,
   correo `svc_prodweb@nimat.com.ar`, base `Bases`, OU de usuarios Sistemas.
@@ -24,7 +32,7 @@ Estos valores se guardaron en `.env`. El usuario confirmó además:
 - Reviewer verificado por el administrador en `Bandeja de entrada\Reportes` de
   soporte. Ruta guardada en `.env`. FolderVisible sobre el padre también confirmado.
 - NETBIOS `PRADES`, DNSRoot `prades.local`. Configurado `AUTH=ntlm` para la prueba
-  solicitada. Pendiente acceso NTLMv2 verificado desde Linux; no se modificó contraseña.
+  solicitada y completada con éxito desde Linux; no se modificó contraseña.
 
 Se guardaron protocolo `ews` y endpoint en `.env`. Se recomienda autenticación
 integrada Windows para evaluar el acceso desde el host del backend; el mecanismo
@@ -32,7 +40,8 @@ concreto Kerberos/NTLM debe verificarse según identidad, políticas y proveedor
 del servidor. No se habilita Basic ni se desactiva Extended Protection/TLS.
 `OAuthAuthentication=True` por sí solo no prueba un flujo OAuth utilizable por
 esta aplicación (emisor, registro, permisos y adquisición de token pendientes).
-Faltan reporte real y acceso autenticado verificado desde Linux.
+Faltan resolver la coincidencia del correo y obtener el XLSX real para definir
+esquema y fecha confiable de generación.
 
 La revisión del backend encontró:
 
