@@ -24,7 +24,8 @@ circuito completo en modo de prueba antes de activar escrituras.
   original como referencia de orden, explícitamente configurada. El XLSX no tiene
   una fecha de generación verificable. Si cambia este contrato, detener el job;
   un adjunto viejo reenviado con fecha nueva no puede distinguirse sólo por fecha.
-- Destino fijo: `/NIMAT/Productos Nimat Urls.xlsx` (`EXCEL_URLS_PATH`).
+- Destino fijo confirmado posteriormente por el usuario:
+  `/Productos Nimat Urls.xlsx`, en la raíz de Dropbox (`EXCEL_URLS_PATH`).
 
 La API usa ESM, node-cron, instancia PM2 0 y locks advisory PostgreSQL; este módulo
 sigue ese patrón. Reutiliza app/refresh token y SDK Dropbox existentes. No importa
@@ -83,7 +84,8 @@ contra el origen, definirlo con el responsable de datos.
   registran; transporte incompleto no adelanta cursor. La deduplicación persiste
   entre reinicios. No hay poda automática del historial: respaldar esta tabla.
 - `report.dropbox.js`: app y refresh token existentes. Scopes mínimos del módulo:
-  files.metadata.read y files.content.write con acceso a /NIMAT. Reautorizar la app
+  files.metadata.read y files.content.write con acceso al archivo en la raíz de
+  Dropbox autorizada para la app. Reautorizar la app
   sólo si falta write; preservar scopes que ya usan otros procesos.
 - La subida usa update(rev), strict_conflict=true, autorename=false y compara hash.
   Se persiste intención antes de cargar. Si se pierde la respuesta o cae el proceso
@@ -130,7 +132,7 @@ PRODUCTOS_WEB_MIN_ROWS=1
 PRODUCTOS_WEB_REFERENCE_SHA256=ec3700b3eb8b4aba5ede30287e0efe86a5b2439c24f84dcbafcbc50e24a88e23
 PRODUCTOS_WEB_ORDERING=message_sent
 PRODUCTOS_WEB_FRESH_REPORT_PER_MESSAGE_CONFIRMED=true
-EXCEL_URLS_PATH="/NIMAT/Productos Nimat Urls.xlsx"
+EXCEL_URLS_PATH="/Productos Nimat Urls.xlsx"
 PRODUCTOS_WEB_INITIAL_REPORT_AT=
 PRODUCTOS_WEB_INITIAL_DROPBOX_REV=
 ```

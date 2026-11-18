@@ -237,7 +237,7 @@ PRODUCTOS_WEB_EXCHANGE_USER=svc_prodweb
 PRODUCTOS_WEB_EXCHANGE_DOMAIN=PRADES
 PRODUCTOS_WEB_EXCHANGE_AUTH=ntlm
 PRODUCTOS_WEB_FOLDER="Bandeja de entrada\Reportes"
-EXCEL_URLS_PATH="/NIMAT/Productos Nimat Urls.xlsx"
+EXCEL_URLS_PATH="/Productos Nimat Urls.xlsx"
 ```
 
 Valores confirmados y campos privados para la prueba:

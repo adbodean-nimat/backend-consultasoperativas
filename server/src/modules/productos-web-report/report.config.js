@@ -1,5 +1,5 @@
 import { PRODUCTOS_WEB_PROFILE } from "./report.profile.js";
-export const TARGET_PATH = "/NIMAT/Productos Nimat Urls.xlsx";
+export const TARGET_PATH = "/Productos Nimat Urls.xlsx";
 export function fault(code) { return Object.assign(new Error(code), { code }); }
 export function readConfig(env = process.env) {
   const required = (name) => { if (!env[name]?.trim()) throw fault(`MISSING_${name}`); return env[name].trim(); };
