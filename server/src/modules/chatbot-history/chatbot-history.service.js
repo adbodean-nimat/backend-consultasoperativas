@@ -74,7 +74,8 @@ function configuration(env) {
     const url = new URL(env.NIMAT_CHATBOT_URL);
     const key = env.NIMAT_CHATBOT_HISTORY_KEY;
     if (
-      /* url.protocol !== "https:" ||*/ url.username ||
+      url.protocol !== "https:" ||
+      url.username ||
       url.password ||
       url.search ||
       url.hash ||
